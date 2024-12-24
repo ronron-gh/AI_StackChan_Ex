@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "functional": "cpp",
+        "memory": "cpp",
+        "new": "cpp",
+        "deque": "cpp",
+        "string": "cpp",
+        "vector": "cpp"
+    }
+}

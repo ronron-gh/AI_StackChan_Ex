@@ -1,0 +1,10 @@
+# 個人情報用の設定ファイル
+wifi:
+  ssid: "********"
+  password: "********"
+
+
+apikey:
+  stt: "********"       # ApiKey of SpeechToText Service
+  aiservice: "********" # ApiKey of AIService
+  tts: "********"       # ApiKey of TextToSpeech Service
