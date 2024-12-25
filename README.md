@@ -1,4 +1,6 @@
-# AI StackChan Ex for Arduino
+[English](README_en.md)
+
+# AI Stack-chan Ex
 robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackChan2)をベースに、以下のような機能拡張を行っています。  
 - 対応AIサービスの追加 (太字が追加対応したもの)
   - LLM: OpenAI ChatGPT / **ModuleLLM**
@@ -19,7 +21,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 ---
 **Table of Contents**
-- [AI StackChan Ex for Arduino](#ai-stackchan-ex-for-arduino)
+- [AI Stack-chan Ex](#ai-stack-chan-ex)
   - [開発環境](#開発環境)
   - [利用可能なAIサービス](#利用可能なaiサービス)
     - [LLM](#llm)
@@ -40,7 +42,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 ## 開発環境
 - デバイス：M5Stack Core2 / CoreS3
-- IDE：Platformio (VSCode)
+- IDE：VSCode Platformio (Arduino)
 
 ## 利用可能なAIサービス
 会話に必要な各種AIサービスの対応状況を示します。  
@@ -221,7 +223,6 @@ SD Updaterに対応し、NoRiさんの[BinsPack-for-StackChan-Core2](https://git
 ① env:m5stack-core2-sduでビルドする。  
 ② ビルド結果の.pio/build/m5stack-core2-sdu/firmware.binを適切な名前（AiStackChanEx.bin等）に変更し、SDカードのルートディレクトリにコピーする。
 
-> ・本リポジトリのCopy-to-SDフォルダにビルド済みのbinファイルを置いています。  
 > ・現状、Core2 V1.1ではランチャーソフトが動作しないため切り替えはできません。
 
 
@@ -243,9 +244,8 @@ build_flags=
 ```
 
 ## コントリビューションについて
-issue、プルリクエストも歓迎です。問題や改善案がありましたら、まずはissueでご連絡ください。issueは「〇〇のような問題があり、〇〇の機能を修正したい」、「〇〇の理由で、〇〇のような機能を追加したい」といった内容にしていただけると反応しやすいですm(__)m
+issue、プルリクエストも歓迎です。問題や改善案がありましたら、まずはissueでご連絡ください。
 
 ## 注意事項
-- フォルダ名が長いため、ワークスペースの場所によってはライブラリのインクルードパスが通らない場合があります。
-なるべくCドライブ直下に近い場所をワークスペースにしてください。(例 C:\Git)
+- フォルダ名が長いため、ワークスペースの場所によってはライブラリのインクルードパスが通らない場合があります。なるべくCドライブ直下に近い場所をワークスペースにしてください。(例 C:\Git)
 

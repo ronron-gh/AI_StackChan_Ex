@@ -1,6 +1,7 @@
 
 # Module LLMを使用する際の設定方法
 ![](../images/module_llm.jpg)
+
 写真のようにｽﾀｯｸﾁｬﾝにModule LLMをスタックして使用する際の設定方法について記載します。
 
 ## platformio.iniの設定

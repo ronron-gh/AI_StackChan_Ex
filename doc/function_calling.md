@@ -20,7 +20,7 @@ https://protopedia.net/prototype/4587
 
 
 ## Function Callingで呼び出せる機能
-Function Callingですでに実装している機能の一覧を下表に示します。
+本ソフトですでに実装しているFunction Callingの機能の一覧を下表に示します。
 
 プロンプトや関数の実装は FunctionCall.cpp にまとめています。リクエストに応じてｽﾀｯｸﾁｬﾝが関数を使いこなしてくれます。FunctionCall.cppを改造することで、新たな機能を追加するなどのカスタマイズができます。
 
@@ -111,11 +111,6 @@ SDカードに次のようにMP3ファイルを保存しておくと、タイマ
 
 フォルダ：/app/AiStackChanEx  
 ファイル名：alarm.mp3
-
-> SDカードの相性により音が途切れることがあるため、起動時にMP3ファイルをSPIFFSにコピーして使用するように改善しました。すでにSPIFFSにalarm.mp3が存在する場合は起動時のコピーは行われません。
-
-
-
 
 ## スケジューラ機能
 時間を指定して任意のコールバック関数を実行することができます。コールバック関数内で、Function Callingを使う要求をChatGPTに送ることもできます。  
