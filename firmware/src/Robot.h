@@ -25,6 +25,7 @@ public:
     void speech(String text);
     String listen();
     void chat(String text, const char *base64_buf = NULL);
+    void chat_audio(const char *audio_base64);
 };
 
 extern Robot* robot;

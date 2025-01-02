@@ -21,7 +21,7 @@ SpiRamJsonDocument chat_doc(0);     // PSRAMから確保するように変更。
 
 LLMBase::LLMBase(llm_param_t param):param{param}
 {
-  chat_doc = SpiRamJsonDocument(1024*50);
+  chat_doc = SpiRamJsonDocument(1024*1000);
 
 }
 

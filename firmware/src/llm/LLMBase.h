@@ -22,6 +22,7 @@ protected:
 public:
   LLMBase(llm_param_t param) ;
   virtual void chat(String text, const char *base64_buf = NULL) = 0;
+  virtual void chat_audio(const char *audio_base64) {};
   bool init_chat_doc(const char *data);
   virtual bool save_role() {};
   virtual void load_role() {};

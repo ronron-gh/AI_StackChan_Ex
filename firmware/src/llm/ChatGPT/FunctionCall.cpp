@@ -66,8 +66,12 @@ void init_func_call_settings(StackchanExConfig& system_config)
 }
 
 String json_ChatString = 
+#ifdef GPT4O_AUDIO
+"{\"model\": \"gpt-4o-audio-preview\","
+#else
 //"{\"model\": \"gpt-4o-mini\","
 "{\"model\": \"gpt-4o\","
+#endif
 "\"messages\": [{\"role\": \"user\", \"content\": \"\"}],"
 "\"functions\": ["
   "{"

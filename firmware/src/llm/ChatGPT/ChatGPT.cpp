@@ -275,3 +275,110 @@ void ChatGPT::chat(String text, const char *base64_buf) {
   //チャット履歴の容量を圧迫しないように、functionロールを削除する
   chatHistory.clean_function_role();
 }
+
+
+void ChatGPT::chat_audio(const char *audio_base64) {
+  static String response = "";
+  String calledFunc = "";
+  //String funcCallMode = "auto";
+  bool image_flag = false;
+
+  //Serial.println(InitBuffer);
+  //init_chat_doc(InitBuffer.c_str());
+
+  // 質問をチャット履歴に追加
+  //if(base64_buf == NULL){
+  //  chatHistory.push_back(String("user"), String(""), text);
+  //}
+  //else{
+  //  //画像が入力された場合は第2引数を"image"にして識別する
+  //  chatHistory.push_back(String("user"), String("image"), text);
+  //}
+
+  //音声が入力されたことを第2引数を"audio"にして識別する
+  chatHistory.push_back(String("user"), String("audio"), String(""));  //音声なので空白
+
+  // functionの実行が要求されなくなるまで繰り返す
+  for (int reqCount = 0; reqCount < MAX_REQUEST_COUNT; reqCount++)
+  {
+    init_chat_doc(InitBuffer.c_str());
+
+    //if(reqCount == (MAX_REQUEST_COUNT - 1)){
+    //  funcCallMode = String("none");
+    //}
+
+    for (int i = 0; i < chatHistory.get_size(); i++)
+    {
+      JsonArray messages = chat_doc["messages"];
+      JsonObject systemMessage1 = messages.createNestedObject();
+
+      if(chatHistory.get_role(i).equals(String("function"))){
+        //Function Callingの場合
+        systemMessage1["role"] = chatHistory.get_role(i);
+        systemMessage1["name"] = chatHistory.get_funcName(i);
+        systemMessage1["content"] = chatHistory.get_content(i);
+      }
+      else if(chatHistory.get_funcName(i).equals(String("audio"))){
+        //このようなJSONを作成する
+        // messages=[
+        //      {
+        //          "role": "user",
+        //          "content": [
+        //              {
+        //                  "type": "input_audio",
+        //                  "input_audio": {
+        //                      "data": {base64_audio},
+        //                      "format": "wav"
+        //                  }
+        //              }
+        //          ]
+        //       }
+        //  ],
+
+        Serial.println("<<< Set audio input >>>");
+
+        //Debug
+        //Serial.print(audio_base64);
+        Serial.printf("Base64 size: %d\n", strlen(audio_base64));
+
+        systemMessage1["role"] = chatHistory.get_role(i);
+        JsonObject content_text = systemMessage1["content"].createNestedObject();
+        content_text["type"] = "input_audio";
+        content_text["input_audio"]["data"] = audio_base64;
+        content_text["input_audio"]["format"] = "wav";
+
+        //次回以降は画像の埋め込みをしないよう、識別用の文字列"audio"を消す
+        chatHistory.set_funcName(i, "");
+      }
+      else{
+        systemMessage1["role"] = chatHistory.get_role(i);
+        systemMessage1["content"] = chatHistory.get_content(i);
+      }
+
+    }
+
+    String json_string;
+    serializeJson(chat_doc, json_string);
+
+    //serializeJsonPretty(chat_doc, json_string);
+    Serial.println("====================");
+    Serial.println(json_string);
+    Serial.println("====================");
+
+    response = execChatGpt(json_string, &calledFunc);
+
+
+    if(calledFunc == ""){   // Function Callなし ／ Function Call繰り返しの完了
+      chatHistory.push_back(String("assistant"), String(""), response);   // 返答をチャット履歴に追加
+      robot->speech(response);
+      break;
+    }
+    else{   // Function Call繰り返し中。ループを継続
+      chatHistory.push_back(String("function"), calledFunc, response);   // 返答をチャット履歴に追加   
+    }
+
+  }
+
+  //チャット履歴の容量を圧迫しないように、functionロールを削除する
+  chatHistory.clean_function_role();
+}

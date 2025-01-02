@@ -162,3 +162,8 @@ void Robot::chat(String text, const char *base64_buf)
 {
   llm->chat(text, base64_buf);
 }
+
+void Robot::chat_audio(const char *audio_base64)
+{
+  llm->chat_audio(audio_base64);
+}

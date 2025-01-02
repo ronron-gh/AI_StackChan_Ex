@@ -26,7 +26,9 @@
 #include "rootCA/rootCACertificate.h"  //speechToText
 #include "rootCA/rootCAgoogle.h"       //speechToText
 #include "driver/Audio.h"              //speechToText
-
+#ifdef GPT4O_AUDIO
+#include <base64.h>
+#endif
 
 using namespace m5avatar;
 
@@ -70,6 +72,30 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
 
   avatar.setExpression(Expression::Happy);
   avatar.setSpeechText("御用でしょうか？");
+
+#ifdef GPT4O_AUDIO
+
+  AudioWhisper* audio = new AudioWhisper();
+  Serial.println("\r\nRecord start!\r\n");
+  audio->Record();  
+  Serial.println("Record end\r\n");
+
+  avatar.setSpeechText("");
+  servo_home = false;
+
+  String audio_base64;
+  audio_base64 = base64::encode(audio->GetBuffer(), audio->GetSize());
+
+  //Debug
+  //Serial.print(audio_base64);
+
+  robot->chat_audio(audio_base64.c_str());
+
+  avatar.setSpeechText("");
+  avatar.setExpression(Expression::Neutral);
+  servo_home = true;
+
+#else //GPT4O_AUDIO
   String ret = robot->listen();
   avatar.setSpeechText("");
 #ifdef USE_SERVO
@@ -95,7 +121,9 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
     avatar.setSpeechText("");
     avatar.setExpression(Expression::Neutral);
     servo_home = true;
-  } 
+  }
+
+#endif //GPT4O_AUDIO
 }
 
 
