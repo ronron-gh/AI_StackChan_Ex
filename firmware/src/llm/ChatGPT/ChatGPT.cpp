@@ -344,7 +344,8 @@ void ChatGPT::chat_audio(const char *audio_base64) {
         systemMessage1["role"] = chatHistory.get_role(i);
         JsonObject content_text = systemMessage1["content"].createNestedObject();
         content_text["type"] = "input_audio";
-        content_text["input_audio"]["data"] = audio_base64;
+        //content_text["input_audio"]["data"] = audio_base64;
+        content_text["input_audio"]["data"] = "replace_to_audio_base64";
         content_text["input_audio"]["format"] = "wav";
 
         //次回以降は画像の埋め込みをしないよう、識別用の文字列"audio"を消す
@@ -365,6 +366,8 @@ void ChatGPT::chat_audio(const char *audio_base64) {
     Serial.println(json_string);
     Serial.println("====================");
 
+    json_string.replace("replace_to_audio_base64", audio_base64);
+    
     response = execChatGpt(json_string, &calledFunc);
 
 
