@@ -234,11 +234,12 @@ It now supports SD Updater and can be switched to other SD Updater compatible ap
   - Touching the left center of the LCD will put the device into silent mode, and it will not wake up even if a face is detected. (Instead, Stack-chan will smile while a face is being detected.)
 - The camera image is displayed in the upper left corner of the LCD. Touch the image area to turn the display on/off.
 
-※Face detection is disabled by default by commenting out the following in platformio.ini.
+※Face detection is disabled by default by commenting out the following in platformio.ini. To enable it, please enable DENABLE_CAMERA and DENABLE_FACE_DETECT.
 ```
 build_flags=
   -DBOARD_HAS_PSRAM
   -DARDUINO_M5STACK_CORES3
+  ;-DENABLE_CAMERA
   ;-DENABLE_FACE_DETECT
   -DENABLE_WAKEWORD
 ```

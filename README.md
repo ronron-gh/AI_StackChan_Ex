@@ -234,11 +234,12 @@ SD Updaterに対応し、NoRiさんの[BinsPack-for-StackChan-Core2](https://git
   - LCD中央左側をタッチするとサイレントモードになり、顔検出しても起動しません。（代わりに、顔検出している間ｽﾀｯｸﾁｬﾝが笑顔になります。）
 - LCDの左上隅にカメラ画像が表示されます。画像部分をタッチすると表示ON/OFFできます。
 
-※顔検出は初期状態ではplatformio.iniで以下のようにコメントアウトし無効化しています。
+※顔検出は初期状態ではplatformio.iniで以下のようにコメントアウトし無効化しています。有効化する際はDENABLE_CAMERAとDENABLE_FACE_DETECTを有効化してください。
 ```
 build_flags=
   -DBOARD_HAS_PSRAM
   -DARDUINO_M5STACK_CORES3
+  ;-DENABLE_CAMERA
   ;-DENABLE_FACE_DETECT
   -DENABLE_WAKEWORD
 ```
