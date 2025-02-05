@@ -273,8 +273,6 @@ void setup()
   //auto brightness = M5.Display.getBrightness();
   //Serial.printf("Brightness: %d\n", brightness);
 
-  chat_doc = SpiRamJsonDocument(1024*50);
-
   {
     auto micConfig = M5.Mic.config();
     //micConfig.stereo = false;
