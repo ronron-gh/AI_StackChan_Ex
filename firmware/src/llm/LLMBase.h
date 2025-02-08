@@ -20,7 +20,9 @@ protected:
   String InitBuffer;
 
 public:
-  LLMBase(llm_param_t param) ;
+  bool isOfflineService;
+
+  LLMBase(llm_param_t param);
   virtual void chat(String text, const char *base64_buf = NULL) = 0;
   bool init_chat_doc(const char *data);
   virtual bool save_role() {};

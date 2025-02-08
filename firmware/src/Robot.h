@@ -22,6 +22,7 @@ public:
     ServoCustom *servo;
 
     Robot(StackchanExConfig& config);
+    bool isAllOfflineService();
     void speech(String text);
     String listen();
     void chat(String text, const char *base64_buf = NULL);

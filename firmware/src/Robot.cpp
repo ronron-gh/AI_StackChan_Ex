@@ -21,9 +21,9 @@ extern bool servo_home;
 
 Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
-
-  //Servo
-  //servo = new StackchanSERVO();
+  //
+  // Servo setting
+  //
   servo = new ServoCustom();
   servo->begin(config.getServoInfo(AXIS_X)->pin, config.getServoInfo(AXIS_X)->start_degree,
               config.getServoInfo(AXIS_X)->offset,
@@ -31,6 +31,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
               config.getServoInfo(AXIS_Y)->offset,
               (ServoType)config.getServoType());
 
+  //
+  // AI service setting
+  //
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
@@ -118,8 +121,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
     stt = nullptr;
   }
 
-  
+  //
   //ModuleLLM initialize
+  //
 #if defined(USE_LLM_MODULE)
   module_llm_param_t module_llm_param;
   module_llm_param.rxPin = config.getExConfig().moduleLLM.rxPin;
@@ -138,6 +142,11 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   module_llm_setup(module_llm_param);
 #endif
 
+}
+
+bool Robot::isAllOfflineService()
+{
+  return llm->isOfflineService && stt->isOfflineService && tts->isOfflineService;
 }
 
 

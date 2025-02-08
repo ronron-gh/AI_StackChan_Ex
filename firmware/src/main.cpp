@@ -162,17 +162,24 @@ void servo(void *args)
 }
 
 
-void Wifi_setup() {
+//void Wifi_setup() {
+bool Wifi_connection_check() {
+  unsigned long start_millis = millis();
+
   // 前回接続時情報で接続する
   while (WiFi.status() != WL_CONNECTED) {
     M5.Display.print(".");
     Serial.print(".");
     delay(500);
     // 10秒以上接続できなかったら抜ける
-    if ( 10000 < millis() ) {
-      break;
+    if ( 10000 < (millis() - start_millis) ) {
+      //break;
+      return false;
     }
   }
+  return true;
+
+#if 0
   M5.Display.println("");
   Serial.println("");
   // 未接続の場合にはSmartConfig待受
@@ -192,6 +199,7 @@ void Wifi_setup() {
         ESP.restart();
       }
     }
+
     // Wi-fi接続
     M5.Display.println("");
     Serial.println("");
@@ -209,6 +217,7 @@ void Wifi_setup() {
       }
     }
   }
+#endif
 }
 
 void time_sync(const char* ntpsrv, long gmt_offset, int daylight_offset) {
@@ -237,8 +246,8 @@ void time_sync(const char* ntpsrv, long gmt_offset, int daylight_offset) {
 ModBase* init_mod(void)
 {
   ModBase* mod;
-  if(!isOffline){
-    add_mod(new AiStackChanMod());
+  if(!isOffline || robot->isAllOfflineService()){
+    add_mod(new AiStackChanMod(isOffline));
   }
   add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
@@ -319,24 +328,28 @@ void setup()
       WiFi.softAPdisconnect(true);
       WiFi.mode(WIFI_STA);
       WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
-      Wifi_setup();
-      M5.Lcd.println("\nConnected");
-      Serial.printf_P(PSTR("Go to http://"));
-      M5.Lcd.print("Go to http://");
-      Serial.println(WiFi.localIP());
-      M5.Lcd.println(WiFi.localIP());
-      delay(1000);
-      
-      //Webサーバ設定
-      init_web_server();
-      
-      //FTPサーバ設定（SPIFFS用）
-      ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
-      Serial.println("FTP server started");
-      M5.Lcd.println("FTP server started");
-
-      //時刻同期
-      time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+      if(Wifi_connection_check()){
+        M5.Lcd.println("\nConnected");
+        Serial.printf_P(PSTR("Go to http://"));
+        M5.Lcd.print("Go to http://");
+        Serial.println(WiFi.localIP());
+        M5.Lcd.println(WiFi.localIP());
+        delay(1000);
+        
+        //Webサーバ設定
+        init_web_server();
+        //FTPサーバ設定（SPIFFS用）
+        ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
+        Serial.println("FTP server started");
+        M5.Lcd.println("FTP server started");
+        //時刻同期
+        time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+      }
+      else{
+        M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
+        isOffline = true;
+        delay(3000);
+      }
   
     }
 
