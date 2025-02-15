@@ -6,6 +6,8 @@
 
 
 UAquesTalkTTS::UAquesTalkTTS(){
+  isOfflineService = true;  //オフラインで使用可能とする
+  
   // AquesTalkの初期化
   Serial.println("Initialize AquesTalk");
   if (int ret = TTS.createK()) { // 漢字テキスト使用

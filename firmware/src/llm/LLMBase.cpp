@@ -19,7 +19,7 @@ SpiRamJsonDocument chat_doc(0);     // PSRAMから確保するように変更。
                                     // TODO: 本当はLLMBaseのメンバ変数にしたい
 
 
-LLMBase::LLMBase(llm_param_t param):param{param}
+LLMBase::LLMBase(llm_param_t param): param{param}, isOfflineService{false} 
 {
   chat_doc = SpiRamJsonDocument(1024*50);
 

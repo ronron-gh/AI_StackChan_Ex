@@ -6,7 +6,7 @@
 
 
 ModuleLLMASR::ModuleLLMASR(){
-
+  isOfflineService = true;  //オフラインで使用可能とする
 }
 
 

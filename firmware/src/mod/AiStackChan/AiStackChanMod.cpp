@@ -100,7 +100,8 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
 
 
 
-AiStackChanMod::AiStackChanMod()
+AiStackChanMod::AiStackChanMod(bool _isOffline)
+  : isOffline{_isOffline}
 {
   box_servo.setupBox(80, 120, 80, 80);
 #if defined(ENABLE_CAMERA)
@@ -117,11 +118,12 @@ AiStackChanMod::AiStackChanMod()
   //String fname = String(APP_DATA_PATH) + String(FNAME_ALARM_MP3);
   //copySDFileToSPIFFS(fname.c_str(), false);
 
-  //メール受信設定
-  imap_init();
-
-  //スケジューラ設定
-  init_schedule();
+  if(!isOffline){
+    //メール受信設定
+    imap_init();
+    //スケジューラ設定
+    init_schedule();
+  }
 
   if(robot->m_config.getExConfig().llm.type == LLM_TYPE_CHATGPT){
     // Function Call関連の設定
@@ -307,6 +309,7 @@ void AiStackChanMod::idle(void)
     }
 #else
     Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
+    delay(1000);
 #endif
   }
   else{
@@ -383,7 +386,9 @@ void AiStackChanMod::idle(void)
   }
 
   //スケジューラ処理
-  run_schedule();
+  if(!isOffline){
+    run_schedule();
+  }
 
 }
 

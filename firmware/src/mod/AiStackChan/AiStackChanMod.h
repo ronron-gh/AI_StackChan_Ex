@@ -14,8 +14,9 @@ private:
     box_t box_subWindow;
     #endif
     String avatarText;
+    bool isOffline;
 public:
-    AiStackChanMod();
+    AiStackChanMod(bool _isOffline);
 
     void init(void);
     void pause(void);

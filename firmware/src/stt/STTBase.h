@@ -12,9 +12,12 @@ struct stt_param_t
 class STTBase{
 protected:
     stt_param_t param;
+
 public:
+    bool isOfflineService;
+    
     STTBase() {};
-    STTBase(stt_param_t param) : param{param} {};
+    STTBase(stt_param_t param) : param{param}, isOfflineService{false} {};
     virtual String speech_to_text() = 0;
 
 };

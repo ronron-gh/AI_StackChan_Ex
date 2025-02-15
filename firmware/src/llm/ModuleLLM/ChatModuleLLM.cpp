@@ -16,6 +16,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 
 ChatModuleLLM::ChatModuleLLM(llm_param_t param) : LLMBase(param) {
+  isOfflineService = true;  //オフラインで使用可能とする
   load_role();
 }
 

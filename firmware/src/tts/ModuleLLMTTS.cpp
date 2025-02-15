@@ -6,7 +6,7 @@
 
 
 ModuleLLMTTS::ModuleLLMTTS(){
-
+  isOfflineService = true;  //オフラインで使用可能とする
 }
 
 

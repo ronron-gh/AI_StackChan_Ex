@@ -16,9 +16,12 @@ struct tts_param_t
 class TTSBase{
 protected:
     tts_param_t param;
+
 public:
+    bool isOfflineService;
+    
     TTSBase() {};
-    TTSBase(tts_param_t param) : param{param} {};
+    TTSBase(tts_param_t param) : param{param}, isOfflineService{false} {};
     virtual void stream(String text) = 0;
     virtual int getLevel(){ return abs(*out.getBuffer()); };
 
