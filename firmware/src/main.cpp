@@ -258,6 +258,31 @@ ModBase* init_mod(void)
 }
 
 
+void sw_tone(){
+  #if 1
+    M5.Mic.end();
+    M5.Speaker.tone(1000, 100);
+    delay(500);
+    M5.Speaker.end();
+    M5.Mic.begin();
+  #endif
+}
+  
+void alarm_tone(){
+  M5.Mic.end();
+  for(int i=0; i<5; i++){
+    M5.Speaker.tone(1200, 50);
+    delay(100);
+    M5.Speaker.tone(1200, 50);
+    delay(100);
+    M5.Speaker.tone(1200, 50);
+    delay(1000);  
+  }
+  M5.Speaker.end();
+  M5.Mic.begin();
+}
+  
+
 
 void setup()
 {
@@ -385,7 +410,7 @@ void setup()
   avatar.addTask(servo, "servo");
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  M5.Speaker.setVolume(180);
+  //M5.Speaker.setVolume(180);
 
 #if defined(ENABLE_CAMERA)
   camera_init();
@@ -400,16 +425,6 @@ void setup()
 
 }
 
-
-void sw_tone(){
-#if 1
-  M5.Mic.end();
-    M5.Speaker.tone(1000, 100);
-  delay(500);
-    M5.Speaker.end();
-  M5.Mic.begin();
-#endif
-}
 
 
 void loop()

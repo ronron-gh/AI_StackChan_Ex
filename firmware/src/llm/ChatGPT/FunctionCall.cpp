@@ -42,8 +42,8 @@ bool alarmTimerCallbacked = false;
 void alarmTimerCallback(TimerHandle_t xTimer);
 void powerOffTimerCallback(TimerHandle_t xTimer);
 
-static String timer(int32_t time, const char* action);
-static String timer_change(int32_t time);
+//static String timer(int32_t time, const char* action);
+//static String timer_change(int32_t time);
 
 // Function Call関連の初期化
 void init_func_call_settings(StackchanExConfig& system_config)

@@ -64,8 +64,76 @@ Also, Port A cannot be used on CoreS3 because PIN2 is used for the camera clock.
 |**Port B**|**8/9**|**Can be assigned to a servo**|
 |Port C|17/18|Serial communication with the LLM module|
 
+## Appendix A. How to implement Function Calling
+Although it is somewhat more advanced, Function Calling is possible with Module LLM by replacing the LLM model with a Function Calling-compatible model published on Hugging Face.
 
-## Other ways to customize Module LLM
+As an example, this software allows you to call the alarm function implemented on the M5Stack Core side by Function Calling, as shown in [this video (Twitter)](https://x.com/motoh_tw/status/1895120657182269737). Below, we will describe the steps required to use Function Calling.
+
+### (1) Convert the Hugging Face model to axmodel
+Download the LLM model that supports Function Calling from Hugging Face and convert it into an axmodel that can be executed by Module LLM. Follow the steps in [this Qiita article](https://qiita.com/motoh_qiita/items/1b0882e507e803982753).
+
+### (2) Import the model into StackFlow
+To make the model usable from M5Stack Core, import the model into StackFlow (the framework on the Module LLM side). Please follow the steps in [this Qiita article](https://qiita.com/motoh_qiita/items/772464595e414711bbc9).
+
+### (3) Describe the function in the role
+The role is described in the tokenizer (Python) on the Module LLM side. Change the Function description described in the role to the alarm function implemented in this software. If the LLM service is already running, you may need to restart Module LLM to reflect the changes.
+
+File location：  
+/opt/m5stack/scripts/SmolLM-360M-Instruct-fncl_tokenizer.py
+
+Role description：
+
+```
+fncl_prompt = """You are a helpful assistant with access to the following functions. Use them if required -
+ [
+    {
+        "type": "function",
+        "function": {
+            "name": "set_alarm",
+            "description": "Set alarm.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "min": {
+                        "type": "integer",
+                        "description": 'Set the alarm time in minutes.',
+                    },
+                },
+                "required": ["min"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "stop_alarm",
+            "description": "Stop alarm.",
+            "parameters": {
+                "type": "object",
+                "properties": {},
+            },
+        },
+    },
+  ] For each function call return a json object with function name and arguments within <toolcall></toolcall> XML tags as follows:
+<toolcall>
+{'name': , 'arguments': }
+</toolcall>
+"""
+```
+
+### YAML Configuration
+Set the YAML as follows:
+
+SD card folder：/app/AiStackChanEx  
+File name：SC_ExConfig.yaml
+```
+llm:
+  type: 2      # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
+```
+
+That's all you need to do. Now build it with PlatformIO and write it to the M5Stack Core and run it.
+
+## Appendix B. Other ways to customize Module LLM
 Although it's somewhat more advanced, it's summarized in this article by airpocket-san.
 
 [M5Stack LLM ModuleをLinuxボードとして利用する際のFAQ/Tips](https://elchika.com/article/0e41a4a7-eecc-471e-a259-4fc8d710c26a/)

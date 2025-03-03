@@ -23,4 +23,10 @@ extern bool alarmTimerCallbacked;
 void init_func_call_settings(StackchanExConfig& system_config);
 String exec_calledFunc(DynamicJsonDocument doc, String* calledFunc);
 
+//
+// Functions for Function Calling
+//
+String timer(int32_t time, const char* action);
+String timer_change(int32_t time);
+
 #endif //_FUNCTION_CALL_H

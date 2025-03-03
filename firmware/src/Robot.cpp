@@ -11,6 +11,7 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
+#include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
 #include "Avatar.h"
 
 using namespace m5avatar;
@@ -50,6 +51,14 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLM(llm_param);
+    //llm = new ChatModuleLLMFncl(llm_param);
+#else
+    Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
+    llm = nullptr;
+#endif
+  case LLM_TYPE_MODULE_LLM_FNCL:
+#if defined(USE_LLM_MODULE)
+    llm = new ChatModuleLLMFncl(llm_param);
 #else
     Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
     llm = nullptr;
@@ -128,7 +137,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   module_llm_param_t module_llm_param;
   module_llm_param.rxPin = config.getExConfig().moduleLLM.rxPin;
   module_llm_param.txPin = config.getExConfig().moduleLLM.txPin;
-  module_llm_param.enableLLM = (llm_type == LLM_TYPE_MODULE_LLM) ? true : false;
+  module_llm_param.enableLLM = ((llm_type == LLM_TYPE_MODULE_LLM) 
+                              || (llm_type == LLM_TYPE_MODULE_LLM_FNCL)) ? true : false;
   module_llm_param.enableKWS = (wakeword_type == WAKEWORD_TYPE_MODULE_LLM_KWS) ? true : false;
   module_llm_param.enableASR = (stt_type == STT_TYPE_MODULE_LLM_ASR) ? true : false;
   module_llm_param.enableTTS = (tts_type == TTS_TYPE_MODULE_LLM) ? true : false;
@@ -155,7 +165,9 @@ void Robot::speech(String text)
     servo_home = false;
     avatar.setExpression(Expression::Happy);
     
-    tts->stream(text);
+    if(text != ""){
+      tts->stream(text);
+    }
 
     avatar.setExpression(Expression::Neutral);
     servo_home = true;

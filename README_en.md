@@ -21,23 +21,22 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
 
 ---
 **Table of Contents**
-- [AI Stack-chan Ex](#ai-stack-chan-ex)
-  - [Development environment](#development-environment)
-  - [Available AI services](#available-ai-services)
-    - [LLM](#llm)
-    - [Speech to Text (STT)](#speech-to-text-stt)
-    - [Text to Speech (TTS)](#text-to-speech-tts)
-    - [Wake Word](#wake-word)
-  - [Initial setup with YAML](#initial-setup-with-yaml)
-    - [SC\_SecConfig.yaml](#sc_secconfigyaml)
-    - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
-    - [SC\_ExConfig.yaml](#sc_exconfigyaml)
-  - [About creating a user application](#about-creating-a-user-application)
-  - [Other features](#other-features)
-    - [Supports SD Updater (Core2 only)](#supports-sd-updater-core2-only)
-    - [Face detection by camera (CoreS3 only)](#face-detection-by-camera-cores3-only)
-  - [About contributions](#about-contributions)
-  - [Notes](#notes)
+- [Development environment](#development-environment)
+- [Available AI services](#available-ai-services)
+  - [LLM](#llm)
+  - [Speech to Text (STT)](#speech-to-text-stt)
+  - [Text to Speech (TTS)](#text-to-speech-tts)
+  - [Wake Word](#wake-word)
+- [Initial setup with YAML](#initial-setup-with-yaml)
+  - [SC\_SecConfig.yaml](#sc_secconfigyaml)
+  - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
+  - [SC\_ExConfig.yaml](#sc_exconfigyaml)
+- [About creating a user application](#about-creating-a-user-application)
+- [Other features](#other-features)
+  - [Supports SD Updater (Core2 only)](#supports-sd-updater-core2-only)
+  - [Face detection by camera (CoreS3 only)](#face-detection-by-camera-cores3-only)
+- [About contributions](#about-contributions)
+- [Notes](#notes)
 
 
 ## Development environment
@@ -51,15 +50,15 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 ### LLM
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Supports Function Calling[Details page](doc/function_calling_en.md)<br>・CoreS3 camera images can be input[Details page](doc/gpt4o_cores3camera_en.md)|
-|ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md) |
+|OpenAI ChatGPT|×|〇|〇|・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
+|ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md). <br>Function calling is also supported (see [Appendix A on the same page](doc/module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
 
 ### Speech to Text (STT)
 
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
 |Google Cloud STT|×|〇|〇| |
-|OpenAI Wisper|×|〇|〇| |
+|OpenAI Whisper|×|〇|〇| |
 |ModuleLLM ASR|〇|×|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md) |
 
 ### Text to Speech (TTS)

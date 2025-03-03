@@ -39,6 +39,7 @@ extern Avatar avatar;
 extern bool servo_home;
 //extern bool wakeword_is_enable;
 extern void sw_tone();
+extern void alarm_tone();
 ///////////////
 
 
@@ -373,12 +374,15 @@ void AiStackChanMod::idle(void)
 #endif    
     if(!SD.begin(GPIO_NUM_4, SPI, 25000000)) {
     //if(!SPIFFS.begin(true)){
-      Serial.println("Failed to mount SPIFFS.");
+      Serial.println("Failed to mount SD card. Use alarm tone.");
+      alarm_tone();
     }
     else{
       String fname = String(APP_DATA_PATH) + String(FNAME_ALARM_MP3);
-      playMP3SD(fname.c_str());
-      robot->speech("時間になりました。");
+      bool result = playMP3SD(fname.c_str());
+      if(!result){
+        alarm_tone();
+      }
     }
 #if defined(ENABLE_CAMERA)
     avatar.set_isSubWindowEnable(isSubWindowON);

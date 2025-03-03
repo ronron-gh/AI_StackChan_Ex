@@ -10,9 +10,12 @@ String kws_work_id;
 String asr_work_id;
 String tts_work_id;
 String llm_work_id;
+String language;
 
 void module_llm_setup(module_llm_param_t param)
 {
+  language = "en_US";
+
   /* Init module serial port */
   //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Basic
   //Serial2.begin(115200, SERIAL_8N1, 13, 14);  // Core2
@@ -39,32 +42,50 @@ void module_llm_setup(module_llm_param_t param)
 
   /* Setup Audio module */
   M5.Display.printf(">> Setup audio..\n");
+  Serial.printf(">> Setup audio..\n");
   module_llm.audio.setup();
 
   /* Setup KWS module and save returned work id */
   if(param.enableKWS){
     M5.Display.printf(">> Setup kws..\n");
+    Serial.printf(">> Setup kws..\n");
     m5_module_llm::ApiKwsSetupConfig_t kws_config;
     kws_config.kws = param.wake_up_keyword;
-    kws_work_id    = module_llm.kws.setup(kws_config);
+    //kws_work_id    = module_llm.kws.setup(kws_config);
+    kws_work_id    = module_llm.kws.setup(kws_config, "kws_setup", language);
   }
 
   /* Setup ASR module and save returned work id */
   if(param.enableASR){
     M5.Display.printf(">> Setup asr..\n");
-    asr_work_id = module_llm.asr.setup();
+    Serial.printf(">> Setup asr..\n");
+    //asr_work_id = module_llm.asr.setup();
+    m5_module_llm::ApiAsrSetupConfig_t asr_config;
+    asr_config.input = {"sys.pcm", kws_work_id};
+    asr_work_id      = module_llm.asr.setup(asr_config, "asr_setup", language);
   }
 
   /* Setup TTS module and save returned work id */
   if(param.enableTTS){
     M5.Display.printf(">> Setup tts..\n");
+    Serial.printf(">> Setup tts..\n");
     tts_work_id = module_llm.tts.setup();
   }
 
   /* Setup LLM module and save returned work id */
   if(param.enableLLM){
     M5.Display.printf(">> Setup llm..\n");
+    Serial.printf(">> Setup llm..\n");
+#if 0
     llm_work_id = module_llm.llm.setup();
+#else
+    m5_module_llm::ApiLlmSetupConfig_t config;
+    config.model = "SmolLM-360M-Instruct-fncl";
+    config.max_token_len = 511;
+    llm_work_id = module_llm.llm.setup(config);
+    M5.Display.printf("LLM work ID: %s\n", llm_work_id.c_str());
+    Serial.printf("LLM work ID: %s\n", llm_work_id.c_str());
+#endif
   }
 
   //M5.Display.printf(">> Setup ok\n>> Say \"%s\" to wakeup\n", wake_up_keyword.c_str());
@@ -118,7 +139,7 @@ String wait_for_asr_result()
   int no_response_count = 0;
   
   //Serial.println("Waiting for ASR result.");
-  while(1){   //TODO: タイムアウトを設定したい
+  while(1){
     /* Update ModuleLLM */
     module_llm.update();
 
@@ -146,14 +167,19 @@ String wait_for_asr_result()
     /* Clear handled messages */
     module_llm.msg.responseMsgList.clear();
 
+#if 0
     if(asr_result != ""){
       if(asr_result.length() == asr_result_prev.length()){
+        Serial.println("ASR complete.");
         break;
       }
     }
     else{
       no_response_count ++;
     }
+#endif
+    no_response_count ++;
+
 
     if(no_response_count > 100){
       Serial.println("ASR timed out.");
