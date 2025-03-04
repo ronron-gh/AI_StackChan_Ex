@@ -1,7 +1,7 @@
 ## アプリ固有の設定ファイル
 # AI機能 (LLM, TTS, STT, Wakeword)
 llm:
-  type: 0                            # 0:ChatGPT  1:ModuleLLM
+  type: 0                            # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
 
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM

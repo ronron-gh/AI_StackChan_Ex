@@ -21,23 +21,22 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 ---
 **Table of Contents**
-- [AI Stack-chan Ex](#ai-stack-chan-ex)
-  - [開発環境](#開発環境)
-  - [利用可能なAIサービス](#利用可能なaiサービス)
-    - [LLM](#llm)
-    - [Speech to Text (STT)](#speech-to-text-stt)
-    - [Text to Speech (TTS)](#text-to-speech-tts)
-    - [Wake Word](#wake-word)
-  - [YAMLによる初期設定](#yamlによる初期設定)
-    - [SC\_SecConfig.yaml](#sc_secconfigyaml)
-    - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
-    - [SC\_ExConfig.yaml](#sc_exconfigyaml)
-  - [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
-  - [その他の機能](#その他の機能)
-    - [SD Updaterに対応（Core2のみ）](#sd-updaterに対応core2のみ)
-    - [カメラによる顔検出（CoreS3のみ）](#カメラによる顔検出cores3のみ)
-  - [コントリビューションについて](#コントリビューションについて)
-  - [注意事項](#注意事項)
+- [開発環境](#開発環境)
+- [利用可能なAIサービス](#利用可能なaiサービス)
+  - [LLM](#llm)
+  - [Speech to Text (STT)](#speech-to-text-stt)
+  - [Text to Speech (TTS)](#text-to-speech-tts)
+  - [Wake Word](#wake-word)
+- [YAMLによる初期設定](#yamlによる初期設定)
+  - [SC\_SecConfig.yaml](#sc_secconfigyaml)
+  - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
+  - [SC\_ExConfig.yaml](#sc_exconfigyaml)
+- [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
+- [その他の機能](#その他の機能)
+  - [SD Updaterに対応（Core2のみ）](#sd-updaterに対応core2のみ)
+  - [カメラによる顔検出（CoreS3のみ）](#カメラによる顔検出cores3のみ)
+- [コントリビューションについて](#コントリビューションについて)
+- [注意事項](#注意事項)
 
 
 ## 開発環境
@@ -52,14 +51,14 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
 |OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[詳細ページ](doc/function_calling.md)<br>・CoreS3のカメラ画像を入力可能[詳細ページ](doc/gpt4o_cores3camera.md)|
-|ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
+|ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください<br>英語ですがFunction Callingにも対応できます（[同ページの付録A参照](doc/module_llm.md#付録a-function-callingへの対応方法)） |
 
 ### Speech to Text (STT)
 
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
 |Google Cloud STT|×|〇|〇| |
-|OpenAI Wisper|×|〇|〇| |
+|OpenAI Whisper|×|〇|〇| |
 |ModuleLLM ASR|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 
 ### Text to Speech (TTS)

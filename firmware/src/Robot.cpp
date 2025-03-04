@@ -11,6 +11,7 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
+#include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
 #include "Avatar.h"
 
 using namespace m5avatar;
@@ -34,6 +35,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
   // AI service setting
   //
+  module_llm_param_t module_llm_param = module_llm_param_t();
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
@@ -50,8 +52,21 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLM(llm_param);
+    module_llm_param.enableLLM = true;
+    module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t(); //default setting
 #else
-    Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
+    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
+    llm = nullptr;
+#endif
+    break;
+  case LLM_TYPE_MODULE_LLM_FNCL:
+#if defined(USE_LLM_MODULE)
+    llm = new ChatModuleLLMFncl(llm_param);
+    module_llm_param.enableLLM = true;
+    module_llm_param.m5llm_config.model = "SmolLM-360M-Instruct-fncl";
+    module_llm_param.m5llm_config.max_token_len = 511;
+#else
+    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     llm = nullptr;
 #endif
     break;
@@ -88,8 +103,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   case TTS_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
     tts = new ModuleLLMTTS();
+    module_llm_param.enableTTS = true;
 #else
-    Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
+    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     tts = nullptr;
 #endif
     break;
@@ -111,8 +127,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   case STT_TYPE_MODULE_LLM_ASR:
 #if defined(USE_LLM_MODULE)
     stt = new ModuleLLMASR();
+    module_llm_param.enableASR = true;
 #else
-    Serial.println("ModuleLLM is not enabled. Please define USE_LLM_MODULE.");
+    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     stt = nullptr;
 #endif
     break;
@@ -125,19 +142,11 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //ModuleLLM initialize
   //
 #if defined(USE_LLM_MODULE)
-  module_llm_param_t module_llm_param;
   module_llm_param.rxPin = config.getExConfig().moduleLLM.rxPin;
   module_llm_param.txPin = config.getExConfig().moduleLLM.txPin;
-  module_llm_param.enableLLM = (llm_type == LLM_TYPE_MODULE_LLM) ? true : false;
-  module_llm_param.enableKWS = (wakeword_type == WAKEWORD_TYPE_MODULE_LLM_KWS) ? true : false;
-  module_llm_param.enableASR = (stt_type == STT_TYPE_MODULE_LLM_ASR) ? true : false;
-  module_llm_param.enableTTS = (tts_type == TTS_TYPE_MODULE_LLM) ? true : false;
   if(wakeword_type == WAKEWORD_TYPE_MODULE_LLM_KWS){
     module_llm_param.enableKWS = true;
     module_llm_param.wake_up_keyword = config.getExConfig().wakeword.keyword;
-  }
-  else{
-    module_llm_param.enableKWS = false;
   }
   module_llm_setup(module_llm_param);
 #endif
@@ -155,7 +164,9 @@ void Robot::speech(String text)
     servo_home = false;
     avatar.setExpression(Expression::Happy);
     
-    tts->stream(text);
+    if(text != ""){
+      tts->stream(text);
+    }
 
     avatar.setExpression(Expression::Neutral);
     servo_home = true;

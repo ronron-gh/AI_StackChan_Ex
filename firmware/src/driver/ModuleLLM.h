@@ -8,11 +8,16 @@ struct module_llm_param_t
 {
   int8_t rxPin;
   int8_t txPin;
-  bool enableLLM;
-  bool enableKWS;
-  bool enableASR;
-  bool enableTTS;
-  String wake_up_keyword;
+  //LLM
+  bool enableLLM = false;
+  m5_module_llm::ApiLlmSetupConfig_t m5llm_config;
+  //KWS
+  bool enableKWS = false;
+  String wake_up_keyword;  
+  //ASR
+  bool enableASR = false;
+  //TTS
+  bool enableTTS = false;
 };
 
 extern M5ModuleLLM module_llm;
