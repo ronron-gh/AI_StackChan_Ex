@@ -410,7 +410,7 @@ void setup()
   avatar.addTask(servo, "servo");
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  //M5.Speaker.setVolume(180);
+  M5.Speaker.setVolume(120);
 
 #if defined(ENABLE_CAMERA)
   camera_init();

@@ -17,14 +17,9 @@ void module_llm_setup(module_llm_param_t param)
   language = "en_US";
 
   /* Init module serial port */
-  //Serial2.begin(115200, SERIAL_8N1, 16, 17);  // Basic
-  //Serial2.begin(115200, SERIAL_8N1, 13, 14);  // Core2
-  //Serial2.begin(115200, SERIAL_8N1, 18, 17);  // CoreS3
-  //Serial1.begin(115200, SERIAL_8N1, 13, 14);  // Core2  ※Serial2はSCSサーボで使っているためSerial1に変更
-  Serial1.begin(115200, SERIAL_8N1, param.rxPin, param.txPin);  // Core2  ※Serial2はSCSサーボで使っているためSerial1に変更
+  Serial1.begin(115200, SERIAL_8N1, param.rxPin, param.txPin);  // ※Serial2はSCSサーボで使っているためSerial1に変更
   
   /* Init module */
-  //module_llm.begin(&Serial2);
   module_llm.begin(&Serial1);
 
   /* Make sure module is connected */
@@ -51,7 +46,6 @@ void module_llm_setup(module_llm_param_t param)
     Serial.printf(">> Setup kws..\n");
     m5_module_llm::ApiKwsSetupConfig_t kws_config;
     kws_config.kws = param.wake_up_keyword;
-    //kws_work_id    = module_llm.kws.setup(kws_config);
     kws_work_id    = module_llm.kws.setup(kws_config, "kws_setup", language);
   }
 
@@ -59,7 +53,6 @@ void module_llm_setup(module_llm_param_t param)
   if(param.enableASR){
     M5.Display.printf(">> Setup asr..\n");
     Serial.printf(">> Setup asr..\n");
-    //asr_work_id = module_llm.asr.setup();
     m5_module_llm::ApiAsrSetupConfig_t asr_config;
     asr_config.input = {"sys.pcm", kws_work_id};
     asr_work_id      = module_llm.asr.setup(asr_config, "asr_setup", language);
@@ -76,16 +69,12 @@ void module_llm_setup(module_llm_param_t param)
   if(param.enableLLM){
     M5.Display.printf(">> Setup llm..\n");
     Serial.printf(">> Setup llm..\n");
-#if 0
-    llm_work_id = module_llm.llm.setup();
-#else
-    m5_module_llm::ApiLlmSetupConfig_t config;
-    config.model = "SmolLM-360M-Instruct-fncl";
-    config.max_token_len = 511;
-    llm_work_id = module_llm.llm.setup(config);
-    M5.Display.printf("LLM work ID: %s\n", llm_work_id.c_str());
-    Serial.printf("LLM work ID: %s\n", llm_work_id.c_str());
-#endif
+    llm_work_id = module_llm.llm.setup(param.m5llm_config);
+    if(llm_work_id == ""){
+      M5.Display.printf("llm setup timeout\n");
+      Serial.printf("llm setup timeout\n");
+    }
+    
   }
 
   //M5.Display.printf(">> Setup ok\n>> Say \"%s\" to wakeup\n", wake_up_keyword.c_str());
@@ -109,21 +98,6 @@ bool check_kws_wakeup()
       Serial.printf(">> Keyword detected\n");
       is_wakeup = true;
     }
-#if 0
-    /* If ASR module message */
-    if (msg.work_id == asr_work_id) {
-      /* Check message object type */
-      if (msg.object == "asr.utf-8.stream") {
-        /* Parse message json and get ASR result */
-        JsonDocument doc;
-        deserializeJson(doc, msg.raw_msg);
-        String asr_result = doc["data"]["delta"].as<String>();
-
-        M5.Display.setTextColor(TFT_YELLOW);
-        M5.Display.printf(">> %s\n", asr_result.c_str());
-      }
-    }
-#endif
   }
 
   /* Clear handled messages */
@@ -167,9 +141,10 @@ String wait_for_asr_result()
     /* Clear handled messages */
     module_llm.msg.responseMsgList.clear();
 
-#if 0
+#if 0   //生成終了時、前回の結果と同じ文字列が返ってくると思われたが、そうとは限らないようなので、単純に取得回数100回でタイムアウトとする
     if(asr_result != ""){
       if(asr_result.length() == asr_result_prev.length()){
+        //生成終了時は前回の結果と同じ文字列が返ってくる
         Serial.println("ASR complete.");
         break;
       }
@@ -177,9 +152,9 @@ String wait_for_asr_result()
     else{
       no_response_count ++;
     }
-#endif
+#else
     no_response_count ++;
-
+#endif
 
     if(no_response_count > 100){
       Serial.println("ASR timed out.");
