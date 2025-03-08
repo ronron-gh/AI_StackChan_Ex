@@ -51,6 +51,7 @@ bool ChatModuleLLM::save_role(){
 void ChatModuleLLM::load_role(){
   //※現状、ModuleLLM用のロールはSPIFFSへの保存は非対応
 
+#if 0   //inferenceAndWaitResult()にJSONを渡してよいのだろうか？
   //String promptBase = "{\"messages\":[{\"role\": \"system\", \"content\": \"あなたはスタックチャンという名前のアシスタントロボットです.\"}]}";
   String promptBase = "{\"messages\":[{\"role\": \"system\", \"content\": \"\"}]}";
 
@@ -60,12 +61,14 @@ void ChatModuleLLM::load_role(){
   String json_str; 
   serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
   Serial.println(json_str);
+#endif
 }
 
 
 void ChatModuleLLM::chat(String text, const char *base64_buf) {
   static String response = "";
 
+#if 0   //inferenceAndWaitResult()にJSONを渡してよいのだろうか？
   init_chat_doc(InitBuffer.c_str());
 
 #if 0 //履歴はqwen2.5-0.5bでは厳しそう
@@ -84,7 +87,6 @@ void ChatModuleLLM::chat(String text, const char *base64_buf) {
   JsonObject systemMessage1 = messages.createNestedObject();
   systemMessage1["role"] = "user";
   systemMessage1["content"] = text;
-#endif
 
   String json_string;
   serializeJson(chat_doc, json_string);
@@ -92,6 +94,7 @@ void ChatModuleLLM::chat(String text, const char *base64_buf) {
   Serial.println("====================");
   Serial.println(json_string);
   Serial.println("====================");
+#endif
 
   /* Push question to LLM module and wait inference result */
   module_llm.llm.inferenceAndWaitResult(llm_work_id, json_string.c_str(), [](String& result) {
@@ -100,6 +103,16 @@ void ChatModuleLLM::chat(String text, const char *base64_buf) {
       response += result;
 
   });
+#endif
+
+  /* Push question to LLM module and wait inference result */
+  module_llm.llm.inferenceAndWaitResult(llm_work_id, text.c_str(), [](String& result) {
+    /* Show result on screen */
+    Serial.printf("inference:%s\n", result.c_str());
+    response += result;
+
+  });
+
   Serial.printf("%s\n", response.c_str());
   chatHistory.push_back(String("assistant"), String(""), response);   // 返答をチャット履歴に追加
   robot->speech(response);

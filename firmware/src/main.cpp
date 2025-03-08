@@ -260,16 +260,15 @@ ModBase* init_mod(void)
 
 void sw_tone(){
   #if 1
-    M5.Mic.end();
+    //M5.Mic.end();
     M5.Speaker.tone(1000, 100);
     delay(500);
-    M5.Speaker.end();
-    M5.Mic.begin();
+    //M5.Speaker.end();
+    //M5.Mic.begin();
   #endif
 }
   
 void alarm_tone(){
-  M5.Mic.end();
   for(int i=0; i<5; i++){
     M5.Speaker.tone(1200, 50);
     delay(100);
@@ -278,8 +277,6 @@ void alarm_tone(){
     M5.Speaker.tone(1200, 50);
     delay(1000);  
   }
-  M5.Speaker.end();
-  M5.Mic.begin();
 }
   
 
@@ -318,7 +315,7 @@ void setup()
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
     /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
-    spk_cfg.sample_rate = 96000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+    spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
     spk_cfg.task_pinned_core = APP_CPU_NUM;
     //spk_cfg.dma_buf_count = 8;
     //spk_cfg.dma_buf_len = 128;

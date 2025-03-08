@@ -14,7 +14,7 @@ tts:
   #voice: ""                          # AquesTalk, ModuleLLM (voiceは未対応)
 
 stt:
-  type: 0                            # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR)
+  type: 0                            # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR)  3:ModuleLLM(Whisper)
 
 wakeword:
   type: 0                            # 0:SimpleVox  1:ModuleLLM(KWS)

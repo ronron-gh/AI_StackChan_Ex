@@ -47,8 +47,8 @@ void mp3_init(void)
 
 void playMP3(AudioFileSourceBuffer *buff){
 
-  M5.Mic.end();
-  M5.Speaker.begin();
+  //M5.Mic.end();
+  //M5.Speaker.begin();
 
   mp3->begin(buff, &out);
   
@@ -60,9 +60,9 @@ void playMP3(AudioFileSourceBuffer *buff){
     delay(1);
   }
 
-  delay(200);
-  M5.Speaker.end();
-  M5.Mic.begin();
+  //delay(200);
+  //M5.Speaker.end();
+  //M5.Mic.begin();
 
 }
 

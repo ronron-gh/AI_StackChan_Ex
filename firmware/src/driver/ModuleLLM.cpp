@@ -8,6 +8,8 @@ M5ModuleLLM module_llm;
 
 String kws_work_id;
 String asr_work_id;
+String vad_work_id;
+String whisper_work_id;
 String tts_work_id;
 String llm_work_id;
 String language;
@@ -56,6 +58,26 @@ void module_llm_setup(module_llm_param_t param)
     m5_module_llm::ApiAsrSetupConfig_t asr_config;
     asr_config.input = {"sys.pcm", kws_work_id};
     asr_work_id      = module_llm.asr.setup(asr_config, "asr_setup", language);
+  }
+
+  /* Setup Whisper module and save returned work id */
+  if(param.enableWhisper){
+    /* Setup VAD module and save returned work id */
+    M5.Display.printf(">> Setup vad..\n");
+    Serial.printf(">> Setup vad..\n");
+    m5_module_llm::ApiVadSetupConfig_t vad_config;
+    vad_config.input = {"sys.pcm", kws_work_id};
+    vad_work_id      = module_llm.vad.setup(vad_config, "vad_setup");
+
+    /* Setup Whisper module and save returned work id */
+    M5.Display.printf(">> Setup whisper..\n");
+    Serial.printf(">> Setup whisper..\n");
+    m5_module_llm::ApiWhisperSetupConfig_t whisper_config;
+    whisper_config.input    = {"sys.pcm", kws_work_id, vad_work_id};
+    //whisper_config.language = "en";
+    //whisper_config.language = "zh";
+    whisper_config.language = "ja";
+    whisper_work_id = module_llm.whisper.setup(whisper_config, "whisper_setup");
   }
 
   /* Setup TTS module and save returned work id */
@@ -109,8 +131,10 @@ bool check_kws_wakeup()
 String wait_for_asr_result()
 {
   String asr_result_prev = "";
+  String asr_result_new = "";
   String asr_result = "";
   int no_response_count = 0;
+  int after_response_count = 0;
   
   //Serial.println("Waiting for ASR result.");
   while(1){
@@ -127,13 +151,21 @@ String wait_for_asr_result()
           /* Parse message json and get ASR result */
           JsonDocument doc;
           deserializeJson(doc, msg.raw_msg);
-          asr_result_prev = asr_result;
-          asr_result = doc["data"]["delta"].as<String>();
-
-          //M5.Display.setTextColor(TFT_YELLOW);
-          //M5.Display.printf(">> %s\n", asr_result.c_str());
+          asr_result_new = doc["data"]["delta"].as<String>();
           Serial.printf(">> %s\n", asr_result.c_str());
           break;
+        }
+      }
+
+      /* If ASR module message (Whisper)*/
+      if (msg.work_id == whisper_work_id) {
+        /* Check message object type */
+        if (msg.object == "asr.utf-8") {
+          /* Parse message json and get ASR result */
+          JsonDocument doc;
+          deserializeJson(doc, msg.raw_msg);
+          asr_result_new = doc["data"].as<String>();
+          Serial.printf(">> %s\n", asr_result.c_str());
         }
       }
     }
@@ -141,8 +173,10 @@ String wait_for_asr_result()
     /* Clear handled messages */
     module_llm.msg.responseMsgList.clear();
 
-#if 0   //生成終了時、前回の結果と同じ文字列が返ってくると思われたが、そうとは限らないようなので、単純に取得回数100回でタイムアウトとする
-    if(asr_result != ""){
+    if(asr_result_new != ""){
+      asr_result_prev = asr_result;
+      asr_result = asr_result_new;
+      asr_result_new = "";
       if(asr_result.length() == asr_result_prev.length()){
         //生成終了時は前回の結果と同じ文字列が返ってくる
         Serial.println("ASR complete.");
@@ -150,13 +184,21 @@ String wait_for_asr_result()
       }
     }
     else{
-      no_response_count ++;
+      if(asr_result != ""){
+        //「生成終了時は前回の結果と同じ文字列が返ってくる」が無い場合のタイムアウト用カウント
+        after_response_count ++;
+      }
+      else{
+        no_response_count ++;
+      }
     }
-#else
-    no_response_count ++;
-#endif
 
-    if(no_response_count > 100){
+    if(after_response_count > 20){
+      Serial.println("ASR complete (determined by loop count).");
+      break;
+    }
+
+    if(no_response_count > 300){
       Serial.println("ASR timed out.");
       break;
     }
@@ -164,8 +206,57 @@ String wait_for_asr_result()
     delay(10);
   }
 
-  //Serial.println("Break the loop.");
   return asr_result;
+}
+
+
+
+String wait_for_whisper_result()
+{
+  String whisper_result = "";
+  int no_response_count = 0;
+  
+  //Serial.println("Waiting for ASR result.");
+  while(1){
+    /* Update ModuleLLM */
+    module_llm.update();
+
+    /* Handle module response messages */
+    for (auto& msg : module_llm.msg.responseMsgList) {
+
+      /* If ASR module message (Whisper)*/
+      if (msg.work_id == whisper_work_id) {
+        /* Check message object type */
+        if (msg.object == "asr.utf-8") {
+          /* Parse message json and get ASR result */
+          JsonDocument doc;
+          deserializeJson(doc, msg.raw_msg);
+          whisper_result = doc["data"].as<String>();
+          Serial.printf(">> %s\n", whisper_result.c_str());
+        }
+      }
+    }
+
+    /* Clear handled messages */
+    module_llm.msg.responseMsgList.clear();
+
+    if(whisper_result != ""){
+      Serial.println("Whisper complete.");
+      break;
+    }
+    else{
+      no_response_count ++;
+    }
+
+    if(no_response_count > 300){
+      Serial.println("Whisper timed out.");
+      break;
+    }
+
+    delay(10);
+  }
+
+  return whisper_result;
 }
 
 #endif
