@@ -51,7 +51,7 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
 |OpenAI ChatGPT|×|〇|〇|・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
-|ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md). <br>Function calling is also supported (see [Appendix A on the same page](doc/module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
+|ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md). <br>Function calling is also supported (see [Appendix B on the same page](doc/module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
 
 ### Speech to Text (STT)
 

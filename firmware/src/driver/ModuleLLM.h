@@ -16,6 +16,8 @@ struct module_llm_param_t
   String wake_up_keyword;  
   //ASR
   bool enableASR = false;
+  //Whisper
+  bool enableWhisper = false;
   //TTS
   bool enableTTS = false;
 };
@@ -27,7 +29,7 @@ extern String llm_work_id;
 void module_llm_setup(module_llm_param_t param);
 bool check_kws_wakeup();
 String wait_for_asr_result();
-
+String wait_for_whisper_result();
 
 
 #endif

@@ -50,8 +50,9 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 ### LLM
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[詳細ページ](doc/function_calling.md)<br>・CoreS3のカメラ画像を入力可能[詳細ページ](doc/gpt4o_cores3camera.md)|
-|ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください<br>英語ですがFunction Callingにも対応できます（[同ページの付録A参照](doc/module_llm.md#付録a-function-callingへの対応方法)） |
+|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
+|ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
+|ModuleLLM (Function Calling対応)|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Bをご確認ください |
 
 ### Speech to Text (STT)
 
@@ -60,6 +61,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |Google Cloud STT|×|〇|〇| |
 |OpenAI Whisper|×|〇|〇| |
 |ModuleLLM ASR|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
+|ModuleLLM Whisper|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Cをご確認ください |
 
 ### Text to Speech (TTS)
 
@@ -68,7 +70,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |Web版VoiceVox|×|〇|×| |
 |ElevenLabs|×|〇|〇| |
 |OpenAI TTS|×|〇|〇| |
-|AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要。[詳細ページ](doc/tts_aquestalk.md)|
+|AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](doc/tts_aquestalk.md)|
 |ModuleLLM TTS|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 
 ### Wake Word

@@ -25,7 +25,7 @@ Please note that the PIN is different for Core2 and CoreS3.
 SD card folder：/app/AiStackChanEx  
 File name：SC_ExConfig.yaml
 
-```
+```yaml
 moduleLLM:
   # Serial Pin
   # Core2 Rx:13,Tx:14
@@ -39,7 +39,7 @@ moduleLLM:
 SD card folder：/app/AiStackChanEx  
 File name：SC_ExConfig.yaml
 
-```
+```yaml
 wakeword:
   type: 1                            # 0:SimpleVox  1:ModuleLLM(KWS)
   keyword: "HI STACK"                # Wake word
@@ -64,7 +64,13 @@ Also, Port A cannot be used on CoreS3 because PIN2 is used for the camera clock.
 |**Port B**|**8/9**|**Can be assigned to a servo**|
 |Port C|17/18|Serial communication with the LLM module|
 
-## Appendix A. How to implement Function Calling
+
+## Appendix A. Other ways to customize Module LLM
+Although it's somewhat more advanced, it's summarized in this article by airpocket-san.
+
+[M5Stack LLM ModuleをLinuxボードとして利用する際のFAQ/Tips](https://elchika.com/article/0e41a4a7-eecc-471e-a259-4fc8d710c26a/)
+
+## Appendix B. How to implement Function Calling
 Although it is somewhat more advanced, Function Calling is possible with Module LLM by replacing the LLM model with a Function Calling-compatible model published on Hugging Face.
 
 As an example, this software allows you to call the alarm function implemented on the M5Stack Core side by Function Calling, as shown in [this video (Twitter)](https://x.com/motoh_tw/status/1895120657182269737). Below, we will describe the steps required to use Function Calling.
@@ -126,14 +132,9 @@ Set the YAML as follows:
 
 SD card folder：/app/AiStackChanEx  
 File name：SC_ExConfig.yaml
-```
+```yaml
 llm:
   type: 2      # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
 ```
 
 That's all you need to do. Now build it with PlatformIO and write it to the M5Stack Core and run it.
-
-## Appendix B. Other ways to customize Module LLM
-Although it's somewhat more advanced, it's summarized in this article by airpocket-san.
-
-[M5Stack LLM ModuleをLinuxボードとして利用する際のFAQ/Tips](https://elchika.com/article/0e41a4a7-eecc-471e-a259-4fc8d710c26a/)

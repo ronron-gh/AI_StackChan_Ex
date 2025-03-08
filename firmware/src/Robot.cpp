@@ -7,6 +7,7 @@
 #include "stt/CloudSpeechClient.h"
 #include "stt/Whisper.h"
 #include "stt/ModuleLLMASR.h"
+#include "stt/ModuleLLMWhisper.h"
 #include "driver/ModuleLLM.h"
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
@@ -121,13 +122,22 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   case STT_TYPE_GOOGLE:
     stt = new CloudSpeechClient(stt_param);
     break;
-  case STT_TYPE_OPENAI_WISPER:
+  case STT_TYPE_OPENAI_WHISPER:
     stt = new Whisper(stt_param);
     break;
   case STT_TYPE_MODULE_LLM_ASR:
 #if defined(USE_LLM_MODULE)
     stt = new ModuleLLMASR();
     module_llm_param.enableASR = true;
+#else
+    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
+    stt = nullptr;
+#endif
+    break;
+  case STT_TYPE_MODULE_LLM_WHISPER:
+#if defined(USE_LLM_MODULE)
+    stt = new ModuleLLMWhisper();
+    module_llm_param.enableWhisper = true;
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     stt = nullptr;
