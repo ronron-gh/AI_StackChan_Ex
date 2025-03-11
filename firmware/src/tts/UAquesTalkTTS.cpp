@@ -23,11 +23,43 @@ UAquesTalkTTS::UAquesTalkTTS(){
 
 void UAquesTalkTTS::stream(String text){
   int ret;
+  int end = 0;
+  String remain_text = text;
+  String sub_text = text;
   
-  ret = TTS.playK(text.c_str(), 100);
+  while(1){    
+    /* ピリオド・カンマで区切りながらTTSに渡す */
 
-  if(ret){
-    Serial.printf("ERR:TTS.playK()=&d\n", ret);
+    end = remain_text.indexOf("、");
+    if(end < 0){
+      end = remain_text.indexOf("。");
+    }
+
+    if(end > 0){
+      sub_text = remain_text.substring(0, end);
+      remain_text = remain_text.substring(end + strlen("、"));
+    }
+    else{
+      sub_text = remain_text;
+      remain_text = "";
+    }
+
+    Serial.printf("Sub text: %s\n", sub_text.c_str());
+    Serial.printf("Remain text: %s\n", remain_text.c_str());
+
+    /* Push text to TTS module and wait inference result */
+    ret = TTS.playK(sub_text.c_str(), 100);
+    if(ret){
+      Serial.printf("ERR:TTS.playK()=&d\n", ret);
+      break;
+    }
+
+    TTS.wait();
+
+    if(remain_text == ""){
+      break;
+    }
+
   }
 }
 

@@ -11,7 +11,6 @@ ModuleLLMTTS::ModuleLLMTTS(){
 
 
 void ModuleLLMTTS::stream(String text){
-  int start = 0;
   int end = 0;
   String remain_text = text;
   String sub_text = text;
@@ -25,14 +24,10 @@ void ModuleLLMTTS::stream(String text){
     }
 
     if(end > 0){
-      //sub_text = text.substring(start, end);
       sub_text = remain_text.substring(0, end);
-      //start = end + 1;
-      //remain_text = text.substring(start);
       remain_text = remain_text.substring(end + 1);
     }
     else{
-      //sub_text = text.substring(start);
       sub_text = remain_text;
       remain_text = "";
     }
