@@ -88,7 +88,8 @@ void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
       int w = rect.getWidth();
       int h = rect.getHeight();
       spriteTxt->setColorDepth(ctx->getColorDepth());
-      spriteTxt->createSprite(M5.Display.width(), M5.Display.height());
+      //spriteTxt->createSprite(M5.Display.width(), M5.Display.height());
+      spriteTxt->createSprite(w, h);
       spriteTxt->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
         ctx->getColorPalette()->get(COLOR_BACKGROUND));
       if (ctx->getColorDepth() != 1) {

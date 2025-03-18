@@ -20,6 +20,7 @@ public:
     TTSBase *tts;
     STTBase *stt;
     ServoCustom *servo;
+    uint8_t spk_volume;
 
     Robot(StackchanExConfig& config);
     bool isAllOfflineService();

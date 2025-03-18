@@ -14,6 +14,7 @@
 #include "mod/Pomodoro/PomodoroMod.h"
 #include "mod/PhotoFrame/PhotoFrameMod.h"
 #include "mod/StatusMonitor/StatusMonitorMod.h"
+#include "mod/VolumeSetting/VolumeSettingMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
 
@@ -252,6 +253,7 @@ ModBase* init_mod(void)
   add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
+  add_mod(new VolumeSettingMod());
   mod = get_current_mod();
   mod->init();
   return mod;
@@ -407,7 +409,8 @@ void setup()
   avatar.addTask(servo, "servo");
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  M5.Speaker.setVolume(120);
+  robot->spk_volume = 120;
+  M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)
   camera_init();
