@@ -250,7 +250,7 @@ ModBase* init_mod(void)
   if(!isOffline || robot->isAllOfflineService()){
     add_mod(new AiStackChanMod(isOffline));
   }
-  add_mod(new PomodoroMod(isOffline));
+  //add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
   add_mod(new VolumeSettingMod());
@@ -261,13 +261,11 @@ ModBase* init_mod(void)
 
 
 void sw_tone(){
-  #if 1
-    //M5.Mic.end();
-    M5.Speaker.tone(1000, 100);
-    delay(500);
-    //M5.Speaker.end();
-    //M5.Mic.begin();
-  #endif
+  M5.Speaker.tone(1000, 100);
+  delay(500);
+#if !defined(ARDUINO_M5STACK_CORES3)
+  M5.Speaker.end();
+#endif
 }
   
 void alarm_tone(){
@@ -279,10 +277,11 @@ void alarm_tone(){
     M5.Speaker.tone(1200, 50);
     delay(1000);  
   }
+#if !defined(ARDUINO_M5STACK_CORES3)
+  M5.Speaker.end();
+#endif
 }
   
-
-
 void setup()
 {
   auto cfg = M5.config();
@@ -312,7 +311,7 @@ void setup()
     micConfig.sample_rate = 16000;
     M5.Mic.config(micConfig);
   }
-  M5.Mic.begin();
+  //M5.Mic.begin();
 
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
@@ -434,6 +433,7 @@ void loop()
   ModBase* mod = get_current_mod();
   
   mod->idle();
+
 
   if (M5.BtnA.wasPressed())
   {

@@ -12,6 +12,7 @@
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
 #include "SDUtil.h"
+#include "MCPClient.h"
 using namespace m5avatar;
 
 // 外部参照
@@ -70,9 +71,36 @@ String json_ChatString =
 "{\"model\": \"gpt-4o\","
 "\"messages\": [{\"role\": \"user\", \"content\": \"\"}],"
 "\"functions\": ["
+#ifdef MCP_GOOGLE_CALENDAR
+  "{"
+    "\"name\": \"calendar_search\","
+    "\"description\": \"Search calendar events.\","
+    "\"parameters\": {"
+      "\"type\": \"object\","
+      "\"properties\": {},"
+      "\"required\": []"
+    "}"
+  "},"
+#endif
+#ifdef MCP_BRAVE_SEARCH
+  "{"
+    "\"name\": \"web_search\","
+    "\"description\": \"Performs a web search using the Brave Search API, ideal for general queries, news, articles, and online content. Use this for broad information gathering, recent events, or when you need diverse web sources.\","
+    "\"parameters\": {"
+      "\"type\": \"object\","
+      "\"properties\": {"
+        "\"query\":{"
+          "\"type\": \"string\","
+          "\"description\": \"Search query\""
+        "}"
+      "},"
+      "\"required\": [\"query\"]"
+    "}"
+  "},"
+#endif
   "{"
     "\"name\": \"ask\","
-    "\"description\": \"事前にメモやリマインドの内容などを相手に質問する。\","
+    "\"description\": \"依頼を実行するのに必要な情報を会話の相手に質問する。\","
     "\"parameters\": {"
       "\"type\":\"object\","
       "\"properties\": {"
@@ -227,6 +255,7 @@ String json_ChatString =
       "\"properties\": {}"
     "}"
   "},"
+#if defined(ARDUINO_M5STACK_CORES3)
   "{"
     "\"name\": \"register_wakeword\","
     "\"description\": \"ウェイクワードを登録する。\","
@@ -257,6 +286,8 @@ String json_ChatString =
       "\"required\": [\"idx\"]"
     "}"
   "},"
+#endif  //defined(ARDUINO_M5STACK_CORES3)
+#if !defined(MCP_BRAVE_SEARCH)
   "{"
     "\"name\": \"get_news\","
     "\"description\": \"最新のニュースを取得して読み上げる。\","
@@ -265,6 +296,7 @@ String json_ChatString =
       "\"properties\": {}"
     "}"
   "},"
+#endif  //!defined(MCP_BRAVE_SEARCH)
   "{"
     "\"name\": \"get_weathers\","
     "\"description\": \"天気予報を取得。\","
@@ -639,6 +671,7 @@ String read_mail(void) {
   return response;
 }
 
+#if defined(ARDUINO_M5STACK_CORES3)
 bool register_wakeword_required = false;
 String register_wakeword(void){
   String response = "ウェイクワードを登録します。合図の後にウェイクワードを発声してください。";
@@ -665,7 +698,9 @@ String delete_wakeword(int idx){
   String response = String("ウェイクワード#") + String(idx) + String("を削除しました。");
   return response;
 }
+#endif  //defined(ARDUINO_M5STACK_CORES3)
 
+#if !defined(MCP_BRAVE_SEARCH)
 // 最新のニュースをWeb APIで取得する関数
 String get_news(){
   String response = "";
@@ -717,7 +752,7 @@ String get_news(){
 
   return response;
 }
-
+#endif
 
 
 // 今日の天気をWeb APIで取得する関数
@@ -758,9 +793,81 @@ String get_weathers(){
   return response;
 }
 
+#ifdef MCP_GOOGLE_CALENDAR
 
+String calendar_search(){
+  /*
+   *  リクエストのJSONに挿入するツールパラメータのJSONを作成
+   */
+  DynamicJsonDocument tool_params(512);
+  tool_params["name"] = "search_calendar_events_by_type";
+  tool_params["arguments"]["calendar_type"] = "primary";
 
-String exec_calledFunc(DynamicJsonDocument doc, String* calledFunc){
+  //String json_str;
+  //serializeJsonPretty(tool_params, json_str);  // 文字列をシリアルポートに出力する
+  //Serial.println(json_str);
+
+  /*
+   *  MCPサーバにリクエスト
+   */
+  String result = mcp_request_tool_call("192.168.3.105", 8000, tool_params);
+
+  /*
+   *  レスポンスを解析
+   */
+  DynamicJsonDocument tool_res(1024);
+  DeserializationError error = deserializeJson(tool_res, result);
+  if (error) {
+    Serial.println("DeserializationError");
+  }
+  //String json_str;
+  //serializeJsonPretty(tool_res, json_str);  // 文字列をシリアルポートに出力する
+  //Serial.println(json_str);
+
+  DynamicJsonDocument event(1024);
+  JsonArray events = tool_res["result"]["content"];
+  String events_str;
+  for(int i=0; i < events.size(); i++){
+    error = deserializeJson(event, events[i]["text"]);
+    if (error) {
+      Serial.println("DeserializationError");
+    }
+    //serializeJsonPretty(event, json_str);  // 文字列をシリアルポートに出力する
+    //Serial.println(json_str);
+
+    events_str += event["start"].as<String>() + " " + event["summary"].as<String>() + "\n";
+  }
+  Serial.println(events_str);
+  return events_str;
+}
+
+#endif  //MCP_GOOGLE_CALENDAR
+
+#ifdef MCP_BRAVE_SEARCH
+
+String web_search(String& query){
+  /*
+   *  リクエストのJSONに挿入するツールパラメータのJSONを作成
+   */
+  DynamicJsonDocument tool_params(512);
+  tool_params["name"] = "brave_web_search";
+  tool_params["arguments"]["query"] = query;
+
+  String json_str;
+  serializeJsonPretty(tool_params, json_str);  // 文字列をシリアルポートに出力する
+  Serial.println(json_str);
+
+  /*
+   *  MCPサーバにリクエスト
+   */
+  String result = mcp_request_tool_call("192.168.3.105", 8003, tool_params);
+
+  return result;
+}
+
+#endif  //MCP_BRAVE_SEARCH
+
+String exec_calledFunc(DynamicJsonDocument& doc, String* calledFunc){
   String response = "";
   const char* name = doc["choices"][0]["message"]["function_call"]["name"];
   const char* args = doc["choices"][0]["message"]["function_call"]["arguments"];
@@ -838,6 +945,7 @@ String exec_calledFunc(DynamicJsonDocument doc, String* calledFunc){
     else if(strcmp(name, "read_mail") == 0){
       response = read_mail();    
     }
+#if defined(ARDUINO_M5STACK_CORES3)
     else if(strcmp(name, "register_wakeword") == 0){
       response = register_wakeword();    
     }
@@ -849,12 +957,27 @@ String exec_calledFunc(DynamicJsonDocument doc, String* calledFunc){
       Serial.printf("idx:%d\n",idx);   
       response = delete_wakeword(idx);    
     }
+#endif  //defined(ARDUINO_M5STACK_CORES3)
+#if !defined(MCP_BRAVE_SEARCH)
     else if(strcmp(name, "get_news") == 0){
       response = get_news();    
     }
+#endif
     else if(strcmp(name, "get_weathers") == 0){
       response = get_weathers();    
     }
+#ifdef MCP_GOOGLE_CALENDAR
+    else if(strcmp(name, "calendar_search") == 0){
+      response = calendar_search();    
+    }
+#endif
+#ifdef MCP_BRAVE_SEARCH
+    else if(strcmp(name, "web_search") == 0){
+      String query = argsDoc["query"];
+      Serial.println(query);
+      response = web_search(query);
+    }
+#endif
   }
 
   return response;

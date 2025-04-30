@@ -12,6 +12,12 @@
 #define FNAME_BUS_TIMETABLE_SAT         "bus_timetable_sat.txt"
 #define FNAME_ALARM_MP3 "alarm.mp3"
 
+/*
+ *  各種MCPの有効化
+ */
+#define MCP_GOOGLE_CALENDAR
+#define MCP_BRAVE_SEARCH
+
 extern String json_ChatString;
 extern TimerHandle_t xAlarmTimer;
 extern String note;
@@ -21,7 +27,7 @@ extern bool wakeword_enable_required;
 extern bool alarmTimerCallbacked;
 
 void init_func_call_settings(StackchanExConfig& system_config);
-String exec_calledFunc(DynamicJsonDocument doc, String* calledFunc);
+String exec_calledFunc(DynamicJsonDocument& doc, String* calledFunc);
 
 //
 // Functions for Function Calling
