@@ -36,7 +36,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
   // AI service setting
   //
+  #if defined(USE_LLM_MODULE)
   module_llm_param_t module_llm_param = module_llm_param_t();
+  #endif
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
@@ -55,6 +57,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
     llm = new ChatModuleLLM(llm_param);
     module_llm_param.enableLLM = true;
     module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t(); //default setting
+    //module_llm_param.m5llm_config.model = "openbuddy-llama3.2-1B-ax630c";
+    //module_llm_param.m5llm_config.model = "qwen2.5-1.5B-ax630c";    //これはllm起動中にエラー発生
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     llm = nullptr;

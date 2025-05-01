@@ -14,6 +14,7 @@
 #include "mod/Pomodoro/PomodoroMod.h"
 #include "mod/PhotoFrame/PhotoFrameMod.h"
 #include "mod/StatusMonitor/StatusMonitorMod.h"
+#include "mod/VolumeSetting/VolumeSettingMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
 
@@ -252,23 +253,30 @@ ModBase* init_mod(void)
   add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
+  add_mod(new VolumeSettingMod());
   mod = get_current_mod();
   mod->init();
   return mod;
 }
 
 
-void sw_tone(){
-  #if 1
-    //M5.Mic.end();
-    M5.Speaker.tone(1000, 100);
-    delay(500);
-    //M5.Speaker.end();
-    //M5.Mic.begin();
-  #endif
+void sw_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
+  M5.Speaker.tone(1000, 100);
+  delay(500);
+
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
   
-void alarm_tone(){
+void alarm_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
   for(int i=0; i<5; i++){
     M5.Speaker.tone(1200, 50);
     delay(100);
@@ -277,6 +285,9 @@ void alarm_tone(){
     M5.Speaker.tone(1200, 50);
     delay(1000);  
   }
+
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
   
 
@@ -407,7 +418,8 @@ void setup()
   avatar.addTask(servo, "servo");
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  M5.Speaker.setVolume(120);
+  robot->spk_volume = 120;
+  M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)
   camera_init();
