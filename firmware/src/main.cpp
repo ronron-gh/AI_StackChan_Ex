@@ -260,17 +260,23 @@ ModBase* init_mod(void)
 }
 
 
-void sw_tone(){
-  #if 1
-    //M5.Mic.end();
-    M5.Speaker.tone(1000, 100);
-    delay(500);
-    //M5.Speaker.end();
-    //M5.Mic.begin();
-  #endif
+void sw_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
+  M5.Speaker.tone(1000, 100);
+  delay(500);
+
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
   
-void alarm_tone(){
+void alarm_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
   for(int i=0; i<5; i++){
     M5.Speaker.tone(1200, 50);
     delay(100);
@@ -279,6 +285,9 @@ void alarm_tone(){
     M5.Speaker.tone(1200, 50);
     delay(1000);  
   }
+
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
   
 

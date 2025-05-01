@@ -36,7 +36,9 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
   // AI service setting
   //
+  #if defined(USE_LLM_MODULE)
   module_llm_param_t module_llm_param = module_llm_param_t();
+  #endif
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
