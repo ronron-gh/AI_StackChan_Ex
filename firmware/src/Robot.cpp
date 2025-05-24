@@ -48,6 +48,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //LLM setting
   llm_param_t llm_param;
   llm_param.api_key = api_key->ai_service;
+  llm_param.llm_conf = config.getExConfig().llm;
+
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
     llm = new ChatGPT(llm_param);

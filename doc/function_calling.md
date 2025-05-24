@@ -1,16 +1,15 @@
 # Function Calling
 
-- [Function Calling](#function-calling)
-  - [Function Callingについて](#function-callingについて)
-  - [Function Callingで呼び出せる機能](#function-callingで呼び出せる機能)
-  - [設定ファイル（YAML）](#設定ファイルyaml)
-    - [メール送受信用のGmailアカウント、アプリパスワード](#メール送受信用のgmailアカウントアプリパスワード)
-    - [天気予報のCity ID](#天気予報のcity-id)
-    - [NewsAPIのAPIキー](#newsapiのapiキー)
-  - [設定ファイル（YAML以外）](#設定ファイルyaml以外)
-    - [バス（電車）の時刻表](#バス電車の時刻表)
-    - [アラーム音のMP3](#アラーム音のmp3)
-  - [スケジューラ機能](#スケジューラ機能)
+- [Function Callingについて](#function-callingについて)
+- [Function Callingで呼び出せる機能](#function-callingで呼び出せる機能)
+- [設定ファイル（YAML）](#設定ファイルyaml)
+  - [メール送受信用のGmailアカウント、アプリパスワード](#メール送受信用のgmailアカウントアプリパスワード)
+  - [天気予報のCity ID](#天気予報のcity-id)
+  - [NewsAPIのAPIキー](#newsapiのapiキー)
+- [設定ファイル（YAML以外）](#設定ファイルyaml以外)
+  - [バス（電車）の時刻表](#バス電車の時刻表)
+  - [アラーム音のMP3](#アラーム音のmp3)
+- [スケジューラ機能](#スケジューラ機能)
 
 ## Function Callingについて
 Function CallingはChatGPTが提供する機能の一つです。ChatGPTに渡すプロンプトに関数群の定義を記述しておくと、リクエストに応じて使うべき関数の名前と引数を返答してくれます（関数の実装、実行はM5Stack側です）。例えば、今日の天気を天気予報のWeb APIを使って調べたり、赤外線モジュールを制御してテレビを消したりといった関数を登録することができます。要するに、GhatGPT＋M5Stackでスマートスピーカーのようなものを自作できます。
@@ -20,11 +19,11 @@ https://protopedia.net/prototype/4587
 
 
 ## Function Callingで呼び出せる機能
-本ソフトですでに実装しているFunction Callingの機能の一覧を下表に示します。
+本ソフトですでに実装しているFunction Callingの機能の一覧を下表に示します（※No.3から下はデフォルトではマクロで無効化しています）。
 
 プロンプトや関数の実装は FunctionCall.cpp にまとめています。リクエストに応じてｽﾀｯｸﾁｬﾝが関数を使いこなしてくれます。FunctionCall.cppを改造することで、新たな機能を追加するなどのカスタマイズができます。
 
-> ChatGPTのモデルはFunction Callingの精度を上げるためにGPT-4oにしています。GPT-4o miniに変更するにはFunctionCall.cpp内のプロンプトを編集してください。
+> ChatGPTのモデルはFunction Callingの精度を上げるためにGPT-4oにしています。GPT-4o miniに変更するにはChatGPT.cpp内のプロンプトを編集してください。
 
 ```c
 String json_ChatString = 

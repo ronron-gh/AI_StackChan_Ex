@@ -50,7 +50,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 ### LLM
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
+|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・🆕MCPに対応[(詳細ページ)](doc/mcp.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
 |ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 |ModuleLLM (Function Calling対応)|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Bをご確認ください |
 

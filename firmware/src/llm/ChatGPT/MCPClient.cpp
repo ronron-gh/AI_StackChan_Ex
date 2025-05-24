@@ -1,10 +1,7 @@
 #include "MCPClient.h"
 
-//const char* mcpAddr = "192.168.3.105";
-//const uint16_t mcpPort = 8000;
 HTTPClient http;
 WiFiClient stream;
-const char* sseUrl = "http://192.168.3.105:8000/sse"; // SSEのエンドポイント
 String mcpPostUrl;
 
 String mcpInitJson =
@@ -38,20 +35,6 @@ String toolsListJson =
 "\"id\":1"
 "}";
 
-#if 0
-String toolCallJson = 
-"{"
-"\"method\":\"tools/call\","
-"\"params\":{"
-  "\"name\":\"search_calendar_events_by_type\","
-  "\"arguments\":{"
-  "\"calendar_type\":\"primary\"}"
-  "},"
-"\"jsonrpc\":\"2.0\","
-"\"id\":1"
-"}";
-#endif
-
 String toolCallJson = 
 "{"
 "\"method\":\"tools/call\","
@@ -60,45 +43,129 @@ String toolCallJson =
 "\"id\":1"
 "}";
 
-bool init_finished = false;
-bool init_notification_finished = false;
-bool tools_list_requesting = false;
-bool tool_calling = false;
-bool waiting_tool_response = false;
-bool tool_call_complete = false;
-
-String tool_response;
-
-static void pole_stream(const char* mcpAddr, uint16_t mcpPort, DynamicJsonDocument& tool_params);
-
-String mcp_request_tool_call(const char* mcpAddr, uint16_t mcpPort, DynamicJsonDocument& tool_params)
+MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
+  : mcpAddr(_mcpAddr), 
+    mcpPort(_mcpPort),
+    toolsListDoc(SpiRamJsonDocument(1024*10))
 {
+  Serial.printf("Connecting MCP Server Url:%s, Port:%d\n", _mcpAddr.c_str(), _mcpPort);
 
-    init_finished = false;
-    init_notification_finished = false;
-    tools_list_requesting = false;
-    tool_calling = false;
-    waiting_tool_response = false;
-    tool_call_complete = false;
-  
-    if (stream.connect(mcpAddr,mcpPort)) {
-      stream.print(String("GET ") + "/sse" + " HTTP/1.1\r\n" +
-                   "Host: " + mcpAddr + "\r\n" +
-                   "Accept: text/event-stream\r\n" +
-                   "Connection: keep-alive\r\n\r\n");
-    }
-  
-    while(!tool_call_complete){
-      pole_stream(mcpAddr, mcpPort, tool_params);
-      delay(100);
-    }
-  
-    stream.stop();
+  String toolsList = mcp_list_tools();
+  //Serial.print(toolsList);
 
-    return tool_response;
+  if(toolsList.equals("")){
+    Serial.println("MCPClient: connect error");
+    return;
+  }
+
+  DeserializationError error = deserializeJson(toolsListDoc, toolsList.c_str());
+  if (error) {
+    Serial.printf("MCPClient: JSON deserialization error %d\n", error);
+  }
+
+  //String json_str;
+  //serializeJsonPretty(toolsListDoc["result"]["tools"], json_str);  // 文字列をシリアルポートに出力する
+  //Serial.println(json_str);
+
+  int toolsNum = toolsListDoc["result"]["tools"].size();
+  if(toolsNum > TOOLS_LIST_MAX){
+    Serial.printf("Warning: number of tools(%d) exceeds list array size(%d)\n.", toolsNum, TOOLS_LIST_MAX);
+    toolsNum = TOOLS_LIST_MAX;
+  }
+
+  Serial.println("Tools list:");
+  for(int i=0; i<toolsNum; i++){
+    toolNameList[i] = toolsListDoc["result"]["tools"][i]["name"].as<String>();
+    Serial.println(toolNameList[i]);
+  }
+
 }
 
-void pole_stream(const char* mcpAddr, uint16_t mcpPort, DynamicJsonDocument& tool_params)
+bool MCPClient::search_tool(String name)
+{
+  for(int i=0; i<TOOLS_LIST_MAX; i++){
+    if(toolNameList[i].equals(name)){
+      return true;
+    }
+  }
+  return false;
+}
+
+String MCPClient::mcp_list_tools()
+{
+
+  init_finished = false;
+  init_notification_finished = false;
+  tools_list_requesting = false;
+  tool_calling = false;
+  waiting_tool_response = false;
+  request_complete = false;
+  tool_response = String("");
+
+  if (stream.connect(mcpAddr.c_str(), mcpPort)) {
+    stream.print(String("GET ") + "/sse" + " HTTP/1.1\r\n" +
+                  "Host: " + mcpAddr + "\r\n" +
+                  "Accept: text/event-stream\r\n" +
+                  "Connection: keep-alive\r\n\r\n");
+
+    while(!request_complete){
+      pole_stream(toolsListJson);
+      delay(100);
+    }
+
+    stream.stop();
+    http.end();
+  }
+
+  return tool_response;
+}
+
+String MCPClient::mcp_call_tool(DynamicJsonDocument& tool_params)
+{
+
+  init_finished = false;
+  init_notification_finished = false;
+  tools_list_requesting = false;
+  tool_calling = false;
+  waiting_tool_response = false;
+  request_complete = false;
+  tool_response = String("");
+
+  /*
+   *  Call toolリクエストとして送信するJSONを作成
+   */
+  DynamicJsonDocument doc(512);
+  DeserializationError error = deserializeJson(doc, toolCallJson.c_str());
+  if (error) {
+    Serial.println("mcp_call_tool: JSON deserialization error");
+  }
+
+  doc["params"] = tool_params;
+
+  String json_str;
+  serializeJsonPretty(doc, json_str);
+  //Serial.println(json_str);
+
+
+  if (stream.connect(mcpAddr.c_str(), mcpPort)) {
+    stream.print(String("GET ") + "/sse" + " HTTP/1.1\r\n" +
+                  "Host: " + mcpAddr + "\r\n" +
+                  "Accept: text/event-stream\r\n" +
+                  "Connection: keep-alive\r\n\r\n");
+
+    while(!request_complete){
+      pole_stream(json_str);
+      delay(100);
+    }
+
+    stream.stop();
+    http.end();
+  }
+
+  return tool_response;
+}
+
+void MCPClient::pole_stream(String& requestJson)
 {
   if (stream.available()) {
     String line = stream.readStringUntil('\n');
@@ -126,70 +193,18 @@ void pole_stream(const char* mcpAddr, uint16_t mcpPort, DynamicJsonDocument& too
         Serial.printf("notifications/initialized\n");
         init_notification_finished = true;
         int httpCode = http.POST((uint8_t *)InitNotificationJson.c_str(), InitNotificationJson.length());
-#if 0
-        if(tool_list){
-          Serial.printf("tools list\n");
-          httpCode = http.POST((uint8_t *)toolsListJson.c_str(), toolsListJson.length());
-        
-          if(tool_call){
-            tool_calling = true;
-          }
-        }
-        else if(tool_call){
-          tool_calling = true;
-        }
-#else
-        //Serial.printf("tools list\n");
-        //httpCode = http.POST((uint8_t *)toolsListJson.c_str(), toolsListJson.length());
-        //tool_calling = true;
 
-        Serial.printf("tool call\n");
+        Serial.printf("send request\n");
         waiting_tool_response = true;
+        httpCode = http.POST((uint8_t *)requestJson.c_str(), requestJson.length());
 
-        DynamicJsonDocument tool_call(512);
-        DeserializationError error = deserializeJson(tool_call, toolCallJson.c_str());
-        if (error) {
-        Serial.println("tool call: JSON deserialization error");
-        }
-
-        tool_call["params"] = tool_params;
-
-        String json_str;
-        serializeJsonPretty(tool_call, json_str);  // 文字列をシリアルポートに出力する
-        Serial.println(json_str);
-
-        httpCode = http.POST((uint8_t *)json_str.c_str(), json_str.length());
-
-#endif
       }
-#if 0
-      else if(tool_calling){
-        Serial.printf("tool call response\n");
-        tool_calling = false;
-        waiting_tool_response = true;
-
-        DynamicJsonDocument tool_call(512);
-        DeserializationError error = deserializeJson(tool_call, toolCallJson.c_str());
-        if (error) {
-        Serial.println("tool call: JSON deserialization error");
-        }
-
-        tool_call["params"] = tool_params;
-
-        String json_str;
-        serializeJsonPretty(tool_call, json_str);  // 文字列をシリアルポートに出力する
-        Serial.println(json_str);
-
-        int httpCode = http.POST((uint8_t *)json_str.c_str(), toolCallJson.length());
-      }
-#endif
       else if(waiting_tool_response){
         Serial.printf("tool response received\n");
         waiting_tool_response = false;
-        tool_call_complete = true;
+        request_complete = true;
         tool_response = data;
       }
-
     }
   }
 

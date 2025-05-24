@@ -74,20 +74,7 @@ const Expression expressions_table[] = {
   Expression::Angry
 };
 
-
-
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
-
-//---------------------------------------------
-//String STT_API_KEY = "";
-
-
-//---------------------------------------------
-//#if defined(ENABLE_WAKEWORD)
-//bool wakeword_is_enable = false;
-//#endif
-//---------------------------------------------
-
 
 
 // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
@@ -260,15 +247,23 @@ ModBase* init_mod(void)
 }
 
 
-void sw_tone(){
+void sw_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
   M5.Speaker.tone(1000, 100);
   delay(500);
-#if !defined(ARDUINO_M5STACK_CORES3)
+
   M5.Speaker.end();
-#endif
+  M5.Mic.begin();
 }
   
-void alarm_tone(){
+void alarm_tone()
+{
+  M5.Mic.end();
+  M5.Speaker.begin();
+
   for(int i=0; i<5; i++){
     M5.Speaker.tone(1200, 50);
     delay(100);
@@ -277,11 +272,12 @@ void alarm_tone(){
     M5.Speaker.tone(1200, 50);
     delay(1000);  
   }
-#if !defined(ARDUINO_M5STACK_CORES3)
+
   M5.Speaker.end();
-#endif
+  M5.Mic.begin();
 }
-  
+
+
 void setup()
 {
   auto cfg = M5.config();
@@ -311,7 +307,7 @@ void setup()
     micConfig.sample_rate = 16000;
     M5.Mic.config(micConfig);
   }
-  //M5.Mic.begin();
+  M5.Mic.begin();
 
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
@@ -331,8 +327,6 @@ void setup()
   if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
     // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
     system_config.loadConfig(SD, "/app/AiStackChanEx/SC_ExConfig.yaml");
-
-    robot = new Robot(system_config);
 
     // Wifi設定読み込み
     wifi_s* wifi_info = system_config.getWiFiSetting();
@@ -375,6 +369,8 @@ void setup()
       }
   
     }
+
+    robot = new Robot(system_config);
 
     //SD.end();
   } else {
@@ -433,7 +429,6 @@ void loop()
   ModBase* mod = get_current_mod();
   
   mod->idle();
-
 
   if (M5.BtnA.wasPressed())
   {

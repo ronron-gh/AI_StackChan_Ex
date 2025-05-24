@@ -47,10 +47,8 @@ void mp3_init(void)
 
 void playMP3(AudioFileSourceBuffer *buff){
 
-#if !defined(ARDUINO_M5STACK_CORES3)
-  //M5.Mic.end();
+  M5.Mic.end();
   M5.Speaker.begin();
-#endif
 
   mp3->begin(buff, &out);
   
@@ -62,11 +60,9 @@ void playMP3(AudioFileSourceBuffer *buff){
     delay(1);
   }
 
-#if !defined(ARDUINO_M5STACK_CORES3)
-  //delay(200);
   M5.Speaker.end();
-  //M5.Mic.begin();
-#endif
+  M5.Mic.begin();
+
 }
 
 bool playMP3SPIFFS(const char *filename)

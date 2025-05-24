@@ -156,6 +156,26 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     _ex_parameters.news.apikey      = doc["news"]["apikey"].as<String>();
 
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
+#if 0
+    String json_str;
+    serializeJsonPretty(doc["llm"]["mcpServers"], json_str);  // 文字列をシリアルポートに出力する
+    Serial.println(json_str);
+
+    Serial.printf("ExConfig mcpServers num: %d\n", doc["llm"]["mcpServers"].size());
+    Serial.printf("ExConfig mcpServer[0] name: %s\n", doc["llm"]["mcpServers"][0]["name"].as<String>().c_str());
+    Serial.printf("ExConfig mcpServer[0] url: %s\n", doc["llm"]["mcpServers"][0]["url"].as<String>().c_str());
+    Serial.printf("ExConfig mcpServer[0] port: %d\n", doc["llm"]["mcpServers"][0]["port"].as<int>());
+    Serial.printf("ExConfig mcpServer[1] name: %s\n", doc["llm"]["mcpServers"][1]["name"].as<String>().c_str());
+    Serial.printf("ExConfig mcpServer[1] url: %s\n", doc["llm"]["mcpServers"][1]["url"].as<String>().c_str());
+    Serial.printf("ExConfig mcpServer[1] port: %d\n", doc["llm"]["mcpServers"][1]["port"].as<int>());
+#endif
+
+    _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
+    for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
+        _ex_parameters.llm.mcpServer[i].name = doc["llm"]["mcpServers"][i]["name"].as<String>();
+        _ex_parameters.llm.mcpServer[i].url = doc["llm"]["mcpServers"][i]["url"].as<String>();
+        _ex_parameters.llm.mcpServer[i].port = doc["llm"]["mcpServers"][i]["port"].as<int>();
+    }
 
     _ex_parameters.tts.type         = doc["tts"]["type"].as<int>();
     _ex_parameters.tts.model        = doc["tts"]["model"].as<String>();
@@ -173,13 +193,31 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 
 void StackchanExConfig::printExtParameters(void)
 {
+    M5_LOGI("llm type: %d", _ex_parameters.llm.type);
+
+    M5_LOGI("llm nMcpServers: %d", _ex_parameters.llm.nMcpServers);
+    for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
+        M5_LOGI("llm mcpServer[%d] name: %s", i, _ex_parameters.llm.mcpServer[i].name.c_str());
+        M5_LOGI("llm mcpServer[%d] url: %s", i, _ex_parameters.llm.mcpServer[i].url.c_str());
+        M5_LOGI("llm mcpServer[%d] port: %d", i, _ex_parameters.llm.mcpServer[i].port);
+    }
+
+    M5_LOGI("tts type: %d", _ex_parameters.tts.type);
+    M5_LOGI("tts model: %s", _ex_parameters.tts.model.c_str());
+    M5_LOGI("tts voice: %s", _ex_parameters.tts.voice.c_str());
+
+    M5_LOGI("stt type: %d", _ex_parameters.stt.type);
+
+    M5_LOGI("wakeword type: %d", _ex_parameters.wakeword.type);
+    M5_LOGI("wakeword keyword: %s", _ex_parameters.wakeword.keyword.c_str());
+
+    M5_LOGI("module llm rxPin: %d", _ex_parameters.moduleLLM.rxPin);
+    M5_LOGI("module llm txPin: %d", _ex_parameters.moduleLLM.txPin);
+    
     M5_LOGI("mail account: %s", _ex_parameters.mail.account.c_str());
     M5_LOGI("mail app password: %s", _ex_parameters.mail.app_pwd.c_str());
     M5_LOGI("mail to addr: %s", _ex_parameters.mail.to_addr.c_str());
     M5_LOGI("weather city id: %s", _ex_parameters.weather.city_id.c_str());
     M5_LOGI("news apikey: %s", _ex_parameters.news.apikey.c_str());
 
-    M5_LOGI("tts type: %d", _ex_parameters.tts.type);
-    M5_LOGI("tts model: %s", _ex_parameters.tts.model.c_str());
-    M5_LOGI("tts voice: %s", _ex_parameters.tts.voice.c_str());
 }

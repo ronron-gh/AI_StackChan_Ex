@@ -11,6 +11,7 @@ extern ChatHistory chatHistory;
 struct llm_param_t
 {
   String api_key;
+  llm_s llm_conf;
 };
 
 

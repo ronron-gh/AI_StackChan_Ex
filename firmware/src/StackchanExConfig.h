@@ -48,6 +48,7 @@ typedef struct FnNews {
 #define LLM_TYPE_CHATGPT                0
 #define LLM_TYPE_MODULE_LLM             1
 #define LLM_TYPE_MODULE_LLM_FNCL        2
+#define LLM_N_MCP_SERVERS_MAX           10
 
 #define TTS_TYPE_WEB_VOICEVOX           0
 #define TTS_TYPE_ELEVENLABS             1
@@ -63,9 +64,17 @@ typedef struct FnNews {
 #define WAKEWORD_TYPE_SIMPLEVOX         0
 #define WAKEWORD_TYPE_MODULE_LLM_KWS    1
 
+typedef struct MCPServerConf {
+    String name;
+    String url;
+    int port;
+} mcp_server_s;
+
 
 typedef struct LLMConf {
     int type;
+    int nMcpServers;
+    mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
 } llm_s;
 
 typedef struct TTSConf {

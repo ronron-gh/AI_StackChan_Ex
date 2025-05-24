@@ -1,16 +1,15 @@
 # Function Calling
 
-- [Function Calling](#function-calling)
-  - [About Function Calling](#about-function-calling)
-  - [Functions that can be called with Function Calling](#functions-that-can-be-called-with-function-calling)
-  - [Configuration File（YAML）](#configuration-fileyaml)
-    - [Gmail account and app password for sending and receiving emails](#gmail-account-and-app-password-for-sending-and-receiving-emails)
-    - [Weather City ID](#weather-city-id)
-    - [NewsAPI API key](#newsapi-api-key)
-  - [Configuration files (non-YAML)](#configuration-files-non-yaml)
-    - [Bus (Train) Timetable](#bus-train-timetable)
-    - [Alarm Sound MP3](#alarm-sound-mp3)
-  - [Scheduler Function](#scheduler-function)
+- [About Function Calling](#about-function-calling)
+- [Functions that can be called with Function Calling](#functions-that-can-be-called-with-function-calling)
+- [Configuration File（YAML）](#configuration-fileyaml)
+  - [Gmail account and app password for sending and receiving emails](#gmail-account-and-app-password-for-sending-and-receiving-emails)
+  - [Weather City ID](#weather-city-id)
+  - [NewsAPI API key](#newsapi-api-key)
+- [Configuration files (non-YAML)](#configuration-files-non-yaml)
+  - [Bus (Train) Timetable](#bus-train-timetable)
+  - [Alarm Sound MP3](#alarm-sound-mp3)
+- [Scheduler Function](#scheduler-function)
 
 ## About Function Calling
 Function Calling is one of the features provided by ChatGPT. If you write the definition of a function group in the prompt passed to ChatGPT, it will respond with the name and arguments of the function to be used in response to the request (the function is implemented and executed on the M5Stack side). For example, you can register functions such as checking today's weather using the weather forecast Web API, or controlling the infrared module to turn off the TV. In short, you can create something like a smart speaker with GhatGPT + M5Stack.
@@ -20,11 +19,11 @@ https://protopedia.net/prototype/4587
 
 
 ## Functions that can be called with Function Calling
-The table below shows a list of Function Calling features already implemented in this software.
+The table below shows a list of Function Calling features already implemented in this software. (No.3 and below are disabled by default in macros.)
 
 Prompts and function implementations are collected in FunctionCall.cpp. Stackchan will use the functions according to your requests.
 
-> The ChatGPT model is GPT-4o to improve the accuracy of Function Calling. To change to GPT-4o mini, edit the prompt in FunctionCall.cpp.
+> The ChatGPT model is GPT-4o to improve the accuracy of Function Calling. To change to GPT-4o mini, edit the prompt in ChatGPT.cpp.
 
 ```c
 String json_ChatString = 
