@@ -50,7 +50,7 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 ### LLM
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
+|OpenAI ChatGPT|×|〇|〇|・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・🆕Supports MCP. [Details page](doc/mcp_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
 |ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md). <br>Function calling is also supported (see [Appendix B on the same page](doc/module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
 
 ### Speech to Text (STT)
@@ -119,7 +119,7 @@ servo:
     # ServoPin
     # Core1 PortA X:22,Y:21 PortC X:16,Y:17
     # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortC X:18,Y:17
+    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
     # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
     # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
     x: 33

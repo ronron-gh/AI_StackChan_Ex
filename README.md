@@ -50,7 +50,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 ### LLM
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
+|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・🆕MCPに対応[(詳細ページ)](doc/mcp.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
 |ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 |ModuleLLM (Function Calling対応)|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Bをご確認ください |
 
@@ -121,7 +121,7 @@ servo:
     # ServoPin
     # Core1 PortA X:22,Y:21 PortC X:16,Y:17
     # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortC X:18,Y:17
+    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
     # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
     # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
     x: 33

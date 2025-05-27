@@ -74,20 +74,7 @@ const Expression expressions_table[] = {
   Expression::Angry
 };
 
-
-
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
-
-//---------------------------------------------
-//String STT_API_KEY = "";
-
-
-//---------------------------------------------
-//#if defined(ENABLE_WAKEWORD)
-//bool wakeword_is_enable = false;
-//#endif
-//---------------------------------------------
-
 
 
 // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
@@ -250,7 +237,7 @@ ModBase* init_mod(void)
   if(!isOffline || robot->isAllOfflineService()){
     add_mod(new AiStackChanMod(isOffline));
   }
-  add_mod(new PomodoroMod(isOffline));
+  //add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
   add_mod(new VolumeSettingMod());
@@ -289,7 +276,6 @@ void alarm_tone()
   M5.Speaker.end();
   M5.Mic.begin();
 }
-  
 
 
 void setup()
@@ -342,8 +328,6 @@ void setup()
     // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
     system_config.loadConfig(SD, "/app/AiStackChanEx/SC_ExConfig.yaml");
 
-    robot = new Robot(system_config);
-
     // Wifi設定読み込み
     wifi_s* wifi_info = system_config.getWiFiSetting();
     Serial.printf("\nSSID: %s\n",wifi_info->ssid.c_str());
@@ -385,6 +369,8 @@ void setup()
       }
   
     }
+
+    robot = new Robot(system_config);
 
     //SD.end();
   } else {
