@@ -42,6 +42,10 @@ llm:
     ]
 ```
 
+If the settings are correct, the name of the MCP server to which you have successfully connected will be displayed on the startup screen.
+
+![](../images/mcp_config.jpg)
+
 ## How to install each MCP server
 Currently, the following MCP servers have been confirmed to work. The installation method for each MCP server is explained below.
 
