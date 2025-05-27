@@ -11,6 +11,7 @@ class MCPClient {
 private:
     String mcpAddr;
     uint16_t mcpPort;
+    bool _isConnected;
 
     bool init_finished;
     bool init_notification_finished;
@@ -31,6 +32,7 @@ public:
     MCPClient(String _mcpAddr, uint16_t _mcpPort);
     ~MCPClient();
 
+    bool isConnected(){ return _isConnected; };
     bool search_tool(String name);
 
     String mcp_list_tools();

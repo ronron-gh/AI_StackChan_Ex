@@ -25,9 +25,14 @@ String json_ChatString =
 
 ChatGPT::ChatGPT(llm_param_t param) : LLMBase(param)
 {
+  M5.Lcd.println("MCP Servers:");
   for(int i=0; i<param.llm_conf.nMcpServers; i++){
     mcp_client[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
                                   param.llm_conf.mcpServer[i].port);
+    
+    if(mcp_client[i]->isConnected()){
+      M5.Lcd.println(param.llm_conf.mcpServer[i].name);
+    }
   }
 
   load_role();
@@ -100,6 +105,10 @@ void ChatGPT::load_role(){
    * MCP tools listをfunctionとして挿入
    */
   for(int s=0; s<param.llm_conf.nMcpServers; s++){
+    if(!mcp_client[s]->isConnected()){
+      continue;
+    }
+
     int nTools = mcp_client[s]->toolsListDoc["result"]["tools"].size();
     for(int t=0; t<nTools; t++){
       chat_doc["functions"].add(mcp_client[s]->toolsListDoc["result"]["tools"][t]);
@@ -255,7 +264,7 @@ void ChatGPT::chat(String text, const char *base64_buf) {
     Serial.println(json_string);
     Serial.println("====================");
 
-    response = execChatGpt(json_string, &calledFunc);
+    response = execChatGpt(json_string, calledFunc);
 
 
     if(calledFunc == ""){   // Function Callなし ／ Function Call繰り返しの完了
@@ -274,9 +283,10 @@ void ChatGPT::chat(String text, const char *base64_buf) {
 }
 
 
-String ChatGPT::execChatGpt(String json_string, String* calledFunc) {
+String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   String response = "";
   avatar.setExpression(Expression::Doubt);
+  avatar.setSpeechFont(&fonts::efontJA_16);
   avatar.setSpeechText("考え中…");
   String ret = https_post_json("https://api.openai.com/v1/chat/completions", json_string.c_str(), root_ca_openai);
   avatar.setExpression(Expression::Neutral);
@@ -299,17 +309,22 @@ String ChatGPT::execChatGpt(String json_string, String* calledFunc) {
       
       // content = nullならfunction call
       if(data == 0){
-        response = exec_calledFunc(doc, calledFunc);
+        calledFunc = doc["choices"][0]["message"]["function_call"]["name"].as<String>();
+        avatar.setSpeechFont(&fonts::efontJA_12);
+        avatar.setSpeechText(calledFunc.c_str());
+        response = exec_calledFunc(doc);
+
       }
       else{
         Serial.println(data);
         response = String(data);
         std::replace(response.begin(),response.end(),'\n',' ');
-        *calledFunc = String("");
+        calledFunc = String("");
       }
     }
   } else {
     avatar.setExpression(Expression::Sad);
+    avatar.setSpeechFont(&fonts::efontJA_16);
     avatar.setSpeechText("わかりません");
     response = "わかりません";
     delay(1000);
@@ -321,7 +336,7 @@ String ChatGPT::execChatGpt(String json_string, String* calledFunc) {
 
 
 
-String ChatGPT::exec_calledFunc(DynamicJsonDocument& doc, String* calledFunc){
+String ChatGPT::exec_calledFunc(DynamicJsonDocument& doc){
   String response = "";
   const char* name = doc["choices"][0]["message"]["function_call"]["name"];
   const char* args = doc["choices"][0]["message"]["function_call"]["arguments"];
@@ -341,9 +356,6 @@ String ChatGPT::exec_calledFunc(DynamicJsonDocument& doc, String* calledFunc){
     avatar.setSpeechText("");
     avatar.setExpression(Expression::Neutral);
   }else{
-    *calledFunc = String(name);
-
-
 
     //関数名がいずれかのMCPサーバに属するかを検索し、ヒットしたらリクエストを送信する
     for(int s=0; s<param.llm_conf.nMcpServers; s++){

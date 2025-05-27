@@ -46,6 +46,7 @@ String toolCallJson =
 MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
   : mcpAddr(_mcpAddr), 
     mcpPort(_mcpPort),
+    _isConnected(true),
     toolsListDoc(SpiRamJsonDocument(1024*10))
 {
   Serial.printf("Connecting MCP Server Url:%s, Port:%d\n", _mcpAddr.c_str(), _mcpPort);
@@ -55,6 +56,7 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
 
   if(toolsList.equals("")){
     Serial.println("MCPClient: connect error");
+    _isConnected = false;
     return;
   }
 

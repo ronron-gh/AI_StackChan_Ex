@@ -53,7 +53,9 @@ llm:
 
 ### Web検索（Brave Search）
 UbuntuをインストールしたPCでBrave Searchを動かす手順を解説します。予めNode.jsもインストールしてください。
-動作を確認したバージョンは次の通りです（最低要件ということではありません）。MCPサーバの負荷は高くないので、低スペックなPCで問題ありません。Raspberry Pi等のSBCでも動くと思います（動作は未確認）。
+動作を確認したバージョンは次の通りです（最低要件ということではありません）。MCPサーバの負荷は高くないので、低スペックなPCでも問題ありません。Raspberry Pi等のSBCでも動くと思います（動作は未確認）。
+
+動作確認環境：
 - Ubuntu: 20.04
 - Node.js: 22.15.0
 
@@ -81,12 +83,16 @@ npx -y supergateway --stdio "npx -y @modelcontextprotocol/server-brave-search" -
 > こちらのサイトではDockerを使って構築する方法で解説されていますので、Dockerを使いたい方はぜひこちらのサイトを参考にしてください。
 
 ### 長期記憶 (server-memory)
-① インストール＆起動  
-こちらも上記Brave Searchと同じ環境で、Supergatewayで起動します。
+動作確認環境：
+- Ubuntu: 20.04
+- Node.js: 22.15.0
 
-追加でserver-memoryをインストールしてください。
+① インストール＆起動  
+こちらも上記Brave Searchと同じ要領で、Supergateway経由で起動します。
+
+UbuntuにSupergatewayとserver-memoryをインストールしてください。
 ```
-npm install -g @modelcontextprotocol/server-memory
+npm install -g supergateway @modelcontextprotocol/server-memory
 ```
 Brave Searchと同じように、次のコマンドで起動できます。
 ```
@@ -129,4 +135,11 @@ M5Stackへのロール設定はWebブラウザアプリでできます。Webブ�
 ![](../images/role_setting.png)
 
 ### Googleカレンダー
-準備中🙇‍♂️
+動作確認環境：
+- Ubuntu: 20.04
+
+[こちらのリポジトリ](https://github.com/101ta28/google-calendar-mcp-server)「GoogleカレンダーMCPサーバ」をフォークさせていただき、トランスポート仕様をStdioからSSEに変更＆機能の簡略化のカスタマイズをしました。次のようにブランチ(change_to_sse)を指定してクローンし、[README](https://github.com/ronron-gh/google-calendar-mcp-server/blob/change_to_sse/README.ja.md)に従ってMCPサーバを起動してください。
+
+```
+git clone -b change_to_sse https://github.com/ronron-gh/google-calendar-mcp-server.git
+```
