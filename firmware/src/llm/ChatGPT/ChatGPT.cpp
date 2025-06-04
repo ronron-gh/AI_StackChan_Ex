@@ -109,8 +109,7 @@ void ChatGPT::load_role(){
       continue;
     }
 
-    int nTools = mcp_client[s]->toolsListDoc["result"]["tools"].size();
-    for(int t=0; t<nTools; t++){
+    for(int t=0; t<mcp_client[s]->nTools; t++){
       chat_doc["functions"].add(mcp_client[s]->toolsListDoc["result"]["tools"][t]);
     }
   }

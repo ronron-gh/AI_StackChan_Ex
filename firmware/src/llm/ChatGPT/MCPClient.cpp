@@ -47,20 +47,21 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
   : mcpAddr(_mcpAddr), 
     mcpPort(_mcpPort),
     _isConnected(true),
+    nTools(0),
     toolsListDoc(SpiRamJsonDocument(1024*10))
 {
   Serial.printf("Connecting MCP Server Url:%s, Port:%d\n", _mcpAddr.c_str(), _mcpPort);
 
-  String toolsList = mcp_list_tools();
-  //Serial.print(toolsList);
+  String result = mcp_list_tools();
+  //Serial.print(result);
 
-  if(toolsList.equals("")){
+  if(result.equals("")){
     Serial.println("MCPClient: connect error");
     _isConnected = false;
     return;
   }
 
-  DeserializationError error = deserializeJson(toolsListDoc, toolsList.c_str());
+  DeserializationError error = deserializeJson(toolsListDoc, result.c_str());
   if (error) {
     Serial.printf("MCPClient: JSON deserialization error %d\n", error);
   }
@@ -69,14 +70,15 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
   //serializeJsonPretty(toolsListDoc["result"]["tools"], json_str);  // 文字列をシリアルポートに出力する
   //Serial.println(json_str);
 
-  int toolsNum = toolsListDoc["result"]["tools"].size();
-  if(toolsNum > TOOLS_LIST_MAX){
-    Serial.printf("Warning: number of tools(%d) exceeds list array size(%d)\n.", toolsNum, TOOLS_LIST_MAX);
-    toolsNum = TOOLS_LIST_MAX;
+  nTools = toolsListDoc["result"]["tools"].size();
+
+  if(nTools > TOOLS_LIST_MAX){
+    Serial.printf("Warning: number of tools(%d) exceeds list array size(%d)\n.", nTools, TOOLS_LIST_MAX);
+    nTools = TOOLS_LIST_MAX;
   }
 
   Serial.println("Tools list:");
-  for(int i=0; i<toolsNum; i++){
+  for(int i=0; i<nTools; i++){
     toolNameList[i] = toolsListDoc["result"]["tools"][i]["name"].as<String>();
     Serial.println(toolNameList[i]);
   }
@@ -202,10 +204,12 @@ void MCPClient::pole_stream(String& requestJson)
 
       }
       else if(waiting_tool_response){
-        Serial.printf("tool response received\n");
-        waiting_tool_response = false;
-        request_complete = true;
-        tool_response = data;
+        if(data.indexOf("result") != -1){
+          Serial.printf("tool response received\n");
+          waiting_tool_response = false;
+          request_complete = true;
+          tool_response = data;
+        }
       }
     }
   }

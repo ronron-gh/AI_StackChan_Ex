@@ -21,6 +21,7 @@ private:
     bool request_complete;
     String tool_response;
 
+    //int nTools;
     String toolNameList[TOOLS_LIST_MAX];
 
     void pole_stream(String& requestJson);
@@ -28,6 +29,7 @@ private:
 public:
 
     SpiRamJsonDocument toolsListDoc;
+    int nTools;
 
     MCPClient(String _mcpAddr, uint16_t _mcpPort);
     ~MCPClient();
