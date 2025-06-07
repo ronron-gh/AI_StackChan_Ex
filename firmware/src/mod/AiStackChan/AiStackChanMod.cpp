@@ -342,6 +342,7 @@ void AiStackChanMod::idle(void)
     }
 
 #if defined(ARDUINO_M5STACK_CORES3)
+#if defined(USE_EXTENSION_FUNCTIONS)
     // Function Callからの要求でウェイクワード有効化
     if (wakeword_enable_required)
     {
@@ -355,6 +356,7 @@ void AiStackChanMod::idle(void)
       register_wakeword_required = false;
       
     }
+#endif  //defined(USE_EXTENSION_FUNCTIONS)
 #endif  //defined(ARDUINO_M5STACK_CORES3)
 #endif  //ENABLE_WAKEWORD
   }

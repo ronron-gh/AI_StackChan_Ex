@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include "SpiRamJsonDocument.h"
 #include "ChatHistory.h"
+#include "StackchanExConfig.h"
 
 extern SpiRamJsonDocument chat_doc;
 extern ChatHistory chatHistory;

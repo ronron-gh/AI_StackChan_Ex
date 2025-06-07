@@ -27,6 +27,8 @@ void UAquesTalkTTS::stream(String text){
   String remain_text = text;
   String sub_text = text;
   
+  M5.Mic.end();
+  M5.Speaker.begin();
   while(1){    
     /* ピリオド・カンマで区切りながらTTSに渡す */
 
@@ -59,8 +61,9 @@ void UAquesTalkTTS::stream(String text){
     if(remain_text == ""){
       break;
     }
-
   }
+  M5.Speaker.end();
+  M5.Mic.begin();
 }
 
 int UAquesTalkTTS::getLevel(){
