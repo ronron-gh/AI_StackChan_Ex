@@ -27,28 +27,6 @@
 #include "rootCA/rootCAgoogle.h"       //speechToText
 #include "driver/Audio.h"              //speechToText
 
-#define REALTIME_API
-#ifdef REALTIME_API
-#include <base64.h>
-#include <WebSocketsClient.h>
-extern WebSocketsClient webSocket;
-
-char input_audio_append[] =
-        "{"
-          "\"type\": \"input_audio_buffer.append\","
-          "\"audio\": \"replace_to_audio_base64\""
-        "}";
-
-int16_t* rtRecBuf;
-int rtRecSamplerate = 16000;
-int rtRecLength = 2000;   //0.125s 
-bool realtime_recording = true;
-bool realtime_api_debug_log = false;
-uint8_t* audioBuf[2];   // Base64をデコードして得た音声データを格納するバッファ。再生直後に更新すると音が切れたのでダブルバッファとした
-int nextBufIdx = 0;     // 次回データを格納するダブルバッファの面（0 or 1）
-
-#endif
-
 using namespace m5avatar;
 
 #if defined(ENABLE_WAKEWORD)
@@ -92,32 +70,6 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
 
   avatar.setExpression(Expression::Happy);
   avatar.setSpeechText("御用でしょうか？");
-
-
-#ifdef REALTIME_API
-#if 0
-  AudioWhisper* audio = new AudioWhisper();
-  Serial.println("\r\nRecord start!\r\n");
-  audio->Record();  
-  Serial.println("Record end\r\n");
-
-  avatar.setSpeechText("");
-  servo_home = false;
-
-  String audio_base64;
-  audio_base64 = base64::encode(audio->GetBuffer(), audio->GetSize());
-
-  //Debug
-  //Serial.print(audio_base64);
-
-  String json(input_audio_append);
-  json.replace("replace_to_audio_base64", audio_base64);
-  webSocket.sendTXT(json);
-  webSocket.sendTXT("{ \"type\": \"input_audio_buffer.commit\" }");
-  webSocket.sendTXT("{ \"type\": \"response.create\" }");
-  return;
-#endif
-#endif  //REALTIME_API
 
   String ret = robot->listen();
   avatar.setSpeechText("");
@@ -180,13 +132,17 @@ AiStackChanMod::AiStackChanMod(bool _isOffline)
     init_func_call_settings(robot->m_config);
   }
 
-#ifdef REALTIME_API
-  rtRecBuf = (int16_t*)heap_caps_malloc(rtRecLength * sizeof(*rtRecBuf), MALLOC_CAP_8BIT);
-  for(int i=0; i<2; i++){
-    audioBuf[i] = (uint8_t*)malloc(100 * 1024);
-    memset(audioBuf[i], 0, 100 * 1024);
-  }
+  if(robot->m_config.getExConfig().wakeword.type == WAKEWORD_TYPE_MODULE_LLM_KWS){
+#if defined(USE_LLM_MODULE)
+    // Nothing to initialize here
 #endif
+  }
+  else{
+#if defined(ENABLE_WAKEWORD)
+    wakeword_init();
+#endif
+  }
+
 }
 
 
@@ -356,30 +312,6 @@ void AiStackChanMod::idle(void)
 #endif
   }
 #endif  //ENABLE_CAMERA
-
-#ifdef REALTIME_API
-  if(realtime_recording){
-    //M5.Mic.begin();
-    if(!M5.Mic.record(rtRecBuf, rtRecLength, rtRecSamplerate)){
-      Serial.println("Mic.record() returns false");
-      delay(1000);
-    }
-    //M5.Mic.end();
-    String audio_base64;
-    audio_base64 = base64::encode((u8*)rtRecBuf, rtRecLength * sizeof(int16_t));
-
-    //Debug
-    if(realtime_api_debug_log){
-      Serial.print(audio_base64);
-    }
-
-    String json(input_audio_append);
-    json.replace("replace_to_audio_base64", audio_base64);
-    webSocket.sendTXT(json);
-
-  }
-
-#endif
 
   //Wakeword
   if(robot->m_config.getExConfig().wakeword.type == WAKEWORD_TYPE_MODULE_LLM_KWS){

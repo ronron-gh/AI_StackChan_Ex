@@ -11,6 +11,7 @@
 #include "driver/ModuleLLM.h"
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
+#include "llm/ChatGPT/RealtimeChatGPT.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
 #include "Avatar.h"
@@ -52,7 +53,11 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
+#if defined(REALTIME_API)
+    llm = new RealtimeChatGPT(llm_param);
+#else
     llm = new ChatGPT(llm_param);
+#endif
     break;
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
