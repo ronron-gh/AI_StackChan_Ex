@@ -37,9 +37,19 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
   // AI service setting
   //
-  #if defined(USE_LLM_MODULE)
+#if defined(REALTIME_API)
+  //LLM setting
+  api_keys_s* api_key = config.getAPISetting();
+  llm_param_t llm_param;
+  llm_param.api_key = api_key->ai_service;
+  llm_param.llm_conf = config.getExConfig().llm;
+  llm = new RealtimeChatGPT(llm_param);
+
+#else
+
+#if defined(USE_LLM_MODULE)
   module_llm_param_t module_llm_param = module_llm_param_t();
-  #endif
+#endif
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
@@ -53,11 +63,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
-#if defined(REALTIME_API)
-    llm = new RealtimeChatGPT(llm_param);
-#else
     llm = new ChatGPT(llm_param);
-#endif
     break;
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
@@ -171,6 +177,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   }
   module_llm_setup(module_llm_param);
 #endif
+
+#endif  //REALTIME_API
 
 }
 

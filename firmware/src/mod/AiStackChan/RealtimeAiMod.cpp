@@ -38,6 +38,8 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
 
   pRtLLM = (RealtimeChatGPT*)robot->llm;
 
+  servo_home = false;
+
 #if 0
   if(!isOffline){
     //スケジューラ設定
@@ -89,18 +91,18 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   if (box_stt.contain(x, y))
   {
     sw_tone();
-
+    pRtLLM->startRealtimeRecord();
   }
 #ifdef USE_SERVO
   if (box_servo.contain(x, y))
   {
-    //servo_home = !servo_home;
     sw_tone();
+    servo_home = !servo_home;
   }
 #endif
   if (box_BtnA.contain(x, y))
   {
-    sw_tone();
+    //sw_tone();
   }
   if (box_BtnC.contain(x, y))
   {
@@ -111,11 +113,11 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
 
 void RealtimeAiMod::idle(void)
 {
-  pRtLLM->webSocketLoop();
+  pRtLLM->webSocketProcess();
 
 
 
-#if 0   //Function Calling対応したら使うかも
+#if 0   //Function Calling対応したら使う
   /// Alarm ///
   if(xAlarmTimer != NULL){
     TickType_t xRemainingTime;

@@ -77,10 +77,19 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
 
             msgType = msgDoc["type"].as<String>();
-                    Serial.printf("[WSc] text type: %s\n", msgType.c_str());
+            Serial.printf("[WSc] text type: %s\n", msgType.c_str());
 
             if(msgType.equals("session.updated")){
-                avatar.setSpeechText("Ready");
+                avatar.setSpeechText("Please touch");
+            }
+            else if(msgType.equals("input_audio_buffer.speech_started")){
+                p_this->resetRealtimeRecordStartTime();
+            }
+            else if(msgType.equals("input_audio_buffer.committed")){
+                Serial.printf("[WSc] input audio committed\n");
+                p_this->stopRealtimeRecord();
+                M5.Mic.end();
+                M5.Speaker.begin();
             }
             else if(msgType.equals("response.audio_transcript.delta")){
                 delta = msgDoc["delta"].as<String>();
@@ -90,21 +99,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 delta = msgDoc["delta"].as<String>();
                 p_this->streamAudioDelta(delta);
             }
-            else if(msgType.equals("input_audio_buffer.committed")){
-                p_this->realtime_recording = false;
-                M5.Mic.end();
-                M5.Speaker.begin();
-                Serial.printf("[WSc] input audio committed\n");
-            }
             else if(msgType.equals("response.done")){
-                p_this->realtime_recording = true;
+                Serial.printf("[WSc] response.done\n");
+                p_this->startRealtimeRecord();
                 while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
                 M5.Speaker.end();
                 M5.Mic.begin();
                 for(int i=0; i<2; i++){
-                memset(p_this->audioBuf[i], 0, 100 * 1024);
+                    memset(p_this->audioBuf[i], 0, 100 * 1024);
                 }
-                Serial.printf("[WSc] response.done\n");
             }
             else if(msgType.equals("rate_limits.updated")){
                 //Serial.printf("[WSc] payload: %s\n", payload);
@@ -128,18 +131,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             break;
 	}
 
-    //check_heap_largest_free_block();
-
 }
-
-
 
 
 RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) : 
     ChatGPT(param),
     rtRecSamplerate(16000),
     rtRecLength(2000),          //0.125s 
-    realtime_recording(true),
+    realtime_recording(false),
+    startTime(0),
     nextBufIdx(0)
 {
 
@@ -170,7 +170,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
 
 }
 
-void RealtimeChatGPT::webSocketLoop()
+void RealtimeChatGPT::webSocketProcess()
 {
     webSocket.loop();
 
@@ -188,6 +188,7 @@ void RealtimeChatGPT::webSocketLoop()
         json.replace("REPLACE_TO_AUDIO_BASE64", audio_base64);
         webSocket.sendTXT(json);
 
+        checkRealtimeRecordTimeout();
     }
 }
 
@@ -196,6 +197,41 @@ int RealtimeChatGPT::getAudioLevel()
     return abs(*audioBuf[nextBufIdx ^ 1]) * 50;
 }
 
+void RealtimeChatGPT::startRealtimeRecord()
+{
+    if(!realtime_recording){
+        Serial.println("Start realtime recording");
+        realtime_recording = true;
+        startTime = xTaskGetTickCount();
+        avatar.setSpeechText("Listening...");
+    }
+}
+
+void RealtimeChatGPT::stopRealtimeRecord()
+{
+    if(realtime_recording){
+        Serial.println("Stop realtime recording");
+        realtime_recording = false;
+        startTime = 0;
+        avatar.setSpeechText("");
+    }
+}
+
+void RealtimeChatGPT::resetRealtimeRecordStartTime()
+{
+    startTime = xTaskGetTickCount();
+}
+
+void RealtimeChatGPT::checkRealtimeRecordTimeout()
+{
+    portTickType elapsedTime;
+    elapsedTime = (xTaskGetTickCount() - startTime) * portTICK_RATE_MS;
+    if(elapsedTime > REALTIME_RECORD_TIMEOUT){
+        Serial.println("Realtime recording timeout");
+        stopRealtimeRecord();
+        avatar.setSpeechText("Please touch");
+    }
+}
 
 int RealtimeChatGPT::base64_decode(const char* input, int size, char* output)
 {
