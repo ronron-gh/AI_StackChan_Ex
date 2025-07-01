@@ -27,7 +27,6 @@
 #include "rootCA/rootCAgoogle.h"       //speechToText
 #include "driver/Audio.h"              //speechToText
 
-
 using namespace m5avatar;
 
 #if defined(ENABLE_WAKEWORD)
@@ -71,8 +70,10 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
 
   avatar.setExpression(Expression::Happy);
   avatar.setSpeechText("御用でしょうか？");
+
   String ret = robot->listen();
   avatar.setSpeechText("");
+
 #ifdef USE_SERVO
   //servo_home = prev_servo_home;
   servo_home = false;
@@ -129,6 +130,17 @@ AiStackChanMod::AiStackChanMod(bool _isOffline)
   if(robot->m_config.getExConfig().llm.type == LLM_TYPE_CHATGPT){
     // Function Call関連の設定
     init_func_call_settings(robot->m_config);
+  }
+
+  if(robot->m_config.getExConfig().wakeword.type == WAKEWORD_TYPE_MODULE_LLM_KWS){
+#if defined(USE_LLM_MODULE)
+    // Nothing to initialize here
+#endif
+  }
+  else{
+#if defined(ENABLE_WAKEWORD)
+    wakeword_init();
+#endif
   }
 
 }

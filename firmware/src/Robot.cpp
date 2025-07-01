@@ -11,6 +11,7 @@
 #include "driver/ModuleLLM.h"
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
+#include "llm/ChatGPT/RealtimeChatGPT.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
 #include "Avatar.h"
@@ -36,9 +37,19 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
   // AI service setting
   //
-  #if defined(USE_LLM_MODULE)
+#if defined(REALTIME_API)
+  //LLM setting
+  api_keys_s* api_key = config.getAPISetting();
+  llm_param_t llm_param;
+  llm_param.api_key = api_key->ai_service;
+  llm_param.llm_conf = config.getExConfig().llm;
+  llm = new RealtimeChatGPT(llm_param);
+
+#else
+
+#if defined(USE_LLM_MODULE)
   module_llm_param_t module_llm_param = module_llm_param_t();
-  #endif
+#endif
   int llm_type = config.getExConfig().llm.type;
   int tts_type = config.getExConfig().tts.type;
   int stt_type = config.getExConfig().stt.type;
@@ -166,6 +177,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   }
   module_llm_setup(module_llm_param);
 #endif
+
+#endif  //REALTIME_API
 
 }
 

@@ -11,6 +11,7 @@
 #include "mod/ModManager.h"
 #include "mod/ModBase.h"
 #include "mod/AiStackChan/AiStackChanMod.h"
+#include "mod/AiStackChan/RealtimeAiMod.h"
 #include "mod/Pomodoro/PomodoroMod.h"
 #include "mod/PhotoFrame/PhotoFrameMod.h"
 #include "mod/StatusMonitor/StatusMonitorMod.h"
@@ -25,13 +26,6 @@
 //#include <ESP32WebServer.h>
 //#include <ESPmDNS.h>
 #include <ESP8266FtpServer.h>
-
-//#include <deque>
-
-#if defined(ENABLE_WAKEWORD)
-#include "driver/WakeWord.h"
-#include "driver/WakeWordIndex.h"
-#endif
 
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
@@ -113,8 +107,11 @@ void lipSync(void *args)
   Avatar *avatar = ctx->getAvatar();
   for (;;)
   {
-    //level = abs(*out.getBuffer());
+#ifdef REALTIME_API
+    level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+#else
     level = robot->tts->getLevel();
+#endif
     if(level<100) level = 0;
     if(level > 15000)
     {
@@ -235,7 +232,11 @@ ModBase* init_mod(void)
 {
   ModBase* mod;
   if(!isOffline || robot->isAllOfflineService()){
+#if defined(REALTIME_API)
+    add_mod(new RealtimeAiMod(isOffline));
+#else
     add_mod(new AiStackChanMod(isOffline));
+#endif
   }
   //add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
@@ -322,7 +323,6 @@ void setup()
 
   M5.Lcd.setTextSize(2);
 
-
   /// settings
   if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
     // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
@@ -361,6 +361,7 @@ void setup()
         M5.Lcd.println("FTP server started");
         //時刻同期
         time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+
       }
       else{
         M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
@@ -382,18 +383,6 @@ void setup()
   
   mp3_init();
 
-  //TODO: クラス化してAiStackChanModの初期化に移動したい
-  if(robot->m_config.getExConfig().wakeword.type == WAKEWORD_TYPE_MODULE_LLM_KWS){
-#if defined(USE_LLM_MODULE)
-    // Nothing to initialize here
-#endif
-  }
-  else{
-#if defined(ENABLE_WAKEWORD)
-    wakeword_init();
-#endif
-  }
-
   //mod設定
   init_mod();
 
@@ -404,7 +393,8 @@ void setup()
   avatar.addTask(servo, "servo");
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  robot->spk_volume = 120;
+  //robot->spk_volume = 120;
+  robot->spk_volume = 200;
   M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)
