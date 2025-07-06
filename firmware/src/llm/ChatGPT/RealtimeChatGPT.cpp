@@ -1,3 +1,5 @@
+#if defined(REALTIME_API)
+
 #include <Arduino.h>
 #include <M5Unified.h>
 //#include <SPIFFS.h>
@@ -291,3 +293,4 @@ void RealtimeChatGPT::streamAudioDelta(String& delta)
 
 }
 
+#endif  //REALTIME_API

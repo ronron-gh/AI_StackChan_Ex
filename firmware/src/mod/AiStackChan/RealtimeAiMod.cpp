@@ -1,3 +1,5 @@
+#if defined(REALTIME_API)
+
 #include <Arduino.h>
 #include <deque>
 #include <SD.h>
@@ -137,3 +139,4 @@ void RealtimeAiMod::idle(void)
 }
 
 
+#endif //REALTIME_API

@@ -1,3 +1,5 @@
+#if defined(REALTIME_API)
+
 #ifndef _REALTIME_AI_MOD_H
 #define _REALTIME_AI_MOD_H
 
@@ -31,3 +33,5 @@ public:
 
 
 #endif  //_REALTIME_AI_MOD_H
+
+#endif  //REALTIME_API

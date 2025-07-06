@@ -1,3 +1,5 @@
+#if defined(REALTIME_API)
+
 #ifndef _REALTIME_CHAT_GPT_H
 #define _REALTIME_CHAT_GPT_H
 
@@ -50,3 +52,5 @@ public:
 
 
 #endif  //_REALTIME_CHAT_GPT_H
+
+#endif  //REALTIME_API
