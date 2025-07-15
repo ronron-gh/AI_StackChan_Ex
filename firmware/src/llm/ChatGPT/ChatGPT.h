@@ -13,14 +13,16 @@ extern String InitBuffer;
 extern String json_ChatString;
 
 class ChatGPT: public LLMBase{
-private:
+//protected:
+public:  //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
+
     MCPClient* mcp_client[LLM_N_MCP_SERVERS_MAX];
 
 public:
     ChatGPT(llm_param_t param);
     virtual void chat(String text, const char *base64_buf = NULL);
     String execChatGpt(String json_string, String& calledFunc);
-    String exec_calledFunc(DynamicJsonDocument& doc);
+    String exec_calledFunc(const char* name, const char* args);
     String https_post_json(const char* url, const char* json_string, const char* root_ca);
     
     virtual bool save_role();

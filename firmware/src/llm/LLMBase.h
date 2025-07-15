@@ -17,7 +17,9 @@ struct llm_param_t
 
 
 class LLMBase{
-protected:
+//protected:
+public:   //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
+
   llm_param_t param;
   String InitBuffer;
 

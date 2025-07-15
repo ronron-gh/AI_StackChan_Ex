@@ -308,11 +308,12 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
       
       // content = nullならfunction call
       if(data == 0){
-        calledFunc = doc["choices"][0]["message"]["function_call"]["name"].as<String>();
-        avatar.setSpeechFont(&fonts::efontJA_12);
-        avatar.setSpeechText(calledFunc.c_str());
-        response = exec_calledFunc(doc);
+        const char* name = doc["choices"][0]["message"]["function_call"]["name"];
+        const char* args = doc["choices"][0]["message"]["function_call"]["arguments"];
 
+        //avatar.setSpeechFont(&fonts::efontJA_12);
+        //avatar.setSpeechText(name);
+        response = exec_calledFunc(name, args);
       }
       else{
         Serial.println(data);
@@ -334,11 +335,8 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
 }
 
 
-
-String ChatGPT::exec_calledFunc(DynamicJsonDocument& doc){
+String ChatGPT::exec_calledFunc(const char* name, const char* args){
   String response = "";
-  const char* name = doc["choices"][0]["message"]["function_call"]["name"];
-  const char* args = doc["choices"][0]["message"]["function_call"]["arguments"];
 
   Serial.println(name);
   Serial.println(args);

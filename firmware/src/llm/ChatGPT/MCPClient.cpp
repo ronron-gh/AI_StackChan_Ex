@@ -61,6 +61,7 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
     return;
   }
 
+  result.replace("inputSchema", "parameters");
   DeserializationError error = deserializeJson(toolsListDoc, result.c_str());
   if (error) {
     Serial.printf("MCPClient: JSON deserialization error %d\n", error);

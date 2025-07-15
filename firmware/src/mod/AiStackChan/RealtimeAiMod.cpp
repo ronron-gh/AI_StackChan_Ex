@@ -118,9 +118,8 @@ void RealtimeAiMod::idle(void)
   pRtLLM->webSocketProcess();
 
 
-
-#if 0   //Function Calling対応したら使う
-  /// Alarm ///
+  // Alarm
+  //
   if(xAlarmTimer != NULL){
     TickType_t xRemainingTime;
 
@@ -130,6 +129,12 @@ void RealtimeAiMod::idle(void)
     avatar.setSpeechText(avatarText.c_str());
   }
 
+  if (alarmTimerCallbacked) {
+    alarmTimerCallbacked = false;
+    alarm_tone();
+  }
+
+#if 0 
   //スケジューラ処理
   if(!isOffline){
     run_schedule();

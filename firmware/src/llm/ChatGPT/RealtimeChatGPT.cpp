@@ -11,7 +11,7 @@
 #include "SpiRamJsonDocument.h"
 #include "RealtimeChatGPT.h"
 //#include "../ChatHistory.h"
-//#include "FunctionCall.h"
+#include "FunctionCall.h"
 //#include "MCPClient.h"
 #include "Robot.h"
 
@@ -40,7 +40,8 @@ char session_update[] =
           //"\"voice\":\"alloy\","
           "\"voice\":\"sage\","
           //"\"output_audio_format\":\"g711_ulaw\","    //pcm16よりだいぶ軽いので使いたかったが、再生できるライブラリがなかった
-          "\"instructions\": \"You are an AI robot named Stack-chan. Please speak in Japanese.\""
+          "\"instructions\": \"You are an AI robot named Stack-chan. Please speak in Japanese.\","
+          "\"tools\":[]"
         "}"
       "}";
 
@@ -50,7 +51,22 @@ char input_audio_append[] =
           "\"audio\": \"REPLACE_TO_AUDIO_BASE64\""
         "}";
 
+// for function calling
+//
+char conversation_item_create[] =
+        "{"
+            "\"type\": \"conversation.item.create\","
+            "\"item\": {"
+                "\"type\": \"function_call_output\","
+                "\"call_id\": \"REPLACE_TO_CALL_ID\","
+                "\"output\": \"{\\\"result\\\":\\\"REPLACE_TO_OUTPUT\\\"}\""
+            "}"
+        "}";
 
+char response_create[] =
+        "{"
+            "\"type\": \"response.create\""
+        "}";
 
 // WebSocketのコールバック関数としてクラスメソッドを渡せないので、コールバック関数を
 // 通常の関数にして静的変数を経由してクラスのthisポインタを渡す。
@@ -66,8 +82,51 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 		case WStype_CONNECTED:
 			Serial.printf("[WSc] Connected to url: %s\n", payload);
 
-			// send message to server when Connected
-			webSocket.sendTXT(session_update);
+            /*
+             * session.updateでAPIの振る舞いをカスタマイズする
+             */
+            {
+                SpiRamJsonDocument sessionUpdateDoc(1024*10);
+                DeserializationError error = deserializeJson(sessionUpdateDoc, session_update);
+                if (error) {
+                    Serial.println("webSocketEvent: JSON deserialization error (session_update)");
+                }
+
+                // MCP tools listをfunctionとして挿入
+                //
+                for(int s=0; s<p_this->param.llm_conf.nMcpServers; s++){
+                    if(!p_this->mcp_client[s]->isConnected()){
+                        continue;
+                    }
+
+                    for(int t=0; t < p_this->mcp_client[s]->nTools; t++){
+                        sessionUpdateDoc["session"]["tools"].add(p_this->mcp_client[s]->toolsListDoc["result"]["tools"][t]);
+                        sessionUpdateDoc["session"]["tools"][t]["type"] = "function";
+                    }
+                }
+
+                // FunctionCall.cppで定義したfunctionをsession.updateに挿入
+                //
+                SpiRamJsonDocument functionsDoc(1024*10);
+                error = deserializeJson(functionsDoc, json_Functions.c_str());
+                if (error) {
+                    Serial.println("load_role: JSON deserialization error");
+                }
+
+                int nFuncs = functionsDoc.size();
+                int nMcpFuncs = sessionUpdateDoc["session"]["tools"].size();
+                for(int i=0; i<nFuncs; i++){
+                    sessionUpdateDoc["session"]["tools"].add(functionsDoc[i]);
+                    sessionUpdateDoc["session"]["tools"][nMcpFuncs + i]["type"] = "function";
+                }
+
+                String sessionUpdateStr;
+                serializeJson(sessionUpdateDoc, sessionUpdateStr);
+                String jsonPretty;
+                serializeJsonPretty(sessionUpdateDoc, jsonPretty);
+                Serial.printf("[WSc] session update json: %s\n", jsonPretty.c_str());
+                webSocket.sendTXT(sessionUpdateStr.c_str());
+            }
 			break;
 		case WStype_TEXT:
 			//Serial.printf("[WSc] get text: %s\n", payload);
@@ -82,6 +141,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             Serial.printf("[WSc] text type: %s\n", msgType.c_str());
 
             if(msgType.equals("session.updated")){
+                Serial.printf("[WSc] payload: %s\n", payload);
                 avatar.setSpeechText("Please touch");
             }
             else if(msgType.equals("input_audio_buffer.speech_started")){
@@ -103,16 +163,41 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
             else if(msgType.equals("response.done")){
                 Serial.printf("[WSc] response.done\n");
-                p_this->startRealtimeRecord();
-                while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
-                M5.Speaker.end();
-                M5.Mic.begin();
-                for(int i=0; i<2; i++){
-                    memset(p_this->audioBuf[i], 0, 100 * 1024);
+
+                String outputType = msgDoc["response"]["output"][0]["type"].as<String>();
+                if(outputType.equals("function_call")){
+                    Serial.printf("[WSc] function call payload: %s\n", payload);
+                    const char* name = msgDoc["response"]["output"][0]["name"];
+                    const char* args = msgDoc["response"]["output"][0]["arguments"];
+                    const char* call_id = msgDoc["response"]["output"][0]["call_id"];
+
+                    //avatar.setSpeechFont(&fonts::efontJA_12);
+                    //avatar.setSpeechText(name);
+                    String response = p_this->exec_calledFunc(name, args);
+                    response.replace("\"", "\\\"");     //JSON内の文字列を囲む"にエスケープ(\)を付ける
+
+                    String json(conversation_item_create);
+                    json.replace("REPLACE_TO_CALL_ID", call_id);
+                    json.replace("REPLACE_TO_OUTPUT", response.c_str());
+                    Serial.printf("[WSc] function output: %s\n", json.c_str());
+                    webSocket.sendTXT(json);
+                    webSocket.sendTXT(response_create);
+                }
+                else{
+                    p_this->startRealtimeRecord();
+                    while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+                    M5.Speaker.end();
+                    M5.Mic.begin();
+                    for(int i=0; i<2; i++){
+                        memset(p_this->audioBuf[i], 0, 100 * 1024);
+                    }
                 }
             }
             else if(msgType.equals("rate_limits.updated")){
                 //Serial.printf("[WSc] payload: %s\n", payload);
+            }
+            else if(msgType.equals("error")){
+                Serial.printf("[WSc] payload: %s\n", payload);
             }
 
 			break;
