@@ -8,6 +8,7 @@
 - [使い方](#使い方)
   - [リアルタイム会話](#リアルタイム会話)
   - [サーボ動作の停止、再開](#サーボ動作の停止再開)
+- [Function Calling及びMCP](#function-calling及びmcp)
 
 ## 概要
 OpenAIのRealtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。  
@@ -84,3 +85,6 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 
 ### サーボ動作の停止、再開
 M5Core画面の中央付近をタッチするとサーボによる動作の停止、再開ができます。
+
+## Function Calling及びMCP
+Function Callingと、Function Callingを応用して実装したMCPも使用可能です。Function Callingはデフォルトで時計、アラーム機能が有効になっており、「今何時？」や「3分のアラームをセットして」という要求に応えることができます。MCPはLinux PCでMCPサーバを起動し、YAMLで接続先MCPサーバの設定をする必要があります。詳細は[こちら](mcp.md)を参照ください。
