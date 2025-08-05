@@ -27,21 +27,21 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
   - [Speech to Text (STT)](#speech-to-text-stt)
   - [Text to Speech (TTS)](#text-to-speech-tts)
   - [Wake Word](#wake-word)
-- [YAMLによる初期設定](#yamlによる初期設定)
-  - [SC\_SecConfig.yaml](#sc_secconfigyaml)
-  - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
-  - [SC\_ExConfig.yaml](#sc_exconfigyaml)
-- [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
+- [利用方法](#利用方法)
+  - [YAMLによる初期設定](#yamlによる初期設定)
+  - [ビルド＆書き込み](#ビルド書き込み)
 - [その他の機能](#その他の機能)
+  - [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
   - [SD Updaterに対応（Core2のみ）](#sd-updaterに対応core2のみ)
   - [カメラによる顔検出（CoreS3のみ）](#カメラによる顔検出cores3のみ)
 - [コントリビューションについて](#コントリビューションについて)
-- [注意事項](#注意事項)
 
 
 ## 開発環境
-- デバイス：M5Stack Core2 / CoreS3
-- IDE：VSCode Platformio (Arduino)
+- ターゲットデバイス：M5Stack Core2 / CoreS3
+- 開発PC：
+  - OS: Windows11 
+  - IDE：VSCode + PlatformIO
 
 ## 利用可能なAIサービス
 会話に必要な各種AIサービスの対応状況を示します。  
@@ -50,7 +50,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 ### LLM
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・MCPに対応[(詳細ページ)](doc/mcp.md)<br>・🆕Realtime APIに対応[(詳細ページ)](doc/realtime_api.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
+|OpenAI ChatGPT|×|〇|〇|・別途APIキーを取得していただく必要があります<br>・Function Callingに対応[(詳細ページ)](doc/function_calling.md)<br>・MCPに対応[(詳細ページ)](doc/mcp.md)<br>・🆕Realtime APIに対応[(詳細ページ)](doc/realtime_api.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](doc/gpt4o_cores3camera.md)|
 |ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 |ModuleLLM (Function Calling対応)|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Bをご確認ください |
 
@@ -58,8 +58,8 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|Google Cloud STT|×|〇|〇| |
-|OpenAI Whisper|×|〇|〇| |
+|Google Cloud STT|×|〇|〇|別途APIキーを取得していただく必要があります |
+|OpenAI Whisper|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |ModuleLLM ASR|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 |ModuleLLM Whisper|〇|〇|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)及び、同ページの付録Cをご確認ください |
 
@@ -67,9 +67,9 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 |   |ローカル実行|日本語|英語|備考|
 |---|---|---|---|---|
-|Web版VoiceVox|×|〇|×| |
-|ElevenLabs|×|〇|〇| |
-|OpenAI TTS|×|〇|〇| |
+|Web版VoiceVox|×|〇|×|別途APIキーを取得していただく必要があります|
+|ElevenLabs|×|〇|〇|別途APIキーを取得していただく必要があります|
+|OpenAI TTS|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](doc/tts_aquestalk.md)|
 |ModuleLLM TTS|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
 
@@ -80,7 +80,8 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |SimpleVox|×|〇|〇|[詳細ページ](doc/wakeword_simple_vox.md) |
 |ModuleLLM KWS|〇|×|〇| ・[ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください<br> ・"Hi Stack"等、日本語環境でも使いやすいワードにすることは可|
 
-## YAMLによる初期設定
+## 利用方法
+### YAMLによる初期設定
 SDカードに保存するYAMLファイルで各種設定を行います。
 
 YAMLファイルは次の3種類があります。
@@ -91,7 +92,7 @@ YAMLファイルは次の3種類があります。
 - SC_ExConfig.yaml  
   その他、アプリ固有の設定。
 
-### SC_SecConfig.yaml
+#### SC_SecConfig.yaml
 SDカードフォルダ：/yaml  
 ファイル名：SC_SecConfig.yaml
 
@@ -109,7 +110,7 @@ apikey:
 ```
 
 
-### SC_BasicConfig.yaml
+#### SC_BasicConfig.yaml
 SDカードフォルダ：/yaml  
 ファイル名：SC_BasicConfig.yaml
 
@@ -143,7 +144,7 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 > SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
 
 
-### SC_ExConfig.yaml
+#### SC_ExConfig.yaml
 SDカードフォルダ：/app/AiStackChanEx  
 ファイル名：SC_ExConfig.yaml
 
@@ -184,7 +185,38 @@ moduleLLM:
 
 ```
 
-## ユーザアプリケーションの作成について
+### ビルド＆書き込み
+>事前にVSCodeとPlatformIO(VSCodeの拡張機能)、及びUSBドライバのインストールを済ませてください。  
+USBドライバは[こちら](https://docs.m5stack.com/en/download)のM5Stackのサイトから入手できます。使用するM5StackがUSBシリアル変換ICをCP210xとCH9102のどちらを実装しているかによって必要なドライバが異なりますが、両方のドライバをインストールしても問題ありません。
+
+①本リポジトリを適当なディレクトリにクローンします。
+```
+git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
+```
+>パスが深いと、ライブラリのインクルードパスが通らない場合があります。なるべくCドライブ直下に近い場所でクローンしてください。(例 C:\Git)
+
+②PlatformIOのHome画面でOpen Projectをクリックします。
+
+![](images/pio_home.png)
+
+③クローンしたプロジェクトのfirmwareフォルダ（platformio.iniがあるフォルダ）を選択してOpenをクリックします。
+
+![](images/open_project.png)
+
+必要なライブラリのインストールが始まり、VSCodeの画面右下にこのような進捗が表示されるので、完了するまで待ちます。
+
+![](images/pio_configure_progress.png)
+
+④PCとM5StackをUSBケーブルで接続します。
+
+⑤下図に示す手順でビルド環境(env)を選択し、ビルド＆書き込みを実行します。
+
+>envは、基本はm5stack-core2(s3)ですが、例えばOpenAI Realtime APIを使用するときはm5stack-core2(s3)-realtimeを選択します（各機能の解説に従ってください）。envを選択したときに手順③のときと同じようにライブラリのインストールが始まる場合があるので、その場合は完了まで待ってからビルド＆書き込みしてください。
+
+![](images/build_and_flash.png)
+
+## その他の機能
+### ユーザアプリケーションの作成について
 moddable版ｽﾀｯｸﾁｬﾝ（本家と呼ばれている、ししかわさん公開の[リポジトリ](https://github.com/stack-chan/stack-chan)）のMODを参考に、ユーザアプリケーションを作成できるようにしました。
 
 ユーザアプリケーションのソースコードはmodフォルダに格納しており、すでに下表に示すアプリケーションが入っています。
@@ -213,8 +245,6 @@ ModBase* init_mod(void)
 }
 ```
 
-
-## その他の機能
 ### SD Updaterに対応（Core2のみ）
 ![](images/sd_updater.jpg)
 
@@ -248,6 +278,5 @@ build_flags=
 ## コントリビューションについて
 issue、プルリクエストも歓迎です。問題や改善案がありましたら、まずはissueでご連絡ください。
 
-## 注意事項
-- フォルダ名が長いため、ワークスペースの場所によってはライブラリのインクルードパスが通らない場合があります。なるべくCドライブ直下に近い場所をワークスペースにしてください。(例 C:\Git)
+
 

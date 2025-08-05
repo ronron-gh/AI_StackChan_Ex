@@ -27,12 +27,11 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
   - [Speech to Text (STT)](#speech-to-text-stt)
   - [Text to Speech (TTS)](#text-to-speech-tts)
   - [Wake Word](#wake-word)
-- [Initial setup with YAML](#initial-setup-with-yaml)
-  - [SC\_SecConfig.yaml](#sc_secconfigyaml)
-  - [SC\_BasicConfig.yaml](#sc_basicconfigyaml)
-  - [SC\_ExConfig.yaml](#sc_exconfigyaml)
-- [About creating a user application](#about-creating-a-user-application)
+- [How to use](#how-to-use)
+  - [Initial setup with YAML](#initial-setup-with-yaml)
+  - [Build \& Flash](#build--flash)
 - [Other features](#other-features)
+  - [About creating a user application](#about-creating-a-user-application)
   - [Supports SD Updater (Core2 only)](#supports-sd-updater-core2-only)
   - [Face detection by camera (CoreS3 only)](#face-detection-by-camera-cores3-only)
 - [About contributions](#about-contributions)
@@ -40,8 +39,10 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
 
 
 ## Development environment
-- Device：M5Stack Core2 / CoreS3
-- IDE：VSCode Platformio (Arduino)
+- Target device：M5Stack Core2 / CoreS3
+- Development PC：
+  - OS: Windows11 
+  - IDE：VSCode + PlatformIO
 
 ## Available AI services
 This shows the support status of various AI services required for conversation.  
@@ -50,24 +51,24 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 ### LLM
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
-|OpenAI ChatGPT|×|〇|〇|・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・Supports MCP. [Details page](doc/mcp_en.md)<br>・🆕Supports Realtime API .[Details page](doc/realtime_api_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
+|OpenAI ChatGPT|×|〇|〇|・You need to get an API key<br>・Supports Function Calling. [Details page](doc/function_calling_en.md)<br>・Supports MCP. [Details page](doc/mcp_en.md)<br>・🆕Supports Realtime API .[Details page](doc/realtime_api_en.md)<br>・CoreS3 camera images can be input. [Details page](doc/gpt4o_cores3camera_en.md)|
 |ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md). <br>Function calling is also supported (see [Appendix B on the same page](doc/module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
 
 ### Speech to Text (STT)
 
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
-|Google Cloud STT|×|〇|〇| |
-|OpenAI Whisper|×|〇|〇| |
+|Google Cloud STT|×|〇|〇| You need to get an API key|
+|OpenAI Whisper|×|〇|〇| You need to get an API key (You can use a common API key with OpenAI ChatGPT)|
 |ModuleLLM ASR|〇|×|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md) |
 
 ### Text to Speech (TTS)
 
 |   |Local execution|Japanese|English|Remarks|
 |---|---|---|---|---|
-|Web版VoiceVox|×|〇|×| |
-|ElevenLabs|×|〇|〇| |
-|OpenAI TTS|×|〇|〇| |
+|Web版VoiceVox|×|〇|×| You need to get an API key|
+|ElevenLabs|×|〇|〇| You need to get an API key|
+|OpenAI TTS|×|〇|〇| You need to get an API key (You can use a common API key with OpenAI ChatGPT)|
 |AquesTalk|〇|〇|×|Library and dictionary data must be downloaded separately.[Details page](doc/tts_aquestalk.md)|
 |ModuleLLM TTS|〇|×|〇| Please check [How to set up ModuleLLM](doc/module_llm_en.md) |
 
@@ -78,7 +79,8 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 |SimpleVox|×|〇|〇|[Details page](doc/wakeword_simple_vox_en.md) |
 |ModuleLLM KWS|〇|×|〇| ・Please check [How to set up ModuleLLM](doc/module_llm_en.md)|
 
-## Initial setup with YAML
+## How to use
+### Initial setup with YAML
 Various settings are made using the YAML file saved on the SD card.
 
 There are three types of YAML files:
@@ -89,7 +91,7 @@ There are three types of YAML files:
 - SC_ExConfig.yaml  
   Other app-specific settings.
 
-### SC_SecConfig.yaml
+#### SC_SecConfig.yaml
 SD card folder：/yaml  
 File name：SC_SecConfig.yaml
 
@@ -107,7 +109,7 @@ apikey:
 ```
 
 
-### SC_BasicConfig.yaml
+#### SC_BasicConfig.yaml
 SD card folder：/yaml  
 File name：SC_BasicConfig.yaml
 
@@ -141,7 +143,7 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 > SC_BasicConfig.yaml contains various other basic settings, but currently this software only supports the settings listed above.
 
 
-### SC_ExConfig.yaml
+#### SC_ExConfig.yaml
 SD card folder：/app/AiStackChanEx  
 File name：SC_ExConfig.yaml
 
@@ -182,7 +184,41 @@ moduleLLM:
 
 ```
 
-## About creating a user application
+
+### Build & Flash
+
+> Please make sure to install VSCode, the PlatformIO extension for VSCode, and the necessary USB drivers in advance.  
+You can download the USB drivers from the [M5Stack website](https://docs.m5stack.com/en/download). The required driver depends on whether your M5Stack uses the CP210x or CH9102 USB-serial conversion IC, but installing both drivers is not a problem.
+
+1. Clone this repository into an appropriate directory.
+```
+git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
+```
+> If the path is too deep, the library include path may not work. Please clone as close to the root of the C drive as possible (e.g., C:\Git).
+
+2. In the PlatformIO Home screen, click "Open Project".
+
+![](images/pio_home.png)
+
+3. Select the firmware folder (the folder containing platformio.ini) of the cloned project and click "Open".
+
+![](images/open_project.png)
+
+The required libraries will start installing, and you will see progress at the bottom right of the VSCode window. Please wait until it completes.
+
+![](images/pio_configure_progress.png)
+
+4. Connect your PC and M5Stack with a USB cable.
+
+5. Follow the steps shown below to select the build environment (env), then build and flash the firmware.
+
+> The default env is m5stack-core2(s3), but for example, if you want to use the OpenAI Realtime API, select m5stack-core2(s3)-realtime (see the explanation for each feature). When you select an env, library installation may start again as in step 3, so please wait for it to complete before building and flashing.
+
+![](images/build_and_flash.png)
+
+
+## Other features
+### About creating a user application
 By referring to the moddable version of Stack-chan's MOD, we have made it possible to create user applications. (The moddable version of Stack-chan is called the original, and is a [repository](https://github.com/stack-chan/stack-chan) published by Shishikawa-san.)
 
 The source code for user applications is stored in the mod folder, which already contains the applications shown in the table below.
@@ -211,8 +247,6 @@ ModBase* init_mod(void)
 }
 ```
 
-
-## Other features
 ### Supports SD Updater (Core2 only)
 ![](images/sd_updater.jpg)
 
@@ -248,4 +282,3 @@ Issues and pull requests are also welcome. If you have any problems or suggestio
 
 ## Notes
 - Because the folder name is long, the library include path may not work depending on the workspace location. Please make the workspace as close to the C drive as possible. (Example: C:\Git)
-
