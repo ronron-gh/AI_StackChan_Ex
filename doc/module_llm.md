@@ -85,7 +85,7 @@ wakeword:
 
 例として、本ソフトでは[こちらの動画(Twitter)](https://x.com/motoh_tw/status/1895120657182269737)のように、M5Stack Core側に実装したアラーム機能をFunction Callingで呼び出せるようにしました。以降、Function Callingを使用するために必要な手順を記載します。
 
-※Module LLMの2ndロット(ファームウェア：M5_LLM_ubuntu_v1.3_20241203-mini)でのみ確認しています。
+>Module LLMの2ndロット(ファームウェア：M5_LLM_ubuntu_v1.3_20241203-mini)でのみ動作を確認しています。ファームウェアの更新方法については[こちら](https://docs.m5stack.com/ja/stackflow/module_llm/image)(M5Stack公式サイト)を参照ください。
 
 #### (1) Hugging Faceのモデルをaxmodelに変換する
 Function Callingが可能なLLMモデルをHugging Faceからダウンロードして、Module LLMで実行可能なaxmodelに変換します。[こちらのQiita記事](https://qiita.com/motoh_qiita/items/1b0882e507e803982753)の手順に沿って実施してください。  
@@ -154,10 +154,10 @@ llm:
 
 
 ## 付録C. STTとしてWhisperを使用して日本語化する方法
-現在、Module LLM購入時に入っているファームウェア（M5_LLM_ubuntu_v1.3_20241203-mini）はASR(STT)とTTSが日本語対応していませんが、ASRについてはWhisperのパッケージを追加インストールすることで日本語に対応することができます。また、TTSについてはM5Stack Core側でローカル実行できるAquesTalk（日本語対応）を選択することで、AI会話機能の完全ローカル化を日本語で実現できます（AquesTalkの導入方法は[こちらのページ](tts_aquestalk.md)を参照ください）。
+2024/12現在、Module LLM購入時に入っているファームウェアはASR(STT)とTTSが日本語対応していませんが、ASRについてはWhisperのパッケージを追加インストールすることで日本語に対応することができます。また、TTSについてはM5Stack Core側でローカル実行できるAquesTalk（日本語対応）を選択することで、AI会話機能の完全ローカル化を日本語で実現できます（AquesTalkの導入方法は[こちらのページ](tts_aquestalk.md)を参照ください）。
 
 以下の手順(1)～(3)を実施することによりWhisperを使用することができます。  
-※Module LLMのファームウェアはM5_LLM_ubuntu_v1.3_20241203-miniでのみ確認しています。
+>Module LLMの2ndロット(ファームウェア：M5_LLM_ubuntu_v1.3_20241203-mini)でのみ動作を確認しています。ファームウェアの更新方法については[こちら](https://docs.m5stack.com/ja/stackflow/module_llm/image)(M5Stack公式サイト)を参照ください。
 
 #### (1) Whisper関連パッケージをインストール
 [StackFlowのリポジトリ](https://github.com/m5stack/StackFlow/releases)にてファームウェアv1.4のパッケージ群(debファイル)が配布されており、その中にWhisper関連のパッケージ（下記3件）が含まれています。それらをダウンロードし、Module LLM側に転送（adb push、sftp、SDカードに置く等）してインストールします。

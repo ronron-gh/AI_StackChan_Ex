@@ -75,6 +75,8 @@ Although it is somewhat more advanced, Function Calling is possible with Module 
 
 As an example, this software allows you to call the alarm function implemented on the M5Stack Core side by Function Calling, as shown in [this video (Twitter)](https://x.com/motoh_tw/status/1895120657182269737). Below, we will describe the steps required to use Function Calling.
 
+>Operation has only been confirmed with the 2nd lot of Module LLM (firmware: M5_LLM_ubuntu_v1.3_20241203-mini). For instructions on how to update the firmware, please refer to [here](https://docs.m5stack.com/ja/stackflow/module_llm/image) (M5Stack official website).
+
 ### (1) Convert the Hugging Face model to axmodel
 Download the LLM model that supports Function Calling from Hugging Face and convert it into an axmodel that can be executed by Module LLM. Follow the steps in [this Qiita article](https://qiita.com/motoh_qiita/items/1b0882e507e803982753).
 
