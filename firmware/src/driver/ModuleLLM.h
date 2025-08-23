@@ -20,6 +20,7 @@ struct module_llm_param_t
   bool enableWhisper = false;
   //TTS
   bool enableTTS = false;
+  String model = "";
 };
 
 extern M5ModuleLLM module_llm;

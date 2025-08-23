@@ -25,9 +25,10 @@ llm:
 
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
-  model: ""                          # VOICEVOX, AquesTalk, ModuleLLM (modelは未対応)
+  model: ""                          # VOICEVOX, AquesTalk (modelは未対応)
   #model: "eleven_multilingual_v2"    # ElevenLabs
   #model: "tts-1"                     # OpenAI TTS
+  #model: "melotts-ja-jp"             # ModuleLLM (日本語)  ※モデル指定なしの場合は英語
   voice: "3"                         # VOICEVOX (ずんだもん)
   #voice: "AZnzlk1XvdvUeBnXmlld"      # ElevenLabs
   #voice: "alloy"                     # OpenAI TTS
