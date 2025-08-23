@@ -7,8 +7,11 @@
 - [platformio.iniの設定](#platformioiniの設定)
 - [YAMLの設定](#yamlの設定)
   - [シリアル通信PIN](#シリアル通信pin)
-  - [ウェイクワード (KWSを使う場合のみ)](#ウェイクワード-kwsを使う場合のみ)
-  - [サーボPINの制限](#サーボpinの制限)
+  - [LLMを使う場合](#llmを使う場合)
+  - [STTを使う場合](#sttを使う場合)
+  - [TTSを使う場合](#ttsを使う場合)
+  - [ウェイクワード (KWS) を使う場合](#ウェイクワード-kws-を使う場合)
+- [サーボPINの制限](#サーボpinの制限)
 - [付録A. その他、Module LLMのカスタマイズ方法](#付録a-その他module-llmのカスタマイズ方法)
 - [付録B. Function Callingの実装方法](#付録b-function-callingの実装方法)
 - [付録C. STTとTTSを日本語化する方法](#付録c-sttとttsを日本語化する方法)
@@ -29,13 +32,12 @@ lib_deps =
 Core2の場合は[env:m5stack-core2-llm]、CoreS3の場合は[env:m5stack-cores3-llm]を選択すると上記設定が有効になります。
 
 ## YAMLの設定
+SDカードフォルダ：/app/AiStackChanEx  
+ファイル名：SC_ExConfig.yaml
 
 ### シリアル通信PIN
 M5 CoreとModule LLMとの間のシリアル通信で使用するPINの設定です。  
 Core2とCoreS3でPINが異なるためご注意ください。
-
-SDカードフォルダ：/app/AiStackChanEx  
-ファイル名：SC_ExConfig.yaml
 
 ```yaml
 moduleLLM:
@@ -46,18 +48,41 @@ moduleLLM:
   txPin: 14
 ```
 
-### ウェイクワード (KWSを使う場合のみ)
+### LLMを使う場合
+LLMのタイプとして 1:ModuleLLM を選択する。
 
-SDカードフォルダ：/app/AiStackChanEx  
-ファイル名：SC_ExConfig.yaml
+```yaml
+llm:
+  type: 1               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
+```
+
+### STTを使う場合
+LLMのタイプとして 2:ModuleLLM(ASR) を選択する。
+>3:ModuleLLM(Whisper) は日本語対応モデルであり、追加パッケージのインストールが必要です。詳細は付録Cを参照ください。
+
+```yaml
+stt:
+  type: 2               # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR)  3:ModuleLLM(Whisper)
+```
+
+### TTSを使う場合
+LLMのタイプとして 4:ModuleLLM を選択する。
+
+```yaml
+tts:
+  type: 0               # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
+ ```
+
+### ウェイクワード (KWS) を使う場合
+ウェイクワードのタイプとして 1:ModuleLLM(KWS) を選択し、キーワードを設定する。
 
 ```yaml
 wakeword:
   type: 1                            # 0:SimpleVox  1:ModuleLLM(KWS)
-  keyword: "HI STUCK"                # ウェイクワード
+  keyword: "HI JIMMY"                # ウェイクワード
 ```
 
-### サーボPINの制限
+## サーボPINの制限
 下記の通り、Core2、CoreS3ともにポートCのPINがModule LLMのシリアル通信に当たるため使えません。  
 また、CoreS3はPIN2がカメラ用クロックに当たるためポートAも使えません。  
 ([トップページ](../README.md)で記載の通り、サーボ設定はSC_BasicConfig.yamlで行ってください。)
