@@ -122,6 +122,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 #if defined(USE_LLM_MODULE)
     tts = new ModuleLLMTTS();
     module_llm_param.enableTTS = true;
+    module_llm_param.model = tts_param.model;
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     tts = nullptr;

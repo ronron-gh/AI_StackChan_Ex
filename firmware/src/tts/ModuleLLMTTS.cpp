@@ -12,6 +12,7 @@ ModuleLLMTTS::ModuleLLMTTS(){
 
 void ModuleLLMTTS::stream(String text){
   int end = 0;
+  int delimiter_size = 1;
   String remain_text = text;
   String sub_text = text;
   
@@ -22,10 +23,18 @@ void ModuleLLMTTS::stream(String text){
     if(end < 0){
       end = remain_text.indexOf('.');
     }
+    if(end < 0){
+      end = remain_text.indexOf("。");
+      delimiter_size = strlen("。");
+    }
+    if(end < 0){
+      end = remain_text.indexOf("、");
+      delimiter_size = strlen("、");
+    }
 
     if(end > 0){
       sub_text = remain_text.substring(0, end);
-      remain_text = remain_text.substring(end + 1);
+      remain_text = remain_text.substring(end + delimiter_size);
     }
     else{
       sub_text = remain_text;

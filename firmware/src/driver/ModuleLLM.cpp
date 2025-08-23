@@ -16,7 +16,8 @@ String language;
 
 void module_llm_setup(module_llm_param_t param)
 {
-  language = "en_US";
+  language = "en_US";   //日本語に対応していないモデルがあるので、ここを"ja"にしても日本語設定にはなりません。
+                        //日本語にする場合はモデル毎に"ja"を設定します。
 
   /* Init module serial port */
   Serial1.begin(115200, SERIAL_8N1, param.rxPin, param.txPin);  // ※Serial2はSCSサーボで使っているためSerial1に変更
@@ -77,14 +78,25 @@ void module_llm_setup(module_llm_param_t param)
     //whisper_config.language = "en";
     //whisper_config.language = "zh";
     whisper_config.language = "ja";
+    //whisper_config.model = "whisper-base";  //別途whisper-baseのインストールが必要
     whisper_work_id = module_llm.whisper.setup(whisper_config, "whisper_setup");
   }
 
   /* Setup TTS module and save returned work id */
   if(param.enableTTS){
-    M5.Display.printf(">> Setup tts..\n");
-    Serial.printf(">> Setup tts..\n");
-    tts_work_id = module_llm.tts.setup();
+    if(param.model.equals("melotts-ja-jp")){
+      // Note: MeloTTSは別途モデルのインストールが必要
+      //
+      M5.Display.printf(">> Setup melotts(ja)..\n");
+      Serial.printf(">> Setup melotts(ja)..\n");
+      m5_module_llm::ApiMelottsSetupConfig_t melotts_config;
+      melotts_config.model = param.model;
+      tts_work_id = module_llm.melotts.setup(melotts_config, "tts_setup", "ja_JP");
+    }else{
+      M5.Display.printf(">> Setup tts..\n");
+      Serial.printf(">> Setup tts..\n");
+      tts_work_id = module_llm.tts.setup();
+    }
   }
 
   /* Setup LLM module and save returned work id */
@@ -248,7 +260,7 @@ String wait_for_whisper_result()
       no_response_count ++;
     }
 
-    if(no_response_count > 300){
+    if(no_response_count > 3000){
       Serial.println("Whisper timed out.");
       break;
     }

@@ -71,7 +71,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |ElevenLabs|×|〇|〇|別途APIキーを取得していただく必要があります|
 |OpenAI TTS|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](doc/tts_aquestalk.md)|
-|ModuleLLM TTS|〇|×|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください |
+|ModuleLLM TTS|〇|〇🆕|〇| [ModuleLLMを使用する際の設定方法](doc/module_llm.md)をご確認ください（日本語化する場合は同ページの付録Cもご確認ください） |
 
 ### Wake Word
 
@@ -157,10 +157,10 @@ llm:
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
 
-  model: ""                          # VOICEVOX (modelは未対応)
+  model: ""                          # VOICEVOX, AquesTalk (modelは未対応)
   #model: "eleven_multilingual_v2"    # ElevenLabs
   #model: "tts-1"                     # OpenAI TTS
-  #model: ""                          # AquesTalk (modelは未対応)
+  #model: "melotts-ja-jp"             # ModuleLLM (日本語)  ※モデル指定なしの場合は英語
 
   voice: "3"                         # VOICEVOX (ずんだもん)
   #voice: "AZnzlk1XvdvUeBnXmlld"      # ElevenLabs
