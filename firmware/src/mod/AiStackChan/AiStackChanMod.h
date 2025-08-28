@@ -1,7 +1,7 @@
 #ifndef _AI_STACKCHAN_MOD_H
 #define _AI_STACKCHAN_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 
 class AiStackChanMod: public ModBase{

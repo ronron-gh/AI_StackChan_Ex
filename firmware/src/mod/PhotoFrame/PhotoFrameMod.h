@@ -1,7 +1,7 @@
 #ifndef _PHOTO_FRAME_MOD_H
 #define _PHOTO_FRAME_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 
 
