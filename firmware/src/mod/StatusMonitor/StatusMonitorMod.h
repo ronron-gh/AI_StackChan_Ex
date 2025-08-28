@@ -1,7 +1,7 @@
 #ifndef _STATUS_MONITOR_MOD_H
 #define _STATUS_MONITOR_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 
 

@@ -1,7 +1,7 @@
 #ifndef _POMODORO_MOD_H
 #define _POMODORO_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 
 #define POMODORO_TIMER_25MIN    (25*60*1000)

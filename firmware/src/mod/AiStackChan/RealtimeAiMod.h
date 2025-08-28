@@ -3,7 +3,7 @@
 #ifndef _REALTIME_AI_MOD_H
 #define _REALTIME_AI_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 #include "llm/ChatGPT/RealtimeChatGPT.h"
 

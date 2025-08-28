@@ -1,7 +1,7 @@
 #ifndef _MOD_BASE_H
 #define _MOD_BASE_H
 
-#include <arduino.h>
+#include <Arduino.h>
 
 struct box_t
 {
