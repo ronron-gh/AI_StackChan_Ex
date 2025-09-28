@@ -9,10 +9,16 @@
 #include "SpiRamJsonDocument.h"
 #include "../ChatHistory.h"
 #include "ChatGPT.h"
-//#include "MCPClient.h"
 #include <WebSocketsClient.h>
 
+//#define REALTIME_API_BETA
+//#define REALTIME_API_RECORD_TEST
+
+#ifdef REALTIME_API_RECORD_TEST
+#define REALTIME_RECORD_TIMEOUT     (4 * 1000)      //ms  ※録音テスト再生用バッファのサイズに合わせる
+#else
 #define REALTIME_RECORD_TIMEOUT     (30 * 1000)      //ms
+#endif
 
 extern String InitBuffer;
 extern String json_ChatString;
@@ -27,7 +33,14 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     int rtRecSamplerate;
     int rtRecLength;
     bool realtime_recording;
+    bool speaking;
     portTickType startTime;
+
+#ifdef REALTIME_API_RECORD_TEST
+    int16_t* recTestBuf;
+    int recTestLenMax;
+    int recTestLenCnt;
+#endif
 
     // for play
     //
@@ -42,7 +55,7 @@ public:
     void startRealtimeRecord();
     void stopRealtimeRecord();
     void resetRealtimeRecordStartTime();
-    void checkRealtimeRecordTimeout();
+    portTickType checkRealtimeRecordTimeout();
 
     int base64_decode(const char* input, int size, char* output);
     void hexdump(const void *mem, uint32_t len, uint8_t cols = 16);
