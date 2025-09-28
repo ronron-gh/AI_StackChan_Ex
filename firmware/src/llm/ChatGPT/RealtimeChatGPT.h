@@ -33,6 +33,7 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     int rtRecSamplerate;
     int rtRecLength;
     bool realtime_recording;
+    bool speaking;
     portTickType startTime;
 
 #ifdef REALTIME_API_RECORD_TEST
@@ -54,7 +55,7 @@ public:
     void startRealtimeRecord();
     void stopRealtimeRecord();
     void resetRealtimeRecordStartTime();
-    void checkRealtimeRecordTimeout();
+    portTickType checkRealtimeRecordTimeout();
 
     int base64_decode(const char* input, int size, char* output);
     void hexdump(const void *mem, uint32_t len, uint8_t cols = 16);

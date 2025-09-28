@@ -188,6 +188,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->stopRealtimeRecord();
                 M5.Mic.end();
                 M5.Speaker.begin();
+                p_this->speaking = true;
             }
 #ifdef REALTIME_API_BETA
             else if(msgType.equals("response.audio_transcript.delta")){
@@ -238,6 +239,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     for(int i=0; i<2; i++){
                         memset(p_this->audioBuf[i], 0, 100 * 1024);
                     }
+                    p_this->speaking = false;
                 }
             }
             else if(msgType.equals("rate_limits.updated")){
@@ -273,6 +275,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
     rtRecSamplerate(16000),
     rtRecLength(2000),          //0.125s 
     realtime_recording(false),
+    speaking(false),
     startTime(0),
     nextBufIdx(0)
 {
@@ -341,7 +344,24 @@ void RealtimeChatGPT::webSocketProcess()
         json.replace("REPLACE_TO_AUDIO_BASE64", audio_base64);
         webSocket.sendTXT(json);
 #endif
-        checkRealtimeRecordTimeout();
+
+        portTickType elapsedTime = checkRealtimeRecordTimeout();
+
+#if 0   //Debug リスニング経過時間の表示
+        static char speechTxt[64];
+        sprintf(speechTxt, "Listening:%ds", int(elapsedTime / 1000));
+        avatar.setSpeechText(speechTxt);
+#else
+        avatar.setSpeechText("Listening...");
+#endif
+    }
+    else{
+        if(speaking){
+            avatar.setSpeechText("");
+        }
+        else{
+            avatar.setSpeechText("Please touch");
+        }
     }
 }
 
@@ -356,7 +376,6 @@ void RealtimeChatGPT::startRealtimeRecord()
         Serial.println("Start realtime recording");
         realtime_recording = true;
         startTime = xTaskGetTickCount();
-        avatar.setSpeechText("Listening...");
     }
 }
 
@@ -366,7 +385,6 @@ void RealtimeChatGPT::stopRealtimeRecord()
         Serial.println("Stop realtime recording");
         realtime_recording = false;
         startTime = 0;
-        avatar.setSpeechText("");
     }
 }
 
@@ -375,7 +393,7 @@ void RealtimeChatGPT::resetRealtimeRecordStartTime()
     startTime = xTaskGetTickCount();
 }
 
-void RealtimeChatGPT::checkRealtimeRecordTimeout()
+portTickType RealtimeChatGPT::checkRealtimeRecordTimeout()
 {
     portTickType elapsedTime;
     elapsedTime = (xTaskGetTickCount() - startTime) * portTICK_RATE_MS;
@@ -393,8 +411,9 @@ void RealtimeChatGPT::checkRealtimeRecordTimeout()
         }
         recTestLenCnt = 0;
 #endif
-        avatar.setSpeechText("Please touch");
     }
+
+    return elapsedTime;
 }
 
 int RealtimeChatGPT::base64_decode(const char* input, int size, char* output)

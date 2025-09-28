@@ -59,11 +59,12 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
 void RealtimeAiMod::init(void)
 {
   //avatar.setSpeechText("Realtime AI");
+  avatar.set_isSubWindowEnable(true);
 }
 
 void RealtimeAiMod::pause(void)
 {
-
+  avatar.set_isSubWindowEnable(false);
 }
 
 
@@ -125,12 +126,19 @@ void RealtimeAiMod::idle(void)
 
     /* Query the period of the timer that expires. */
     xRemainingTime = xTimerGetExpiryTime( xAlarmTimer ) - xTaskGetTickCount();
-    avatarText = "残り" + String(xRemainingTime / 1000) + "秒";
-    avatar.setSpeechText(avatarText.c_str());
+    //avatarText = "残り" + String(xRemainingTime / 1000) + "秒";
+    //avatar.setSpeechText(avatarText.c_str());
+    avatarText = "Alarm countdown: " + String(xRemainingTime / 1000);
+    avatar.set_isSubWindowEnable(true);
+    avatar.updateSubWindowTxt(avatarText, 0, 0, 200, 50);
+  }
+  else{
+    avatar.set_isSubWindowEnable(false);
   }
 
   if (alarmTimerCallbacked) {
     alarmTimerCallbacked = false;
+    avatar.set_isSubWindowEnable(false);
     alarm_tone();
   }
 
