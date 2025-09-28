@@ -5,7 +5,7 @@
 #include "driver/AudioOutputM5Speaker.h"
 #include <HTTPClient.h>
 #include <SD.h>
-#include <EMailSender.h>
+//#include <EMailSender.h>
 #include "MailClient.h"
 #include "driver/WakeWord.h"
 #include "Robot.h"
@@ -603,6 +603,7 @@ String get_bus_time(int nNext){
 
 
 //メッセージをメールで送信する関数
+// ※EMailSenderライブラリのインクルード、及びplatformio.iniのlib_depsでの宣言を有効化してください。
 String send_mail(String msg) {
   String response = "";
   EMailSender::EMailMessage message;

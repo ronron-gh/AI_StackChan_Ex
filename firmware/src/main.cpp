@@ -23,8 +23,6 @@
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
-//#include <ESP32WebServer.h>
-//#include <ESPmDNS.h>
 #include <ESP8266FtpServer.h>
 
 #include "llm/ChatGPT/ChatGPT.h"
