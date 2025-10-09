@@ -2,7 +2,6 @@
 
 #include <Arduino.h>
 #include <M5Unified.h>
-//#include <SPIFFS.h>
 #include <Avatar.h>
 //#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -10,7 +9,6 @@
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
 #include "RealtimeChatGPT.h"
-//#include "../ChatHistory.h"
 #include "FunctionCall.h"
 //#include "MCPClient.h"
 #include "Robot.h"
@@ -25,37 +23,18 @@ extern Avatar avatar;
 WebSocketsClient webSocket;
 SpiRamJsonDocument msgDoc(0);
 
-#ifdef REALTIME_API_RECORD_TEST
 
-#endif
-
-
-#ifdef REALTIME_API_BETA
-char session_update[] =
-      "{"
-        "\"type\": \"session.update\","
-        "\"session\": {"
-          //"\"turn_detection\": null,"
-          "\"input_audio_transcription\": {"
-            "\"model\": \"whisper-1\","
-            "\"language\": \"ja\""
-          "},"
-          //"\"voice\":\"alloy\","
-          "\"voice\":\"sage\","
-          //"\"output_audio_format\":\"g711_ulaw\","    //pcm16よりだいぶ軽いので使いたかったが、再生できるライブラリがなかった
-          "\"instructions\": \"You are an AI robot named Stack-chan. Please speak in Japanese.\","
-          "\"tools\":[]"
-        "}"
-      "}";
-#else
-
-char session_update[] =
+const char session_update[] =
       "{"
         "\"type\": \"session.update\","
         "\"session\": {"
           "\"type\": \"realtime\","
           "\"model\": \"gpt-realtime\","
+#ifdef USE_TTS
+          "\"output_modalities\": [\"text\"],"
+#else
           "\"output_modalities\": [\"audio\"],"
+#endif
           "\"audio\": {"
             "\"input\": {"
               "\"format\": {"
@@ -79,9 +58,9 @@ char session_update[] =
           "\"tools\":[]"
         "}"
       "}";
-#endif
 
-char input_audio_append[] =
+
+const char input_audio_append[] =
         "{"
           "\"type\": \"input_audio_buffer.append\","
           "\"audio\": \"REPLACE_TO_AUDIO_BASE64\""
@@ -89,7 +68,7 @@ char input_audio_append[] =
 
 // for function calling
 //
-char conversation_item_create[] =
+const char conversation_item_create[] =
         "{"
             "\"type\": \"conversation.item.create\","
             "\"item\": {"
@@ -99,7 +78,7 @@ char conversation_item_create[] =
             "}"
         "}";
 
-char response_create[] =
+const char response_create[] =
         "{"
             "\"type\": \"response.create\""
         "}";
@@ -146,7 +125,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 SpiRamJsonDocument functionsDoc(1024*10);
                 error = deserializeJson(functionsDoc, json_Functions.c_str());
                 if (error) {
-                    Serial.println("load_role: JSON deserialization error");
+                    Serial.println("FunctionCall: JSON deserialization error");
                 }
 
                 int nFuncs = functionsDoc.size();
@@ -186,20 +165,13 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(msgType.equals("input_audio_buffer.committed")){
                 Serial.printf("[WSc] input audio committed\n");
                 p_this->stopRealtimeRecord();
+#ifndef USE_TTS
                 M5.Mic.end();
                 M5.Speaker.begin();
+#endif
                 p_this->speaking = true;
             }
-#ifdef REALTIME_API_BETA
-            else if(msgType.equals("response.audio_transcript.delta")){
-                delta = msgDoc["delta"].as<String>();
-                Serial.printf("[WSc] delta: %s\n", delta.c_str());
-            }
-            else if(msgType.equals("response.audio.delta")){
-                delta = msgDoc["delta"].as<String>();
-                p_this->streamAudioDelta(delta);
-            }
-#else
+#ifndef USE_TTS            
             else if(msgType.equals("response.output_audio_transcript.delta")){
                 delta = msgDoc["delta"].as<String>();
                 Serial.printf("[WSc] delta: %s\n", delta.c_str());
@@ -207,6 +179,10 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(msgType.equals("response.output_audio.delta")){
                 delta = msgDoc["delta"].as<String>();
                 p_this->streamAudioDelta(delta);
+            }
+#else
+            else if(msgType.equals("response.output_text.done")){
+                p_this->output_text = msgDoc["text"].as<String>();
             }
 #endif
             else if(msgType.equals("response.done")){
@@ -233,12 +209,15 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 }
                 else{
                     p_this->startRealtimeRecord();
+#ifndef USE_TTS
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
                     M5.Speaker.end();
                     M5.Mic.begin();
+
                     for(int i=0; i<2; i++){
                         memset(p_this->audioBuf[i], 0, 100 * 1024);
                     }
+#endif
                     p_this->speaking = false;
                 }
             }
@@ -277,11 +256,9 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
     realtime_recording(false),
     speaking(false),
     startTime(0),
-    nextBufIdx(0)
+    nextBufIdx(0),
+    output_text(String(""))
 {
-
-  // リアルタイム録音用のバッファを初期化
-  rtRecBuf = (int16_t*)heap_caps_malloc(rtRecLength * sizeof(*rtRecBuf), MALLOC_CAP_8BIT);
 
 #ifdef REALTIME_API_RECORD_TEST
   // リアルタイム録音のチャンクデータを蓄積してテスト再生するためのバッファ（約4s）
@@ -290,11 +267,13 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
   recTestBuf = (int16_t*)heap_caps_malloc(recTestLenMax * sizeof(*rtRecBuf), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #endif
 
+#ifndef USE_TTS
   // ストリーミング音声再生用のダブルバッファを初期化
   for(int i=0; i<2; i++){
     audioBuf[i] = (uint8_t*)malloc(100 * 1024);
     memset(audioBuf[i], 0, 100 * 1024);
   }
+#endif
 
   msgDoc = SpiRamJsonDocument(1024*150);
 
@@ -302,19 +281,14 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
   // WebSocket connect
   //
   avatar.setSpeechText("Connecting...");
-#ifdef REALTIME_API_BETA
-  webSocket.beginSslWithCA("api.openai.com", 443, "/v1/realtime?model=gpt-4o-realtime-preview-2025-06-03", root_ca_openai);
-#else
   webSocket.beginSslWithCA("api.openai.com", 443, "/v1/realtime?model=gpt-realtime", root_ca_openai);
-#endif
+
   // event handler
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
   webSocket.onEvent(webSocketEvent);
   String auth = "Bearer " + param.api_key;
   webSocket.setAuthorization(auth.c_str());
-#ifdef REALTIME_API_BETA
-  webSocket.setExtraHeaders("OpenAI-Beta: realtime=v1");
-#endif
+
   // try ever 5000 again if connection has failed
   webSocket.setReconnectInterval(5000);
 
@@ -374,8 +348,15 @@ void RealtimeChatGPT::startRealtimeRecord()
 {
     if(!realtime_recording){
         Serial.println("Start realtime recording");
-        realtime_recording = true;
-        startTime = xTaskGetTickCount();
+        rtRecBuf = (int16_t*)heap_caps_malloc(rtRecLength * sizeof(*rtRecBuf), MALLOC_CAP_8BIT);
+        if(rtRecBuf == nullptr){
+            Serial.println("Failed to allocate memory for realtime recording");
+            realtime_recording = false;
+            startTime = 0;
+        }else{
+            realtime_recording = true;
+            startTime = xTaskGetTickCount();
+        }
     }
 }
 
@@ -383,6 +364,7 @@ void RealtimeChatGPT::stopRealtimeRecord()
 {
     if(realtime_recording){
         Serial.println("Stop realtime recording");
+        heap_caps_free(rtRecBuf);
         realtime_recording = false;
         startTime = 0;
     }

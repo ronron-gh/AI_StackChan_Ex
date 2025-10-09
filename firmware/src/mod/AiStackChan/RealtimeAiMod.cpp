@@ -40,7 +40,7 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
 
   pRtLLM = (RealtimeChatGPT*)robot->llm;
 
-  servo_home = false;
+  //servo_home = false;
 
 #if 0
   if(!isOffline){
@@ -118,6 +118,15 @@ void RealtimeAiMod::idle(void)
 {
   pRtLLM->webSocketProcess();
 
+#ifdef USE_TTS
+  String& text = pRtLLM->getOutputText();
+  //String text = "私の名前はスタックチャンです。よろしくね。";   // test
+  if(text != ""){
+    Serial.println(text);
+    robot->speech(text);
+    text = "";
+  }
+#endif
 
   // Alarm
   //

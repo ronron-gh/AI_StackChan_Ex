@@ -106,7 +106,11 @@ void lipSync(void *args)
   for (;;)
   {
 #ifdef REALTIME_API
+#ifdef USE_TTS
+    level = robot->tts->getLevel();
+#else
     level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+#endif
 #else
     level = robot->tts->getLevel();
 #endif
