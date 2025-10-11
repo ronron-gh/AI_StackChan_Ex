@@ -128,12 +128,19 @@ void RealtimeAiMod::idle(void)
     text = "";
   }
 #endif
-  bool isSpeaking = robot->speechAsync(text);
-  if(isSpeaking){
+
+  if(text != ""){
+    Serial.println(text);
+    robot->speechAsync(text);
+    text = "";
+  }
+
+  if(robot->asyncPlaying){
     pRtLLM->setSpeaking(true);
   }else{
     pRtLLM->setSpeaking(false);
   }
+
 #endif
 
   // Alarm

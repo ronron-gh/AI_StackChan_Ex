@@ -20,7 +20,6 @@ extern uint8_t *preallocateBuffer;
 
 extern void mp3_init(void);
 extern void playMP3(AudioFileSourceBuffer *buff);
-extern bool playMP3Async(AudioFileSourceBuffer *buff);
 extern bool playMP3SPIFFS(const char *filename);
 extern bool playMP3SD(const char *filename);
 

@@ -182,6 +182,19 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->streamAudioDelta(delta);
             }
 #else
+
+#if 0
+            else if(msgType.equals("response.output_text.delta")){
+                p_this->output_text += msgDoc["delta"].as<String>();
+                int end = p_this->output_text.indexOf("、");
+                if(end < 0){
+                    end = p_this->output_text.indexOf("。");
+                }
+                if(end > 0){
+                    p_this->outputTextQueue.push_back(p_this->output_text);
+                }
+            }
+#endif
             else if(msgType.equals("response.output_text.done")){
                 p_this->output_text = msgDoc["text"].as<String>();
             }

@@ -187,30 +187,3 @@ void WebVoiceVoxTTS::stream(String text){
   delete httpsStream;
   delete buff;
 }
-
-bool WebVoiceVoxTTS::streamAsync(String& text){
-  if(!asyncPlaying && text != ""){
-    Serial.println("Start TTS stream");
-    String URL = getStreamUrl(text);
-    text = "";
-    if(URL == ""){
-      Serial.println("failed to get stream URL.");
-      return false;
-    }
-    httpsStream = new AudioFileSourceHTTPSStream(URL.c_str(), root_ca);
-    buff = new AudioFileSourceBuffer(httpsStream, preallocateBuffer, preallocateBufferSize);
-    asyncPlaying = playMP3Async(buff);
-  }
-  else{
-    if(asyncPlaying){
-      //Serial.println("playMP3Async");
-      asyncPlaying = playMP3Async(buff);
-      if(!asyncPlaying){
-        Serial.println("TTS stream finish");
-        delete httpsStream;
-        delete buff;
-      }
-    }
-  }
-  return asyncPlaying;
-}

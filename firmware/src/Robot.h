@@ -32,9 +32,14 @@ public:
     void initTTS(StackchanExConfig& config);
 
     void speech(String text);
-    bool speechAsync(String& text);
     String listen();
     void chat(String text, const char *base64_buf = NULL);
+
+    // TTS非同期版
+    //
+    bool asyncPlaying;
+    String asyncPlayText;
+    void speechAsync(String& text);
 };
 
 extern Robot* robot;

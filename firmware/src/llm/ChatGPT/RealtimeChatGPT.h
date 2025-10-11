@@ -39,6 +39,7 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     // for TTS
     //
     String output_text;
+    std::deque<String> outputTextQueue;
 
 #ifdef REALTIME_API_RECORD_TEST
     int16_t* recTestBuf;

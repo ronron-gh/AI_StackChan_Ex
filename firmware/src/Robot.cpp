@@ -45,6 +45,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 
   #if defined(USE_TTS)
     initTTS(config);
+    asyncPlaying = false;
+    asyncPlayText = "";
   #endif
 
 #else //REALTIME_API
@@ -216,19 +218,26 @@ void Robot::speech(String text)
   }
 }
 
-bool Robot::speechAsync(String& text)
-{
-  if(text != ""){
-    servo_home = false;
-    avatar.setExpression(Expression::Happy);
-  }
+void wvvAsyncStreamTask(void *arg) {
+  Robot* pRt = (Robot*)arg;
+  pRt->asyncPlaying = true;
+  pRt->speech(pRt->asyncPlayText);
+  pRt->asyncPlaying = false;
+  vTaskDelete(NULL);  //自タスクを終了するときは必ずvTaskDeleteする。
+}
 
-  bool isPlaying = tts->streamAsync(text);
-  if(!isPlaying){
-    avatar.setExpression(Expression::Neutral);
-    servo_home = true;
-  }
-  return isPlaying;
+
+void Robot::speechAsync(String& text)
+{
+  Serial.println("Start TTS stream task");
+  asyncPlayText = text;
+  xTaskCreate(wvvAsyncStreamTask, /* Function to implement the task */
+              "wvvAsyncStreamTask", /* Name of the task */
+              64*1024,               /* Stack size in words */
+              this,                /* Task input parameter */
+              2,                  /* Priority of the task */
+              NULL);              /* Task handle. */
+
 }
 
 String Robot::listen()
