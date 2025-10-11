@@ -32,6 +32,7 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     int rtRecSamplerate;
     int rtRecLength;
     bool realtime_recording;
+    bool thinking;
     bool speaking;
     portTickType startTime;
 
@@ -66,7 +67,8 @@ public:
 
     // for TTS
     //
-    String& getOutputText(){ return output_text; }; 
+    String& getOutputText(){ return output_text; };
+    void setSpeaking(bool _speaking){ speaking = _speaking; };
 };
 
 

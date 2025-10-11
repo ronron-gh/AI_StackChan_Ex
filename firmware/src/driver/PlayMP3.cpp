@@ -65,6 +65,30 @@ void playMP3(AudioFileSourceBuffer *buff){
 
 }
 
+
+bool playMP3Async(AudioFileSourceBuffer *buff){
+  if(!mp3->isRunning()){
+    Serial.println("mp3 start");
+    M5.Mic.end();
+    M5.Speaker.begin();
+    mp3->begin(buff, &out);
+    return true;
+  }
+  else{
+    if (!mp3->loop()) {
+      mp3->stop();
+      Serial.println("mp3 stop");
+      M5.Speaker.end();
+      M5.Mic.begin();
+      return false;
+    }
+    else{
+      //Serial.println("mp3 playing");
+      return true;
+    }
+  }
+}
+
 bool playMP3SPIFFS(const char *filename)
 {
   bool result;

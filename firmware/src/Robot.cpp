@@ -205,15 +205,30 @@ void Robot::initTTS(StackchanExConfig& config){
 
 void Robot::speech(String text)
 {
-    if(text != ""){
-      servo_home = false;
-      avatar.setExpression(Expression::Happy);
+  if(text != ""){
+    servo_home = false;
+    avatar.setExpression(Expression::Happy);
 
-      tts->stream(text);
+    tts->stream(text);
 
-      avatar.setExpression(Expression::Neutral);
-      servo_home = true;
-    }
+    avatar.setExpression(Expression::Neutral);
+    servo_home = true;
+  }
+}
+
+bool Robot::speechAsync(String& text)
+{
+  if(text != ""){
+    servo_home = false;
+    avatar.setExpression(Expression::Happy);
+  }
+
+  bool isPlaying = tts->streamAsync(text);
+  if(!isPlaying){
+    avatar.setExpression(Expression::Neutral);
+    servo_home = true;
+  }
+  return isPlaying;
 }
 
 String Robot::listen()

@@ -164,26 +164,53 @@ String WebVoiceVoxTTS::URLEncode(const char* msg) {
   return encodedMsg;
 }
 
-
-
-void WebVoiceVoxTTS::stream(String text){
+String WebVoiceVoxTTS::getStreamUrl(String text){
   String tts_url = String("https://api.tts.quest/v3/voicevox/synthesis?key=")+ param.api_key
                     + String("&text=") +  URLEncode(text.c_str())
                     + String("&speaker=") + param.voice;
   String URL = voicevox_tts_url(tts_url.c_str(), root_ca);
   Serial.println(tts_url);
+  return URL;
+}
 
+void WebVoiceVoxTTS::stream(String text){
+  String URL = getStreamUrl(text);
   if(URL == ""){
     Serial.println("failed to get stream URL.");
     return;
   }
-//  while(!voicevox_tts_json_status(tts_status_url.c_str(), "isAudioReady", root_ca)) delay(1);
-//delay(2500);
-  AudioFileSourceHTTPSStream *stream = new AudioFileSourceHTTPSStream(URL.c_str(), root_ca);
-//  file->RegisterStatusCB(StatusCallback, (void*)"file");
-  AudioFileSourceBuffer *buff = new AudioFileSourceBuffer(stream, preallocateBuffer, preallocateBufferSize);
+
+  httpsStream = new AudioFileSourceHTTPSStream(URL.c_str(), root_ca);
+  buff = new AudioFileSourceBuffer(httpsStream, preallocateBuffer, preallocateBufferSize);
 
   playMP3(buff);
-  delete stream;
+  delete httpsStream;
   delete buff;
+}
+
+bool WebVoiceVoxTTS::streamAsync(String& text){
+  if(!asyncPlaying && text != ""){
+    Serial.println("Start TTS stream");
+    String URL = getStreamUrl(text);
+    text = "";
+    if(URL == ""){
+      Serial.println("failed to get stream URL.");
+      return false;
+    }
+    httpsStream = new AudioFileSourceHTTPSStream(URL.c_str(), root_ca);
+    buff = new AudioFileSourceBuffer(httpsStream, preallocateBuffer, preallocateBufferSize);
+    asyncPlaying = playMP3Async(buff);
+  }
+  else{
+    if(asyncPlaying){
+      //Serial.println("playMP3Async");
+      asyncPlaying = playMP3Async(buff);
+      if(!asyncPlaying){
+        Serial.println("TTS stream finish");
+        delete httpsStream;
+        delete buff;
+      }
+    }
+  }
+  return asyncPlaying;
 }

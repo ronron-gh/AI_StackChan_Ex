@@ -165,11 +165,12 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(msgType.equals("input_audio_buffer.committed")){
                 Serial.printf("[WSc] input audio committed\n");
                 p_this->stopRealtimeRecord();
+                p_this->thinking = true;
 #ifndef USE_TTS
                 M5.Mic.end();
                 M5.Speaker.begin();
-#endif
                 p_this->speaking = true;
+#endif
             }
 #ifndef USE_TTS            
             else if(msgType.equals("response.output_audio_transcript.delta")){
@@ -208,6 +209,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     webSocket.sendTXT(response_create);
                 }
                 else{
+                    p_this->thinking = false;
                     p_this->startRealtimeRecord();
 #ifndef USE_TTS
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
@@ -217,8 +219,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     for(int i=0; i<2; i++){
                         memset(p_this->audioBuf[i], 0, 100 * 1024);
                     }
-#endif
                     p_this->speaking = false;
+#endif
                 }
             }
             else if(msgType.equals("rate_limits.updated")){
@@ -254,6 +256,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
     rtRecSamplerate(16000),
     rtRecLength(2000),          //0.125s 
     realtime_recording(false),
+    thinking(false),
     speaking(false),
     startTime(0),
     nextBufIdx(0),
@@ -298,7 +301,7 @@ void RealtimeChatGPT::webSocketProcess()
 {
     webSocket.loop();
 
-    if(realtime_recording){
+    if(realtime_recording && !speaking){
         //M5.Mic.begin();
         if(!M5.Mic.record(rtRecBuf, rtRecLength, rtRecSamplerate)){
             Serial.println("Mic.record() returns false");
@@ -330,7 +333,7 @@ void RealtimeChatGPT::webSocketProcess()
 #endif
     }
     else{
-        if(speaking){
+        if(speaking || thinking){
             avatar.setSpeechText("");
         }
         else{

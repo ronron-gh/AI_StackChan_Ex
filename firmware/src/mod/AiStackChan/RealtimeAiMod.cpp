@@ -121,10 +121,18 @@ void RealtimeAiMod::idle(void)
 #ifdef USE_TTS
   String& text = pRtLLM->getOutputText();
   //String text = "私の名前はスタックチャンです。よろしくね。";   // test
+#if 0
   if(text != ""){
     Serial.println(text);
     robot->speech(text);
     text = "";
+  }
+#endif
+  bool isSpeaking = robot->speechAsync(text);
+  if(isSpeaking){
+    pRtLLM->setSpeaking(true);
+  }else{
+    pRtLLM->setSpeaking(false);
   }
 #endif
 
