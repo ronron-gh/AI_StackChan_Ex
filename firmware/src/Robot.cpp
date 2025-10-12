@@ -21,6 +21,24 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern bool servo_home;
 
+// TTS非同期実行用のタスク
+//
+void asyncTtsStreamTask(void *arg) {
+  Serial.println("TTS stream task created");
+  Robot* pRt = (Robot*)arg;
+
+  while(1){
+    if(pRt->asyncPlayText != ""){
+      pRt->asyncPlaying = true;
+      //pRt->speech(pRt->asyncPlayText);
+      pRt->tts->stream(pRt->asyncPlayText);
+      pRt->asyncPlaying = false;
+      pRt->asyncPlayText = "";
+    }
+    delay(1);
+  }
+}
+
 
 Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
@@ -47,6 +65,14 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
     initTTS(config);
     asyncPlaying = false;
     asyncPlayText = "";
+
+    xTaskCreate(asyncTtsStreamTask, /* Function to implement the task */
+              "asyncTtsStreamTask", /* Name of the task */
+              5*1024,               /* Stack size in words */
+              this,                 /* Task input parameter */
+              2,                    /* Priority of the task */
+              NULL);                /* Task handle. */
+
   #endif
 
 #else //REALTIME_API
@@ -218,26 +244,10 @@ void Robot::speech(String text)
   }
 }
 
-void wvvAsyncStreamTask(void *arg) {
-  Robot* pRt = (Robot*)arg;
-  pRt->asyncPlaying = true;
-  pRt->speech(pRt->asyncPlayText);
-  pRt->asyncPlaying = false;
-  vTaskDelete(NULL);  //自タスクを終了するときは必ずvTaskDeleteする。
-}
-
-
 void Robot::speechAsync(String& text)
 {
   Serial.println("Start TTS stream task");
   asyncPlayText = text;
-  xTaskCreate(wvvAsyncStreamTask, /* Function to implement the task */
-              "wvvAsyncStreamTask", /* Name of the task */
-              64*1024,               /* Stack size in words */
-              this,                /* Task input parameter */
-              2,                  /* Priority of the task */
-              NULL);              /* Task handle. */
-
 }
 
 String Robot::listen()

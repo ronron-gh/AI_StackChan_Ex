@@ -165,11 +165,12 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(msgType.equals("input_audio_buffer.committed")){
                 Serial.printf("[WSc] input audio committed\n");
                 p_this->stopRealtimeRecord();
-                p_this->thinking = true;
 #ifndef USE_TTS
                 M5.Mic.end();
                 M5.Speaker.begin();
                 p_this->speaking = true;
+#else
+                p_this->thinking = true;
 #endif
             }
 #ifndef USE_TTS            
@@ -182,22 +183,29 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->streamAudioDelta(delta);
             }
 #else
-
-#if 0
             else if(msgType.equals("response.output_text.delta")){
                 p_this->output_text += msgDoc["delta"].as<String>();
-                int end = p_this->output_text.indexOf("、");
+
+                // 区切り文字を検出
+                int end = p_this->output_text.indexOf("。");
                 if(end < 0){
-                    end = p_this->output_text.indexOf("。");
+                    end = p_this->output_text.indexOf("？");
                 }
+                if(end < 0){
+                    end = p_this->output_text.indexOf("！");
+                }
+
+                // 区切り文字があればテキストをキューに追加
                 if(end > 0){
+                    Serial.printf("[WSc] push text: %s\n", p_this->output_text.c_str());
                     p_this->outputTextQueue.push_back(p_this->output_text);
+                    p_this->output_text = "";
                 }
             }
-#endif
-            else if(msgType.equals("response.output_text.done")){
-                p_this->output_text = msgDoc["text"].as<String>();
-            }
+
+            //else if(msgType.equals("response.output_text.done")){
+            //    p_this->output_text = msgDoc["text"].as<String>();
+            //}
 #endif
             else if(msgType.equals("response.done")){
                 Serial.printf("[WSc] response.done\n");
@@ -222,9 +230,8 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     webSocket.sendTXT(response_create);
                 }
                 else{
-                    p_this->thinking = false;
-                    p_this->startRealtimeRecord();
 #ifndef USE_TTS
+                    p_this->startRealtimeRecord();
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
                     M5.Speaker.end();
                     M5.Mic.begin();
@@ -233,6 +240,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                         memset(p_this->audioBuf[i], 0, 100 * 1024);
                     }
                     p_this->speaking = false;
+#else
+                    p_this->response_done = true;
+                    p_this->thinking = false;
 #endif
                 }
             }
@@ -269,6 +279,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
     rtRecSamplerate(16000),
     rtRecLength(2000),          //0.125s 
     realtime_recording(false),
+    response_done(false),
     thinking(false),
     speaking(false),
     startTime(0),
@@ -314,7 +325,14 @@ void RealtimeChatGPT::webSocketProcess()
 {
     webSocket.loop();
 
-    if(realtime_recording && !speaking){
+#ifdef USE_TTS
+    if(response_done && !speaking){
+        startRealtimeRecord();
+        response_done = false;
+    }
+#endif
+
+    if(realtime_recording){
         //M5.Mic.begin();
         if(!M5.Mic.record(rtRecBuf, rtRecLength, rtRecSamplerate)){
             Serial.println("Mic.record() returns false");
@@ -347,7 +365,9 @@ void RealtimeChatGPT::webSocketProcess()
     }
     else{
         if(speaking || thinking){
+            //発話中もしくはテキスト生成中
             avatar.setSpeechText("");
+            resetRealtimeRecordStartTime(); //長いテキストを発話中にタイムアウトしてしまうのを防ぐ
         }
         else{
             avatar.setSpeechText("Please touch");
@@ -470,6 +490,21 @@ void RealtimeChatGPT::streamAudioDelta(String& delta)
   M5.Speaker.playRaw((int16_t*)buf, len/2, 24000, false);
   nextBufIdx ^= 1;  //ダブルバッファを切り替え
 
+}
+
+String RealtimeChatGPT::getOutputText()
+{
+    String text = "";
+    if(outputTextQueue.size() != 0){
+        text = outputTextQueue[0];
+        outputTextQueue.pop_front();
+    }
+    return text;
+}
+
+int RealtimeChatGPT::getOutputTextQueueSize()
+{
+    return outputTextQueue.size();
 }
 
 #endif  //REALTIME_API

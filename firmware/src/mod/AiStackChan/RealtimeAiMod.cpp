@@ -119,8 +119,7 @@ void RealtimeAiMod::idle(void)
   pRtLLM->webSocketProcess();
 
 #ifdef USE_TTS
-  String& text = pRtLLM->getOutputText();
-  //String text = "私の名前はスタックチャンです。よろしくね。";   // test
+
 #if 0
   if(text != ""){
     Serial.println(text);
@@ -129,16 +128,26 @@ void RealtimeAiMod::idle(void)
   }
 #endif
 
-  if(text != ""){
-    Serial.println(text);
-    robot->speechAsync(text);
-    text = "";
-  }
-
-  if(robot->asyncPlaying){
+  if(!robot->asyncPlaying && (pRtLLM->getOutputTextQueueSize() != 0)){
+    // 発話停止中かつキューにテキストがある場合は発話開始
+    ttsText = pRtLLM->getOutputText();
+    Serial.println(ttsText);
+    robot->speechAsync(ttsText);
     pRtLLM->setSpeaking(true);
-  }else{
+
+    servo_home = false;
+    avatar.setExpression(Expression::Happy);
+  }
+  else if(robot->asyncPlaying){
+    // 発話中
+    pRtLLM->setSpeaking(true);
+  }
+  else{
+    // 発話停止中かつキューにテキストがない場合はLLM機能に発話終了を通知
     pRtLLM->setSpeaking(false);
+
+    servo_home = true;
+    avatar.setExpression(Expression::Neutral);
   }
 
 #endif

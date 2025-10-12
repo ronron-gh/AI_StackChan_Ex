@@ -66,8 +66,9 @@ const Expression expressions_table[] = {
   Expression::Angry
 };
 
+#if !defined(REALTIME_API)
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
-
+#endif
 
 // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
 void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
@@ -354,13 +355,14 @@ void setup()
         Serial.println(WiFi.localIP());
         M5.Lcd.println(WiFi.localIP());
         delay(1000);
-        
+#if !defined(REALTIME_API)     
         //Webサーバ設定
         init_web_server();
         //FTPサーバ設定（SPIFFS用）
         ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
         Serial.println("FTP server started");
         M5.Lcd.println("FTP server started");
+#endif
         //時刻同期
         time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
 
@@ -474,8 +476,10 @@ void loop()
 #endif
 
   if(!isOffline){
+#if !defined(REALTIME_API)
     web_server_handle_client();
     ftpSrv.handleFTP();
+#endif
   }
   
   if(M5.Power.getBatteryLevel() < 95){

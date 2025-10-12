@@ -15,7 +15,7 @@
 #define FNAME_BUS_TIMETABLE_SAT         "bus_timetable_sat.txt"
 #define FNAME_ALARM_MP3 "alarm.mp3"
 
-extern String json_Functions;
+extern const String json_Functions;
 extern TimerHandle_t xAlarmTimer;
 extern String note;
 
