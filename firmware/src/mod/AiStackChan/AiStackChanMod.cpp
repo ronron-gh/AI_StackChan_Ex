@@ -366,7 +366,7 @@ void AiStackChanMod::idle(void)
     if(register_wakeword_required)
     {
       register_wakeword_required = false;
-      
+      btnB_longPressed();
     }
 #endif  //defined(USE_EXTENSION_FUNCTIONS)
 #endif  //defined(ARDUINO_M5STACK_CORES3)

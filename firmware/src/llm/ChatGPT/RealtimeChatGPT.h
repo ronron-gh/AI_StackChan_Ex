@@ -13,6 +13,9 @@
 
 //#define REALTIME_API_RECORD_TEST
 
+#define RT_REC_LENGTH       (2000)      //0.125s 
+#define RT_REC_SAMPLE_RATE  (16000)
+
 #ifdef REALTIME_API_RECORD_TEST
 #define REALTIME_RECORD_TIMEOUT     (4 * 1000)      //ms  ※録音テスト再生用バッファのサイズに合わせる
 #else
@@ -28,7 +31,7 @@ public:   //本当はprivateにしたいところだがコールバック関数�
 
     // for record
     //
-    int16_t* rtRecBuf;
+    //int16_t* rtRecBuf;
     int rtRecSamplerate;
     int rtRecLength;
     bool realtime_recording;
@@ -66,7 +69,6 @@ public:
     //
     String output_text;
     std::deque<String> outputTextQueue;
-    //String getOutputText(){ return output_text; };
     String getOutputText();
     int getOutputTextQueueSize();
     void setSpeaking(bool _speaking){ speaking = _speaking; };

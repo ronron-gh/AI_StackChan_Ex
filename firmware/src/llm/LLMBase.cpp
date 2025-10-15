@@ -19,27 +19,9 @@ SpiRamJsonDocument chat_doc(0);     // PSRAMから確保するように変更。
                                     // TODO: 本当はLLMBaseのメンバ変数にしたい
 
 
-LLMBase::LLMBase(llm_param_t param): param{param}, isOfflineService{false} 
+LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
+  : param(param), promptMaxSize(_promptMaxSize), isOfflineService(false) 
 {
-  chat_doc = SpiRamJsonDocument(1024*50);
+  chat_doc = SpiRamJsonDocument(promptMaxSize);
 
 }
-
-bool LLMBase::init_chat_doc(const char *data)
-{
-  DeserializationError error = deserializeJson(chat_doc, data);
-  if (error) {
-    Serial.println("DeserializationError");
-
-    String json_str; //= JSON.stringify(chat_doc);
-    serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
-    Serial.println(json_str);
-
-    return false;
-  }
-  String json_str; //= JSON.stringify(chat_doc);
-  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
-//  Serial.println(json_str);
-  return true;
-}
-

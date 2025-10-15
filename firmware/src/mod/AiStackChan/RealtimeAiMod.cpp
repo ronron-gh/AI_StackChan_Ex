@@ -118,15 +118,7 @@ void RealtimeAiMod::idle(void)
 {
   pRtLLM->webSocketProcess();
 
-#ifdef USE_TTS
-
-#if 0
-  if(text != ""){
-    Serial.println(text);
-    robot->speech(text);
-    text = "";
-  }
-#endif
+#ifdef REALTIME_API_WITH_TTS
 
   if(!robot->asyncPlaying && (pRtLLM->getOutputTextQueueSize() != 0)){
     // 発話停止中かつキューにテキストがある場合は発話開始
@@ -159,8 +151,6 @@ void RealtimeAiMod::idle(void)
 
     /* Query the period of the timer that expires. */
     xRemainingTime = xTimerGetExpiryTime( xAlarmTimer ) - xTaskGetTickCount();
-    //avatarText = "残り" + String(xRemainingTime / 1000) + "秒";
-    //avatar.setSpeechText(avatarText.c_str());
     avatarText = "Alarm countdown: " + String(xRemainingTime / 1000);
     avatar.set_isSubWindowEnable(true);
     avatar.updateSubWindowTxt(avatarText, 0, 0, 200, 50);

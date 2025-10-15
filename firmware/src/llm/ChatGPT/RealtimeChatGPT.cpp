@@ -22,7 +22,8 @@ extern Avatar avatar;
 
 WebSocketsClient webSocket;
 SpiRamJsonDocument msgDoc(0);
-
+int16_t rtRecBuf[RT_REC_LENGTH];    // リアルタイム録音用メモリ
+                                    // Core2だとヒープが不足するので静的な配列とした
 
 const char session_update[] =
       "{"
@@ -30,7 +31,7 @@ const char session_update[] =
         "\"session\": {"
           "\"type\": \"realtime\","
           "\"model\": \"gpt-realtime\","
-#ifdef USE_TTS
+#ifdef REALTIME_API_WITH_TTS
           "\"output_modalities\": [\"text\"],"
 #else
           "\"output_modalities\": [\"audio\"],"
@@ -165,7 +166,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(msgType.equals("input_audio_buffer.committed")){
                 Serial.printf("[WSc] input audio committed\n");
                 p_this->stopRealtimeRecord();
-#ifndef USE_TTS
+#ifndef REALTIME_API_WITH_TTS
                 M5.Mic.end();
                 M5.Speaker.begin();
                 p_this->speaking = true;
@@ -173,7 +174,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->thinking = true;
 #endif
             }
-#ifndef USE_TTS            
+#ifndef REALTIME_API_WITH_TTS            
             else if(msgType.equals("response.output_audio_transcript.delta")){
                 delta = msgDoc["delta"].as<String>();
                 Serial.printf("[WSc] delta: %s\n", delta.c_str());
@@ -230,7 +231,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     webSocket.sendTXT(response_create);
                 }
                 else{
-#ifndef USE_TTS
+#ifndef REALTIME_API_WITH_TTS
                     p_this->startRealtimeRecord();
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
                     M5.Speaker.end();
@@ -275,9 +276,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
 
 RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) : 
-    ChatGPT(param),
-    rtRecSamplerate(16000),
-    rtRecLength(2000),          //0.125s 
+    ChatGPT(param, 0),
+    rtRecSamplerate(RT_REC_SAMPLE_RATE),
+    rtRecLength(RT_REC_LENGTH),
     realtime_recording(false),
     response_done(false),
     thinking(false),
@@ -286,6 +287,13 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
     nextBufIdx(0),
     output_text(String(""))
 {
+  // リアルタイム録音用メモリを確保
+#if 0   // Core2だとヒープが不足するので静的な配列とした
+  rtRecBuf = (int16_t*)heap_caps_malloc(rtRecLength * sizeof(int16_t), MALLOC_CAP_8BIT);
+  if(rtRecBuf == nullptr){
+    Serial.println("Failed to allocate memory for realtime recording");
+  }
+#endif
 
 #ifdef REALTIME_API_RECORD_TEST
   // リアルタイム録音のチャンクデータを蓄積してテスト再生するためのバッファ（約4s）
@@ -294,7 +302,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
   recTestBuf = (int16_t*)heap_caps_malloc(recTestLenMax * sizeof(*rtRecBuf), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 #endif
 
-#ifndef USE_TTS
+#ifndef REALTIME_API_WITH_TTS
   // ストリーミング音声再生用のダブルバッファを初期化
   for(int i=0; i<2; i++){
     audioBuf[i] = (uint8_t*)malloc(100 * 1024);
@@ -303,7 +311,6 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) :
 #endif
 
   msgDoc = SpiRamJsonDocument(1024*150);
-
 
   // WebSocket connect
   //
@@ -325,7 +332,7 @@ void RealtimeChatGPT::webSocketProcess()
 {
     webSocket.loop();
 
-#ifdef USE_TTS
+#ifdef REALTIME_API_WITH_TTS
     if(response_done && !speaking){
         startRealtimeRecord();
         response_done = false;
@@ -384,15 +391,8 @@ void RealtimeChatGPT::startRealtimeRecord()
 {
     if(!realtime_recording){
         Serial.println("Start realtime recording");
-        rtRecBuf = (int16_t*)heap_caps_malloc(rtRecLength * sizeof(*rtRecBuf), MALLOC_CAP_8BIT);
-        if(rtRecBuf == nullptr){
-            Serial.println("Failed to allocate memory for realtime recording");
-            realtime_recording = false;
-            startTime = 0;
-        }else{
-            realtime_recording = true;
-            startTime = xTaskGetTickCount();
-        }
+        realtime_recording = true;
+        startTime = xTaskGetTickCount();
     }
 }
 
@@ -400,7 +400,6 @@ void RealtimeChatGPT::stopRealtimeRecord()
 {
     if(realtime_recording){
         Serial.println("Stop realtime recording");
-        heap_caps_free(rtRecBuf);
         realtime_recording = false;
         startTime = 0;
     }
@@ -477,11 +476,6 @@ void RealtimeChatGPT::streamAudioDelta(String& delta)
 {
   int base64Size = delta.length();
   Serial.printf("audio base64 size: %d byte\n", base64Size);
-  //char* buf = nullptr;                // デコード後のPCM16を格納するバッファ
-  //buf = (char*)malloc(base64Size);    // デコード結果はBASE64データのサイズよりも小さくなる
-  //if(buf == nullptr){
-  //  Serial.println("base64_decode: malloc failed.");
-  //}
   uint8_t* buf = audioBuf[nextBufIdx];
   int len = base64_decode(delta.c_str(), base64Size, (char*)buf);
   Serial.printf("audio pcm16 size: %d byte\n", len);
@@ -489,7 +483,6 @@ void RealtimeChatGPT::streamAudioDelta(String& delta)
   while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
   M5.Speaker.playRaw((int16_t*)buf, len/2, 24000, false);
   nextBufIdx ^= 1;  //ダブルバッファを切り替え
-
 }
 
 String RealtimeChatGPT::getOutputText()

@@ -22,13 +22,14 @@ public:   //本当はprivateにしたいところだがコールバック関数�
 
   llm_param_t param;
   String InitBuffer;
+  int promptMaxSize;
 
 public:
   bool isOfflineService;
 
-  LLMBase(llm_param_t param);
+  LLMBase(llm_param_t param, int _promptMaxSize);
   virtual void chat(String text, const char *base64_buf = NULL) = 0;
-  bool init_chat_doc(const char *data);
+  virtual bool init_chat_doc(const char *data) {};
   virtual bool save_role() {};
   virtual void load_role() {};
 };

@@ -16,6 +16,7 @@
 using namespace m5avatar;
 extern Avatar avatar;
 
+
 String json_ChatString = 
 "{\"model\": \"gpt-4o\","
 "\"messages\": [{\"role\": \"user\", \"content\": \"\"}],"
@@ -23,7 +24,8 @@ String json_ChatString =
 "\"function_call\":\"auto\""
 "}";
 
-ChatGPT::ChatGPT(llm_param_t param) : LLMBase(param)
+ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
+  : LLMBase(param, _promptMaxSize)
 {
   M5.Lcd.println("MCP Servers:");
   for(int i=0; i<param.llm_conf.nMcpServers; i++){
@@ -35,7 +37,31 @@ ChatGPT::ChatGPT(llm_param_t param) : LLMBase(param)
     }
   }
 
-  load_role();
+  if(promptMaxSize != 0){
+    load_role();
+  }
+  else{
+    Serial.println("Prompt buffer is disabled");
+  }
+}
+
+
+bool ChatGPT::init_chat_doc(const char *data)
+{
+  DeserializationError error = deserializeJson(chat_doc, data);
+  if (error) {
+    Serial.println("DeserializationError");
+
+    String json_str; //= JSON.stringify(chat_doc);
+    serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
+    Serial.println(json_str);
+
+    return false;
+  }
+  String json_str; //= JSON.stringify(chat_doc);
+  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
+//  Serial.println(json_str);
+  return true;
 }
 
 bool ChatGPT::save_role(){

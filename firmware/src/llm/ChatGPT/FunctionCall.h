@@ -36,7 +36,7 @@ String get_date();
 String get_time();
 String get_week();
 
-#if USE_EXTENSION_FUNCTIONS
+#if defined(USE_EXTENSION_FUNCTIONS)
 String reminder(int hour, int min, const char* text);
 String ask(const char* text);
 

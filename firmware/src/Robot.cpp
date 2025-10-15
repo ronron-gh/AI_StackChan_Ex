@@ -21,6 +21,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern bool servo_home;
 
+#if defined(REALTIME_API_WITH_TTS)
 // TTS非同期実行用のタスク
 //
 void asyncTtsStreamTask(void *arg) {
@@ -38,7 +39,7 @@ void asyncTtsStreamTask(void *arg) {
     delay(1);
   }
 }
-
+#endif
 
 Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
@@ -61,7 +62,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   llm_param.llm_conf = config.getExConfig().llm;
   llm = new RealtimeChatGPT(llm_param);
 
-  #if defined(USE_TTS)
+  #if defined(REALTIME_API_WITH_TTS)
     initTTS(config);
     asyncPlaying = false;
     asyncPlayText = "";
