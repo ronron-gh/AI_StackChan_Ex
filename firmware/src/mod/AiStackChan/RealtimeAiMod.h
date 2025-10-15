@@ -18,6 +18,9 @@ private:
     bool isOffline;
 
     RealtimeChatGPT* pRtLLM;
+
+    // for TTS
+    String ttsText;
 public:
     RealtimeAiMod(bool _isOffline);
 

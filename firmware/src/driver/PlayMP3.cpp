@@ -51,7 +51,8 @@ void playMP3(AudioFileSourceBuffer *buff){
   M5.Speaker.begin();
 
   mp3->begin(buff, &out);
-  
+  Serial.println("mp3 start");
+
   while(mp3->isRunning()) {
     if (!mp3->loop()) {
       mp3->stop();

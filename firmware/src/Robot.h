@@ -8,6 +8,7 @@
 #include "llm/LLMBase.h" 
 #include "tts/TTSBase.h"
 #include "stt/STTBase.h"
+#include "driver/ModuleLLM.h"
 
 
 
@@ -19,14 +20,27 @@ public:
     LLMBase *llm;
     TTSBase *tts;
     STTBase *stt;
+#if defined(USE_LLM_MODULE)
+    module_llm_param_t module_llm_param;
+#endif
     ServoCustom *servo;
     uint8_t spk_volume;
 
     Robot(StackchanExConfig& config);
     bool isAllOfflineService();
+    void initLLM(StackchanExConfig& config);
+    void initSTT(StackchanExConfig& config);
+    void initTTS(StackchanExConfig& config);
+
     void speech(String text);
     String listen();
     void chat(String text, const char *base64_buf = NULL);
+
+    // TTS非同期版
+    //
+    bool asyncPlaying;
+    String asyncPlayText;
+    void speechAsync(String& text);
 };
 
 extern Robot* robot;

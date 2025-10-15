@@ -70,7 +70,7 @@ void init_func_call_settings(StackchanExConfig& system_config)
 }
 
 
-String json_Functions =
+const String json_Functions =
 "["
   "{"
     "\"name\": \"timer\","

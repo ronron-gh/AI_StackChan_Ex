@@ -15,7 +15,7 @@
 #define FNAME_BUS_TIMETABLE_SAT         "bus_timetable_sat.txt"
 #define FNAME_ALARM_MP3 "alarm.mp3"
 
-extern String json_Functions;
+extern const String json_Functions;
 extern TimerHandle_t xAlarmTimer;
 extern String note;
 
@@ -36,7 +36,7 @@ String get_date();
 String get_time();
 String get_week();
 
-#if USE_EXTENSION_FUNCTIONS
+#if defined(USE_EXTENSION_FUNCTIONS)
 String reminder(int hour, int min, const char* text);
 String ask(const char* text);
 

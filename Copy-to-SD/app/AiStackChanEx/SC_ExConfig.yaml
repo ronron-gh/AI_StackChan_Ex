@@ -3,26 +3,6 @@
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
 
-  mcpServers:
-    [
-      {
-        "name":"brave-search",
-        "url":"192.168.3.105",
-        "port":8003
-      },
-      {
-        "name":"server-memory",
-        "url":"192.168.3.105",
-        "port":8004
-      },
-      {
-        "name":"google-calendar",
-        "url":"192.168.3.105",
-        "port":8000
-      }
-    ]
-
-
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
   model: ""                          # VOICEVOX, AquesTalk (modelは未対応)

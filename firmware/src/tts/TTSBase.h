@@ -21,7 +21,7 @@ public:
     bool isOfflineService;
     
     TTSBase() {};
-    TTSBase(tts_param_t param) : param{param}, isOfflineService{false} {};
+    TTSBase(tts_param_t param) : param(param), isOfflineService(false) {};
     virtual void stream(String text) = 0;
     virtual int getLevel(){ return abs(*out.getBuffer()); };
 
