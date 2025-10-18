@@ -4,6 +4,9 @@
 
 写真のようにｽﾀｯｸﾁｬﾝにModule LLMをスタックして使用する際の設定方法について記載します。
 
+>Module LLMの2ndロット(ファームウェア：M5_LLM_ubuntu_v1.3_20241203-mini)でのみ動作を確認しています。ファームウェアの更新方法については[こちら](https://docs.m5stack.com/ja/stackflow/module_llm/image)(M5Stack公式サイト)を参照ください。
+
+
 - [platformio.iniの設定](#platformioiniの設定)
 - [YAMLの設定](#yamlの設定)
   - [シリアル通信PIN](#シリアル通信pin)
@@ -17,6 +20,7 @@
 - [付録C. STTとTTSを日本語化する方法](#付録c-sttとttsを日本語化する方法)
   - [Whisperの導入手順](#whisperの導入手順)
   - [MeloTTSの導入手順](#melottsの導入手順)
+  - [正常動作時のシリアルモニタログ](#正常動作時のシリアルモニタログ)
 
 
 ## platformio.iniの設定
@@ -75,6 +79,8 @@ tts:
 
 ### ウェイクワード (KWS) を使う場合
 ウェイクワードのタイプとして 1:ModuleLLM(KWS) を選択し、キーワードを設定する。
+
+>キーワードは全て大文字で記述しないと認識されません。
 
 ```yaml
 wakeword:
@@ -198,7 +204,10 @@ ModuleLLMをインターネットに接続し、以下コマンドを実行し�
 ```bash
 wget -qO /etc/apt/keyrings/StackFlow.gpg https://repo.llm.m5stack.com/m5stack-apt-repo/key/StackFlow.gpg
 echo 'deb [arch=arm64 signed-by=/etc/apt/keyrings/StackFlow.gpg] https://repo.llm.m5stack.com/m5stack-apt-repo jammy ax630c' > /etc/apt/sources.list.d/StackFlow.list
-
+```
+パッケージのリストを取得
+```bash
+apt update
 ```
 
 ■最新のソフトウェアパッケージに更新  
@@ -237,7 +246,11 @@ ModuleLLMをインターネットに接続し、以下コマンドを実行し�
 ```bash
 wget -qO /etc/apt/keyrings/StackFlow.gpg https://repo.llm.m5stack.com/m5stack-apt-repo/key/StackFlow.gpg
 echo 'deb [arch=arm64 signed-by=/etc/apt/keyrings/StackFlow.gpg] https://repo.llm.m5stack.com/m5stack-apt-repo jammy ax630c' > /etc/apt/sources.list.d/StackFlow.list
+```
 
+パッケージのリストを取得
+```bash
+apt update
 ```
 
 ■最新のソフトウェアパッケージに更新  
@@ -265,3 +278,34 @@ tts:
 ```
 
 必要な設定は以上です。本ソフト(AI Stack-chan Ex)の最新版をPlatformIOでビルドし、M5Stack Coreに書き込み実行してください。
+
+
+### 正常動作時のシリアルモニタログ
+
+Module LLM関連の初期化が完了するとシリアルモニタログは次のようになります(TTSにAquesTalkを使用した場合)。
+
+```
+Initialize AquesTalk
+>> Reset ModuleLLM..
+>> Setup audio..
+>> Setup kws..
+>> Setup vad..
+>> Setup whisper..
+>> Setup llm..
+>> Setup ok
+```
+
+その後ウェイクワードに反応すると「Keyword detected」と表示され、音声認識可能な状態になります。
+
+```
+>> Keyword detected
+>> こんにちは.
+Whisper complete.
+音声認識終了
+音声認識結果
+こんにちは.
+inference:こんにちは！どのように
+inference:お手伝
+inference:いできますか
+inference:？
+```

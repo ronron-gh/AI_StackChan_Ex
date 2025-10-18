@@ -3,6 +3,8 @@
 
 This document describes how to set up Module LLM when stacking it on Stack-chan as shown in the picture.
 
+>Operation has only been confirmed with the 2nd lot of Module LLM (firmware: M5_LLM_ubuntu_v1.3_20241203-mini). For instructions on how to update the firmware, please refer to [here](https://docs.m5stack.com/ja/stackflow/module_llm/image) (M5Stack official website).
+
 - [platformio.ini Settings](#platformioini-settings)
 - [YAML Settings](#yaml-settings)
   - [Serial Communication PIN](#serial-communication-pin)
@@ -73,6 +75,8 @@ tts:
 
 ### Using Wake Word (KWS)
 Select 1:ModuleLLM(KWS) as the wake word type and set the keyword.
+
+>Keywords must be written in all capital letters in order to be recognized.
 
 ```yaml
 wakeword:
@@ -194,7 +198,11 @@ Connect ModuleLLM to the Internet and run the following commands to install.
 ```bash
 wget -qO /etc/apt/keyrings/StackFlow.gpg https://repo.llm.m5stack.com/m5stack-apt-repo/key/StackFlow.gpg
 echo 'deb [arch=arm64 signed-by=/etc/apt/keyrings/StackFlow.gpg] https://repo.llm.m5stack.com/m5stack-apt-repo jammy ax630c' > /etc/apt/sources.list.d/StackFlow.list
+```
 
+Get a list of available software.
+```bash
+apt update
 ```
 
 ■Update to the latest software packages  
@@ -233,7 +241,11 @@ Connect ModuleLLM to the Internet and run the following commands to install.
 ```bash
 wget -qO /etc/apt/keyrings/StackFlow.gpg https://repo.llm.m5stack.com/m5stack-apt-repo/key/StackFlow.gpg
 echo 'deb [arch=arm64 signed-by=/etc/apt/keyrings/StackFlow.gpg] https://repo.llm.m5stack.com/m5stack-apt-repo jammy ax630c' > /etc/apt/sources.list.d/StackFlow.list
+```
 
+Get a list of available software.
+```bash
+apt update
 ```
 
 ■Update to the latest software packages  
