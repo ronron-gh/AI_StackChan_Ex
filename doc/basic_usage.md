@@ -1,5 +1,7 @@
 # 基本的な利用方法
 
+robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackChan2)の仕組みを継承した基本的なAI会話機能（LLM、STT、TTSのWeb APIの連携によるAI会話）を利用する方法について解説します。
+
 - [1. 利用可能なAIサービス](#1-利用可能なaiサービス)
   - [1.1. LLM](#11-llm)
   - [1.2. Speech to Text (STT)](#12-speech-to-text-stt)

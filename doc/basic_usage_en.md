@@ -1,5 +1,7 @@
 # Basic usage
 
+This article explains how to use the basic AI conversation function (AI conversation through the integration of LLM, STT, and TTS Web APIs) that inherits the mechanism of robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2).
+
 - [1. Available AI services](#1-available-ai-services)
   - [1.1. LLM](#11-llm)
   - [1.2. Speech to Text (STT)](#12-speech-to-text-stt)
