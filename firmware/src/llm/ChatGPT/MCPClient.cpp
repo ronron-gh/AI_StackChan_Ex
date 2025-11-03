@@ -61,7 +61,7 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
     return;
   }
 
-  result.replace("inputSchema", "parameters");
+  result.replace("inputSchema", "parameters");    //OpenAI function calling 仕様に変更
   DeserializationError error = deserializeJson(toolsListDoc, result.c_str());
   if (error) {
     Serial.printf("MCPClient: JSON deserialization error %d\n", error);
@@ -82,6 +82,9 @@ MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
   for(int i=0; i<nTools; i++){
     toolNameList[i] = toolsListDoc["result"]["tools"][i]["name"].as<String>();
     Serial.println(toolNameList[i]);
+    //OpenAI function callingの仕様に合わせて"outputSchema"と"_meta"を削除
+    toolsListDoc["result"]["tools"][i].remove("outputSchema");
+    toolsListDoc["result"]["tools"][i].remove("_meta");
   }
 
 }
