@@ -86,9 +86,6 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
     avatar.setSpeechText("");
     avatar.setExpression(Expression::Neutral);
     servo_home = true;
-#if defined(ENABLE_WAKEWORD)
-    mode = 0;
-#endif
   } else {
     Serial.println("音声認識失敗");
     avatar.setExpression(Expression::Sad);
