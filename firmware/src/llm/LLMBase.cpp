@@ -25,3 +25,38 @@ LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
   chat_doc = SpiRamJsonDocument(promptMaxSize);
 
 }
+
+
+// for async TTS
+//
+
+String LLMBase::getOutputText()
+{
+    String text = "";
+    if(outputTextQueue.size() != 0){
+        text = outputTextQueue[0];
+        outputTextQueue.pop_front();
+    }
+    return text;
+}
+
+int LLMBase::getOutputTextQueueSize()
+{
+    return outputTextQueue.size();
+}
+
+// 区切り文字の有無を確認
+// 戻り値：区切り文字あり(true)、なし(false)
+int LLMBase::search_delimiter(String& text)
+{
+  // 区切り文字を検出
+  int idx = text.indexOf("。");
+  if(idx < 0){
+    idx = text.indexOf("？");
+  }
+  if(idx < 0){
+    idx = text.indexOf("！");
+  }
+
+  return idx;
+}

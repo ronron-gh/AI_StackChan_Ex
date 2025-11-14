@@ -15,7 +15,10 @@
 using namespace m5avatar;
 extern Avatar avatar;
 
+static ChatModuleLLM* p_this;   //コールバック関数に静的変数経由でthisポインタを渡す
+
 ChatModuleLLM::ChatModuleLLM(llm_param_t param) : LLMBase(param, 0) {
+  p_this = this;       //コールバック関数に静的変数経由でthisポインタを渡す
   isOfflineService = true;  //オフラインで使用可能とする
   load_role();
 }
@@ -109,14 +112,23 @@ void ChatModuleLLM::chat(String text, const char *base64_buf) {
   module_llm.llm.inferenceAndWaitResult(llm_work_id, text.c_str(), [](String& result) {
     /* Show result on screen */
     Serial.printf("inference:%s\n", result.c_str());
-    response += result;
 
+    // TTSがModuleLLMではなくAquesTalkの場合はテキストを再生キューに入力する
+    if(!robot->module_llm_param.enableTTS){
+      response += result;
+      // 区切り文字を検出したらテキストをキューに追加
+      int idx = p_this->search_delimiter(response);
+      if(idx > 0){
+        String inputText = response.substring(0, idx);
+        Serial.printf("Push text: %s\n", inputText.c_str());
+        p_this->outputTextQueue.push_back(inputText);
+        response = response.substring(idx + strlen("。"), response.length());
+      }
+    }
   });
 
-  Serial.printf("%s\n", response.c_str());
-  chatHistory.push_back(String("assistant"), String(""), response);   // 返答をチャット履歴に追加
-  robot->speech(response);
-  response = "";
+  //chatHistory.push_back(String("assistant"), String(""), response);   // 返答をチャット履歴に追加
+
 }
 
 #endif  //USE_LLM_MODULE

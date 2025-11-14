@@ -21,7 +21,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern bool servo_home;
 
-#if defined(REALTIME_API_WITH_TTS)
+//#if defined(REALTIME_API_WITH_TTS)
 // TTS非同期実行用のタスク
 //
 void asyncTtsStreamTask(void *arg) {
@@ -29,17 +29,18 @@ void asyncTtsStreamTask(void *arg) {
   Robot* pRt = (Robot*)arg;
 
   while(1){
-    if(pRt->asyncPlayText != ""){
+    if(pRt->llm->getOutputTextQueueSize() != 0){
+      Serial.println("TTS stream task: get text form queue");
       pRt->asyncPlaying = true;
-      //pRt->speech(pRt->asyncPlayText);
-      pRt->tts->stream(pRt->asyncPlayText);
+      String ttsText = pRt->llm->getOutputText();
+      pRt->tts->stream(ttsText);
       pRt->asyncPlaying = false;
-      pRt->asyncPlayText = "";
     }
     delay(1);
   }
 }
-#endif
+
+//#endif
 
 Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
@@ -64,16 +65,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 
   #if defined(REALTIME_API_WITH_TTS)
     initTTS(config);
-    asyncPlaying = false;
-    asyncPlayText = "";
-
-    xTaskCreate(asyncTtsStreamTask, /* Function to implement the task */
-              "asyncTtsStreamTask", /* Name of the task */
-              5*1024,               /* Stack size in words */
-              this,                 /* Task input parameter */
-              2,                    /* Priority of the task */
-              NULL);                /* Task handle. */
-
+    invokeAsyncTtsStreamTask();
   #endif
 
 #else //REALTIME_API
@@ -97,6 +89,11 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
     module_llm_param.wake_up_keyword = config.getExConfig().wakeword.keyword;
   }
   module_llm_setup(module_llm_param);
+
+  // TTSがModuleLLMではなくAquesTalkの場合はTTS非同期実行用タスクを起動する
+  if(!module_llm_param.enableTTS){
+    invokeAsyncTtsStreamTask();
+  }
 #endif
 
 #endif  //REALTIME_API
@@ -125,8 +122,10 @@ void Robot::initLLM(StackchanExConfig& config){
     llm = new ChatModuleLLM(llm_param);
     module_llm_param.enableLLM = true;
     module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t(); //default setting
-    //module_llm_param.m5llm_config.model = "openbuddy-llama3.2-1B-ax630c";
-    //module_llm_param.m5llm_config.model = "qwen2.5-1.5B-ax630c";    //これはllm起動中にエラー発生
+    if(llm_param.llm_conf.model != ""){
+      module_llm_param.m5llm_config.model = llm_param.llm_conf.model;
+    }
+    module_llm_param.m5llm_config.max_token_len = 511;
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     llm = nullptr;
@@ -155,7 +154,8 @@ void Robot::initSTT(StackchanExConfig& config){
 
   stt_param_t stt_param;
   stt_param.api_key = api_key->stt;
-
+  stt_param.stt_conf = config.getExConfig().stt;
+  
   switch(stt_type){
   case STT_TYPE_GOOGLE:
     stt = new CloudSpeechClient(stt_param);
@@ -176,6 +176,9 @@ void Robot::initSTT(StackchanExConfig& config){
 #if defined(USE_LLM_MODULE)
     stt = new ModuleLLMWhisper();
     module_llm_param.enableWhisper = true;
+    if(stt_param.stt_conf.model != ""){
+      module_llm_param.whisper_model = stt_param.stt_conf.model;
+    }
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     stt = nullptr;
@@ -245,10 +248,16 @@ void Robot::speech(String text)
   }
 }
 
-void Robot::speechAsync(String& text)
+void Robot::invokeAsyncTtsStreamTask(void)
 {
-  Serial.println("Start TTS stream task");
-  asyncPlayText = text;
+  asyncPlaying = false;
+
+  xTaskCreate(asyncTtsStreamTask, /* Function to implement the task */
+            "asyncTtsStreamTask", /* Name of the task */
+            5*1024,               /* Stack size in words */
+            this,                 /* Task input parameter */
+            2,                    /* Priority of the task */
+            NULL);                /* Task handle. */
 }
 
 String Robot::listen()

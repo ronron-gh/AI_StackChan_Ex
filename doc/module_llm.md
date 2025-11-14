@@ -21,6 +21,8 @@
   - [Whisperの導入手順](#whisperの導入手順)
   - [MeloTTSの導入手順](#melottsの導入手順)
   - [正常動作時のシリアルモニタログ](#正常動作時のシリアルモニタログ)
+- [付録D. LLMモデルを変更し日本語性能UPする方法](#付録d-llmモデルを変更し日本語性能upする方法)
+  - [TinySwallow-1.5Bの導入手順](#tinyswallow-15bの導入手順)
 
 
 ## platformio.iniの設定
@@ -74,7 +76,7 @@ LLMのタイプとして 4:ModuleLLM を選択する。
 
 ```yaml
 tts:
-  type: 0               # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
+  type: 4               # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
  ```
 
 ### ウェイクワード (KWS) を使う場合
@@ -212,15 +214,17 @@ apt update
 
 ■最新のソフトウェアパッケージに更新  
 ※既に実行している場合は不要
-```
+```bash
 apt install lib-llm llm-sys
 ```
 
 ■Whisperのパッケージをインストール
-```
+```bash
 apt install llm-whisper llm-kws llm-vad
 apt install llm-model-whisper-tiny llm-model-silero-vad llm-model-sherpa-onnx-kws-zipformer-gigaspeech-3.3m-2024-01-01
 ```
+
+> モデルとして「whisper-tiny」ではなく「whisper-base」を使用したい場合は、「llm-model-whisper-base」もインストールしてください。
 
 #### (2) YAMLの設定
 本ソフトのYAMLファイルで、STTのタイプとして「3:ModuleLLM(Whisper)」選択してください。
@@ -231,6 +235,13 @@ SDカードフォルダ：/app/AiStackChanEx
 stt:
   type: 3      # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR)  3:ModuleLLM(Whisper)
 ```
+
+> ※whisper-baseを使用する場合はモデルとして指定してください（指定しない場合はデフォルトのwhisper-tinyがロードされます）。
+> ```yaml
+> stt:
+>   type: 3      # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR) 3:ModuleLLM(Whisper)
+>   model: "whisper-base"
+> ```
 
 必要な設定は以上です。本ソフト(AI Stack-chan Ex)の最新版をPlatformIOでビルドし、M5Stack Coreに書き込み実行してください。
 
@@ -255,12 +266,12 @@ apt update
 
 ■最新のソフトウェアパッケージに更新  
 ※既に実行している場合は不要
-```
+```bash
 apt install lib-llm llm-sys
 ```
 
 ■MeloTTSのパッケージをインストール
-```
+```bash
 apt install llm-melotts
 apt install llm-model-melotts-ja-jp
 ```
@@ -309,3 +320,68 @@ inference:お手伝
 inference:いできますか
 inference:？
 ```
+
+
+## 付録D. LLMモデルを変更し日本語性能UPする方法
+デフォルトのモデルQwen2.5-0.5Bも日本語に対応していますが、不自然な応答が多いことは否めません。モデルをSakana AI社が開発したTinySwallow-1.5Bに変更することで日本語性能を高めることができます。
+
+**参考URL：**
+- [TinySwallow-1.5B を M5stack LLM Module に組み込んでみた @inachi](https://qiita.com/inachi/items/0253ef8b3834a2ac73bd?utm_campaign=post_article&utm_medium=twitter&utm_source=twitter_share#tinyswallow-15b-%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6)
+
+- [Github:tinyswallow-deb @kinneko](https://github.com/kinneko/tinyswallow-deb)
+  - 今回使わせていただく、モデルインストール用debファイル
+
+### TinySwallow-1.5Bの導入手順
+
+>Module LLMの2ndロット(ファームウェア：M5_LLM_ubuntu_v1.3_20241203-mini)でのみ動作を確認しています。ファームウェアの更新方法については[こちら](https://docs.m5stack.com/ja/stackflow/module_llm/image)(M5Stack公式サイト)を参照ください。
+
+
+#### (1) 関連パッケージをインストール
+ModuleLLMをインターネットに接続し、以下コマンドを実行してインストールします。
+
+■M5Stack aptリポジトリキーをダウンロードしてシステムに追加  
+※既に実行している場合は不要
+```bash
+wget -qO /etc/apt/keyrings/StackFlow.gpg https://repo.llm.m5stack.com/m5stack-apt-repo/key/StackFlow.gpg
+echo 'deb [arch=arm64 signed-by=/etc/apt/keyrings/StackFlow.gpg] https://repo.llm.m5stack.com/m5stack-apt-repo jammy ax630c' > /etc/apt/sources.list.d/StackFlow.list
+```
+パッケージのリストを取得
+```bash
+apt update
+```
+
+■最新のソフトウェアパッケージに更新  
+※既に実行している場合は不要
+```bash
+apt install lib-llm llm-sys
+```
+
+■LLMサービスを最新化
+```bash
+apt install llm-llm
+```
+
+■TinySwallow-1.5Bをインストール  
+
+```bash
+cd (任意のディレクトリ)
+wget https://github.com/kinneko/tinyswallow-deb/releases/download/v1.0.0/llm-model-tinyswallow-1.5b-ax630c_1.0.0_arm64.deb
+dpkg -i llm-model-tinyswallow-1.5b-ax630c_1.0.0_arm64.deb 
+```
+> ※debファイルは2GB程度あります。インストール完了後は削除して問題ありません。
+
+#### (2) YAMLの設定
+本ソフトのYAMLファイルで、LLMのタイプとして「1:ModuleLLM」を選択し、モデルとして「tinyswallow-1.5b-ax630c」を指定してください。　　
+※モデルを指定しない場合はデフォルトのモデル「Qwen2.5-0.5B」がロードされます。
+
+SDカードフォルダ：/app/AiStackChanEx  
+ファイル名：SC_ExConfig.yaml
+
+```yaml
+llm:
+  type: 1               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
+  model: "tinyswallow-1.5b-ax630c"
+```
+
+
+必要な設定は以上です。本ソフト(AI Stack-chan Ex)の最新版をPlatformIOでビルドし、M5Stack Coreに書き込み実行してください。

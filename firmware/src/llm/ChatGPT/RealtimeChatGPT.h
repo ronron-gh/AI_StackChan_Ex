@@ -36,8 +36,6 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     int rtRecLength;
     bool realtime_recording;
     bool response_done;
-    bool thinking;
-    bool speaking;
     portTickType startTime;
 
 #ifdef REALTIME_API_RECORD_TEST
@@ -67,11 +65,8 @@ public:
 
     // for TTS
     //
-    String output_text;
-    std::deque<String> outputTextQueue;
-    String getOutputText();
-    int getOutputTextQueueSize();
-    void setSpeaking(bool _speaking){ speaking = _speaking; };
+    String outputText;
+
 };
 
 

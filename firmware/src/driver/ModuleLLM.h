@@ -18,6 +18,7 @@ struct module_llm_param_t
   bool enableASR = false;
   //Whisper
   bool enableWhisper = false;
+  String whisper_model = "";
   //TTS
   bool enableTTS = false;
   String model = "";

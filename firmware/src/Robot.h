@@ -39,8 +39,7 @@ public:
     // TTS非同期版
     //
     bool asyncPlaying;
-    String asyncPlayText;
-    void speechAsync(String& text);
+    void invokeAsyncTtsStreamTask(void);
 };
 
 extern Robot* robot;

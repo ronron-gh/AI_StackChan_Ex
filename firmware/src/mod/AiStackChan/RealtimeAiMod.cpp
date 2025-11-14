@@ -120,29 +120,20 @@ void RealtimeAiMod::idle(void)
 
 #ifdef REALTIME_API_WITH_TTS
 
-  if(!robot->asyncPlaying && (pRtLLM->getOutputTextQueueSize() != 0)){
-    // 発話停止中かつキューにテキストがある場合は発話開始
-    ttsText = pRtLLM->getOutputText();
-    Serial.println(ttsText);
-    robot->speechAsync(ttsText);
-    pRtLLM->setSpeaking(true);
-
-    servo_home = false;
-    avatar.setExpression(Expression::Happy);
-  }
-  else if(robot->asyncPlaying){
+  if(robot->asyncPlaying || (pRtLLM->getOutputTextQueueSize() != 0)){
     // 発話中
     pRtLLM->setSpeaking(true);
+    servo_home = false;
+    avatar.setExpression(Expression::Happy);
   }
   else{
     // 発話停止中かつキューにテキストがない場合はLLM機能に発話終了を通知
     pRtLLM->setSpeaking(false);
-
     servo_home = true;
     avatar.setExpression(Expression::Neutral);
   }
 
-#endif
+#endif  //REALTIME_API_WITH_TTS
 
   // Alarm
   //

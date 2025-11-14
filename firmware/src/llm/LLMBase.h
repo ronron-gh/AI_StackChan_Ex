@@ -32,8 +32,16 @@ public:
   virtual bool init_chat_doc(const char *data) {};
   virtual bool save_role() {};
   virtual void load_role() {};
-};
 
+  // for async TTS
+  //
+  std::deque<String> outputTextQueue;
+  bool speaking;
+  String getOutputText();
+  int getOutputTextQueueSize();
+  void setSpeaking(bool _speaking){ speaking = _speaking; };
+  int search_delimiter(String& text);
+};
 
 
 #endif //_LLM_BASE_H

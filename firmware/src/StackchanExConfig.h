@@ -73,6 +73,7 @@ typedef struct MCPServerConf {
 
 typedef struct LLMConf {
     int type;
+    String model;
     int nMcpServers;
     mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
 } llm_s;
@@ -85,6 +86,7 @@ typedef struct TTSConf {
 
 typedef struct STTConf {
     int type;
+    String model;
 } stt_s;
 
 typedef struct WakeWordConf {

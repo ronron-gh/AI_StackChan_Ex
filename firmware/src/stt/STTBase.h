@@ -2,10 +2,12 @@
 #define _STT_BASE_H
 
 #include <Arduino.h>
+#include "StackchanExConfig.h"
 
 struct stt_param_t
 {
   String api_key;
+  stt_s stt_conf;
 };
 
 

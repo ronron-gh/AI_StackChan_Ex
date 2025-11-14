@@ -50,6 +50,10 @@ void module_llm_setup(module_llm_param_t param)
     m5_module_llm::ApiKwsSetupConfig_t kws_config;
     kws_config.kws = param.wake_up_keyword;
     kws_work_id    = module_llm.kws.setup(kws_config, "kws_setup", language);
+    if(kws_work_id == ""){
+      M5.Display.printf("kws setup timeout\n");
+      Serial.printf("kws setup timeout\n");
+    }
   }
 
   /* Setup ASR module and save returned work id */
@@ -59,6 +63,10 @@ void module_llm_setup(module_llm_param_t param)
     m5_module_llm::ApiAsrSetupConfig_t asr_config;
     asr_config.input = {"sys.pcm", kws_work_id};
     asr_work_id      = module_llm.asr.setup(asr_config, "asr_setup", language);
+    if(asr_work_id == ""){
+      M5.Display.printf("asr setup timeout\n");
+      Serial.printf("asr setup timeout\n");
+    }
   }
 
   /* Setup Whisper module and save returned work id */
@@ -71,15 +79,33 @@ void module_llm_setup(module_llm_param_t param)
     vad_work_id      = module_llm.vad.setup(vad_config, "vad_setup");
 
     /* Setup Whisper module and save returned work id */
-    M5.Display.printf(">> Setup whisper..\n");
-    Serial.printf(">> Setup whisper..\n");
+    M5.Display.printf(">> Setup whisper (%s)..\n", param.whisper_model.c_str());
+    Serial.printf(">> Setup whisper (%s)..\n", param.whisper_model.c_str());
     m5_module_llm::ApiWhisperSetupConfig_t whisper_config;
     whisper_config.input    = {"sys.pcm", kws_work_id, vad_work_id};
     //whisper_config.language = "en";
     //whisper_config.language = "zh";
     whisper_config.language = "ja";
-    //whisper_config.model = "whisper-base";  //別途whisper-baseのインストールが必要
+    if(param.whisper_model != ""){
+      //Whisperのモデルは別途インストールが必要。未指定の場合はデフォルトのwhisper-tiny
+      whisper_config.model = param.whisper_model;
+    }
     whisper_work_id = module_llm.whisper.setup(whisper_config, "whisper_setup");
+    if(whisper_work_id == ""){
+      M5.Display.printf("whisper setup timeout\n");
+      Serial.printf("whisper setup timeout\n");
+    }
+  }
+
+  /* Setup LLM module and save returned work id */
+  if(param.enableLLM){
+    M5.Display.printf(">> Setup llm (%s)..\n", param.m5llm_config.model.c_str());
+    Serial.printf(">> Setup llm (%s)..\n", param.m5llm_config.model.c_str());
+    llm_work_id = module_llm.llm.setup(param.m5llm_config);
+    if(llm_work_id == ""){
+      M5.Display.printf("llm setup timeout\n");
+      Serial.printf("llm setup timeout\n");
+    }
   }
 
   /* Setup TTS module and save returned work id */
@@ -91,24 +117,19 @@ void module_llm_setup(module_llm_param_t param)
       Serial.printf(">> Setup melotts(ja)..\n");
       m5_module_llm::ApiMelottsSetupConfig_t melotts_config;
       melotts_config.model = param.model;
+      melotts_config.input = {llm_work_id, kws_work_id};
       tts_work_id = module_llm.melotts.setup(melotts_config, "tts_setup", "ja_JP");
     }else{
       M5.Display.printf(">> Setup tts..\n");
       Serial.printf(">> Setup tts..\n");
-      tts_work_id = module_llm.tts.setup();
+      m5_module_llm::ApiTtsSetupConfig_t tts_config;
+      tts_config.input = {llm_work_id, kws_work_id};
+      tts_work_id = module_llm.tts.setup(tts_config, "tts_setup");
     }
-  }
-
-  /* Setup LLM module and save returned work id */
-  if(param.enableLLM){
-    M5.Display.printf(">> Setup llm..\n");
-    Serial.printf(">> Setup llm..\n");
-    llm_work_id = module_llm.llm.setup(param.m5llm_config);
-    if(llm_work_id == ""){
-      M5.Display.printf("llm setup timeout\n");
-      Serial.printf("llm setup timeout\n");
+    if(tts_work_id == ""){
+      M5.Display.printf("tts setup timeout\n");
+      Serial.printf("tts setup timeout\n");
     }
-    
   }
 
   //M5.Display.printf(">> Setup ok\n>> Say \"%s\" to wakeup\n", wake_up_keyword.c_str());

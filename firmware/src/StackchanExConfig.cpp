@@ -156,20 +156,7 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     _ex_parameters.news.apikey      = doc["news"]["apikey"].as<String>();
 
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
-#if 0
-    String json_str;
-    serializeJsonPretty(doc["llm"]["mcpServers"], json_str);  // 文字列をシリアルポートに出力する
-    Serial.println(json_str);
-
-    Serial.printf("ExConfig mcpServers num: %d\n", doc["llm"]["mcpServers"].size());
-    Serial.printf("ExConfig mcpServer[0] name: %s\n", doc["llm"]["mcpServers"][0]["name"].as<String>().c_str());
-    Serial.printf("ExConfig mcpServer[0] url: %s\n", doc["llm"]["mcpServers"][0]["url"].as<String>().c_str());
-    Serial.printf("ExConfig mcpServer[0] port: %d\n", doc["llm"]["mcpServers"][0]["port"].as<int>());
-    Serial.printf("ExConfig mcpServer[1] name: %s\n", doc["llm"]["mcpServers"][1]["name"].as<String>().c_str());
-    Serial.printf("ExConfig mcpServer[1] url: %s\n", doc["llm"]["mcpServers"][1]["url"].as<String>().c_str());
-    Serial.printf("ExConfig mcpServer[1] port: %d\n", doc["llm"]["mcpServers"][1]["port"].as<int>());
-#endif
-
+    _ex_parameters.llm.model        = doc["llm"]["model"].as<String>();
     _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         _ex_parameters.llm.mcpServer[i].name = doc["llm"]["mcpServers"][i]["name"].as<String>();
@@ -182,6 +169,7 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     _ex_parameters.tts.voice        = doc["tts"]["voice"].as<String>();
 
     _ex_parameters.stt.type         = doc["stt"]["type"].as<int>();
+    _ex_parameters.stt.model        = doc["stt"]["model"].as<String>();
 
     _ex_parameters.wakeword.type    = doc["wakeword"]["type"].as<int>();
     _ex_parameters.wakeword.keyword = doc["wakeword"]["keyword"].as<String>();
@@ -194,7 +182,7 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 void StackchanExConfig::printExtParameters(void)
 {
     M5_LOGI("llm type: %d", _ex_parameters.llm.type);
-
+    M5_LOGI("llm model: %s", _ex_parameters.llm.model.c_str());
     M5_LOGI("llm nMcpServers: %d", _ex_parameters.llm.nMcpServers);
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         M5_LOGI("llm mcpServer[%d] name: %s", i, _ex_parameters.llm.mcpServer[i].name.c_str());
@@ -207,6 +195,7 @@ void StackchanExConfig::printExtParameters(void)
     M5_LOGI("tts voice: %s", _ex_parameters.tts.voice.c_str());
 
     M5_LOGI("stt type: %d", _ex_parameters.stt.type);
+    M5_LOGI("stt model: %s", _ex_parameters.stt.model.c_str());
 
     M5_LOGI("wakeword type: %d", _ex_parameters.wakeword.type);
     M5_LOGI("wakeword keyword: %s", _ex_parameters.wakeword.keyword.c_str());
