@@ -12,7 +12,7 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
 - Class design that makes it easy to create additional user applications
 
 
-> Stack-chan is a super-kawaii palm-sized communication robot developed and released by [Shishikawa-san](https://x.com/stack_chan).
+> Stack-chan is a super-kawaii palm-sized communication robot developed and released by [Shinya Ishikawa-san](https://x.com/stack_chan).
 >- [Github](https://github.com/stack-chan/stack-chan)
 >- [Discord](https://discord.com/channels/1095725099925110847/1097878659966173225)
 >- [ScrapBox](https://scrapbox.io/stack-chan/)
@@ -30,6 +30,7 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
   - [Supports SD Updater (Core2 only)](#supports-sd-updater-core2-only)
   - [Face detection by camera (CoreS3 only)](#face-detection-by-camera-cores3-only)
 - [About contributions](#about-contributions)
+  - [Repository Policy](#repository-policy)
 - [Notes](#notes)
 
 
@@ -113,7 +114,21 @@ build_flags=
 ```
 
 ## About contributions
-Issues and pull requests are also welcome. If you have any problems or suggestions for improvement, please contact us via issue first.
+Issues and pull requests are welcome. If you have any problems or suggestions for improvement, please contact us via an issue first.  
+Additionally, if you would like to support us as a Sponsor, it would be greatly appreciated and would help us with daily troubleshooting, responding to inquiries, and supporting new hardware.  
+We would also appreciate it if you could understand the repository policy described below.
+
+### Repository Policy
+Currently, this project is developed as a hobby, but it is based on the following principles:
+
+- Pursuing the performance of an AI voice assistant  
+  With the rapid development of generative AI, Stack-chan is becoming increasingly practical as an AI voice assistant. Through development so far, we have achieved real-time voice conversations and feature expansion via MCP, and in the future, we aim to implement long-term memory (so that recent conversations are remembered even after a power cycle).
+- Open as a base for derivative development  
+  We aim for a simple and general-purpose design so that the results of this repository can serve as a base for many people's AI Stack-chan development.
+- Support for new hardware  
+  As long as it does not conflict with the above policies, we would like to cover new hardware with future potential, such as ModuleLLM.
+- Contributing to the original Stack-chan repository  
+  This repository respects and is influenced by the so-called "original" or "TypeScript version" repository by Shinya Ishikawa-san ([repository](https://github.com/stack-chan/stack-chan)). We hope to contribute to the development of the original Stack-chan using the results obtained here (although, due to my lack of TypeScript skills, this has not been realized much yet. If you have the skills, please consider contributing).
 
 ## Notes
 - Because the folder name is long, the library include path may not work depending on the workspace location. Please make the workspace as close to the C drive as possible. (Example: C:\Git)
