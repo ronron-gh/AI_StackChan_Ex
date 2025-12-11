@@ -119,7 +119,7 @@ Additionally, if you would like to support us as a Sponsor, it would be greatly 
 We would also appreciate it if you could understand the repository policy described below.
 
 ### Repository Policy
-Currently, this project is developed as a hobby, but it is based on the following principles:
+Currently, this project is developed as a hobby, but it is based on the following policy:
 
 - Pursuing the performance of an AI voice assistant  
   With the rapid development of generative AI, Stack-chan is becoming increasingly practical as an AI voice assistant. Through development so far, we have achieved real-time voice conversations and feature expansion via MCP, and in the future, we aim to implement long-term memory (so that recent conversations are remembered even after a power cycle).
