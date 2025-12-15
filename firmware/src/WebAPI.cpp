@@ -222,60 +222,34 @@ void handle_role() {
 */
 void handle_role_set() {
 
-  // ModuleLLMのLLMを使用している場合はロール設定は不可
-  if(robot->m_config.getExConfig().llm.type == LLM_TYPE_MODULE_LLM){
-    return;
-  }
-
   // POST以外は拒否
   if (server.method() != HTTP_POST) {
     return;
   }
   String role = server.arg("plain");
-  if (role != "") {
-//    init_chat_doc(InitBuffer.c_str());
-    robot->llm->init_chat_doc(json_ChatString.c_str());
-    JsonArray messages = chat_doc["messages"];
-    JsonObject systemMessage1 = messages.createNestedObject();
-    systemMessage1["role"] = "system";
-    systemMessage1["content"] = role;
-//    serializeJson(chat_doc, InitBuffer);
-  } else {
-    robot->llm->init_chat_doc(json_ChatString.c_str());
-  }
-  //会話履歴をクリア
-  chatHistory.clear();
 
-#if 0  //save_role()に移動
-  InitBuffer="";
-  serializeJson(chat_doc, InitBuffer);
-  Serial.println("InitBuffer = " + InitBuffer);
-  //Role_JSON = InitBuffer;
-#endif
-
-  // JSONデータをspiffsへ出力する
-  robot->llm->save_role();
+  // JSONデータをSPIFFSに保存
+  robot->llm->save_role(role);
 
   // 整形したJSONデータを出力するHTMLデータを作成する
-  String html = "<html><body><pre>";
-  serializeJsonPretty(chat_doc, html);
-  html += "</pre></body></html>";
+  String html = "";
+  serializeJsonPretty(robot->llm->get_chat_doc(), html);
+  html = "<html><body><pre>" + html + "</pre></body></html>";
 
   // HTMLデータをシリアルに出力する
-  Serial.println(html);
+  //Serial.println(html);
   server.send(200, "text/html", html);
-//  server.send(200, "text/plain", String("OK"));
 };
 
 // 整形したJSONデータを出力するHTMLデータを作成する
 void handle_role_get() {
 
-  String html = "<html><body><pre>";
-  serializeJsonPretty(chat_doc, html);
-  html += "</pre></body></html>";
+  String html = "";
+  serializeJsonPretty(robot->llm->get_chat_doc(), html);
+  html = "<html><body><pre>" + html + "</pre></body></html>";
 
   // HTMLデータをシリアルに出力する
-  Serial.println(html);
+  //Serial.println(html);
   server.send(200, "text/html", String(HEAD) + html);
 };
 

@@ -108,6 +108,9 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     Serial.println("webSocketEvent: JSON deserialization error (session_update)");
                 }
 
+                // instructionsにロール、前回会話の要約を設定
+                //
+
                 // MCP tools listをfunctionとして挿入
                 //
                 for(int s=0; s<p_this->param.llm_conf.nMcpServers; s++){
@@ -414,6 +417,8 @@ portTickType RealtimeChatGPT::checkRealtimeRecordTimeout()
         }
         recTestLenCnt = 0;
 #endif
+        // 今までの会話を要約してSPIFFSに保存
+        //
     }
 
     return elapsedTime;

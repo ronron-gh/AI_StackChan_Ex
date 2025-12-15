@@ -269,4 +269,10 @@ String Robot::listen()
 void Robot::chat(String text, const char *base64_buf)
 {
   llm->chat(text, base64_buf);
+
+  String memory = "";
+  memory = llm->update_memory();
+
+  Serial.println("=== Updated memory ===");
+  Serial.println(memory);
 }

@@ -28,8 +28,11 @@ public:
     String https_post_json(const char* url, const char* json_string, const char* root_ca);
     
     virtual bool init_chat_doc(const char *data);
-    virtual bool save_role();
+    virtual bool save_chat_doc_to_spiffs();
+    virtual bool save_role(String role);
+    virtual bool save_userInfo(String userInfo);
     virtual void load_role();
+    virtual String update_memory();
 };
 
 

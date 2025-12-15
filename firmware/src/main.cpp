@@ -149,6 +149,22 @@ void servo(void *args)
   }
 }
 
+void battery_check(void *args) {
+  DriveContext *ctx = (DriveContext *)args;
+  Avatar *avatar = ctx->getAvatar();
+  for (;;)
+  {
+    int32_t batteryLevel = M5.Power.getBatteryLevel();
+    if((batteryLevel < 95) && (batteryLevel != 0)){
+      avatar->setBatteryIcon(true);
+      avatar->setBatteryStatus(M5.Power.isCharging(), M5.Power.getBatteryLevel());
+    }
+    else{
+      avatar->setBatteryIcon(false);    
+    }
+    delay(60000);
+  }
+}
 
 //void Wifi_setup() {
 bool Wifi_connection_check() {
@@ -393,8 +409,9 @@ void setup()
 //  avatar.init();
   avatar.init(16);
 
-  avatar.addTask(lipSync, "lipSync");
-  avatar.addTask(servo, "servo");
+  avatar.addTask(lipSync, "lipSync", 1024);
+  avatar.addTask(servo, "servo", 1024);
+  avatar.addTask(battery_check, "battery_check", 1024);
   avatar.setSpeechFont(&fonts::efontJA_16);
 
   //robot->spk_volume = 120;
@@ -482,14 +499,6 @@ void loop()
 #endif
   }
   
-  if(M5.Power.getBatteryLevel() < 95){
-    avatar.setBatteryIcon(true);
-    avatar.setBatteryStatus(M5.Power.isCharging(), M5.Power.getBatteryLevel());
-  }
-  else{
-    avatar.setBatteryIcon(false);    
-  }
-
   //reset_watchdog();
   
 }

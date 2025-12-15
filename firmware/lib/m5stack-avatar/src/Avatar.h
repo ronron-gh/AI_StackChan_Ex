@@ -56,7 +56,7 @@ class Avatar {
   bool isDrawing();
   void start(int colorDepth = 1);
   void stop();
-  void addTask(TaskFunction_t f, const char* name);
+  void addTask(TaskFunction_t f, const char* name, int stackSize = 2048);
   void suspend();
   void resume();
   void setBatteryIcon(bool iconStatus);

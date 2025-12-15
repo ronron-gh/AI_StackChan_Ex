@@ -19,10 +19,13 @@ extern Avatar avatar;
 
 String json_ChatString = 
 "{\"model\": \"gpt-4o\","
-"\"messages\": [{\"role\": \"user\", \"content\": \"\"}],"
-"\"functions\": [],"
-"\"function_call\":\"auto\""
+  "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"
+                  "{\"role\": \"system\", \"content\": \"User Info: \"}],"
+  "\"functions\": [],"
+  "\"function_call\":\"auto\""
 "}";
+
+String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
 
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)
@@ -64,11 +67,7 @@ bool ChatGPT::init_chat_doc(const char *data)
   return true;
 }
 
-bool ChatGPT::save_role(){
-  InitBuffer="";
-  serializeJson(chat_doc, InitBuffer);
-  Serial.println("InitBuffer = " + InitBuffer);
-
+bool ChatGPT::save_chat_doc_to_spiffs(){
   // SPIFFSをマウントする
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
@@ -88,7 +87,55 @@ bool ChatGPT::save_role(){
   return true;
 }
 
+bool ChatGPT::save_role(String role){
+  Serial.println("Save role to SPIFFS.");
+
+  init_chat_doc(InitBuffer.c_str());
+
+  if (role != "") {
+    chat_doc["messages"][0]["content"] = role;
+  } else {
+    Serial.println("Input role is empty. Initialize by default.");
+    chat_doc["messages"][0]["content"] = defaultRole;
+  }
+
+  // 更新したプロンプトをSPIFFSに保存
+  save_chat_doc_to_spiffs();
+
+  // 会話履歴を初期化
+  //chatHistory.clear();
+
+  // InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
+  serializeJson(chat_doc, InitBuffer);
+  String json_str; 
+  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
+  Serial.println("Initialized prompt:");
+  Serial.println(json_str);
+
+  return true;
+}
+
+bool ChatGPT::save_userInfo(String userInfo){
+  Serial.println("Save role to SPIFFS.");
+
+  init_chat_doc(InitBuffer.c_str());
+  chat_doc["messages"][1]["content"] = String("User Info: ") + userInfo;
+
+  // 更新したプロンプトをSPIFFSに保存
+  save_chat_doc_to_spiffs();
+
+  // InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
+  serializeJson(chat_doc, InitBuffer);
+  String json_str; 
+  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
+  Serial.println("Initialized prompt:");
+  Serial.println(json_str);
+
+  return true;
+}
+
 void ChatGPT::load_role(){
+  Serial.println("\nLoad role from SPIFFS.");
 
   if(SPIFFS.begin(true)){
     File file = SPIFFS.open("/data.json", "r");
@@ -97,28 +144,35 @@ void ChatGPT::load_role(){
       if(error){
         Serial.println("Failed to deserialize JSON. Init doc by default.");
         init_chat_doc(json_ChatString.c_str());
+        chat_doc["messages"][0]["content"] = defaultRole;
       }
       else{
-        //const char* role = chat_doc["messages"][1]["content"];
-        String role = String((const char*)chat_doc["messages"][1]["content"]);
-        
+        String role = String((const char*)chat_doc["messages"][0]["content"]);
         //Serial.println(role);
+        String userInfo = String((const char*)chat_doc["messages"][1]["content"]);
+        //Serial.println(userInfo);
+        int idx = userInfo.indexOf("User Info");
+        if(idx < 0){
+          userInfo = "User Info: ";
+        }
+
+        // data.jsonファイルからロードしたプロンプトは旧バージョンの可能性があるため現バージョンで初期化する
+        init_chat_doc(json_ChatString.c_str());
 
         if (role != "") {
-          init_chat_doc(json_ChatString.c_str());
-          JsonArray messages = chat_doc["messages"];
-          JsonObject systemMessage1 = messages.createNestedObject();
-          systemMessage1["role"] = "system";
-          systemMessage1["content"] = role;
-          //serializeJson(chat_doc, InitBuffer);
+          chat_doc["messages"][0]["content"] = role;
         } else {
-          init_chat_doc(json_ChatString.c_str());
+          Serial.println("Loaded role is empty. Initialize by default.");
+          chat_doc["messages"][0]["content"] = defaultRole;
         }
+
+        chat_doc["messages"][1]["content"] = userInfo;
       }
 
     } else {
-      Serial.println("Failed to open file for reading");
+      Serial.println("Failed to open file. Initialize by default.");
       init_chat_doc(json_ChatString.c_str());
+      chat_doc["messages"][0]["content"] = defaultRole;
     }
 
   } else {
@@ -155,7 +209,7 @@ void ChatGPT::load_role(){
   }
 
   /*
-   * InitBufferを初期化
+   * InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
    */
   serializeJson(chat_doc, InitBuffer);
   String json_str; 
@@ -305,6 +359,35 @@ void ChatGPT::chat(String text, const char *base64_buf) {
 
   //チャット履歴の容量を圧迫しないように、functionロールを削除する
   chatHistory.clean_function_role();
+}
+
+String ChatGPT::update_memory() {
+  String response = "";
+  String calledFunc = "";   // dummy
+
+  JsonArray messages = chat_doc["messages"];
+  for (int i = 0; i < chatHistory.get_size(); i++){
+    JsonObject systemMessage1 = messages.createNestedObject();
+    systemMessage1["role"] = chatHistory.get_role(i);
+    systemMessage1["content"] = chatHistory.get_content(i);
+  }
+
+  JsonObject systemMessage1 = messages.createNestedObject();
+  systemMessage1["role"] = String("user");
+  systemMessage1["content"] = String("Please summarize the conversation history and user attributes.");
+
+  String json_string;
+  serializeJson(chat_doc, json_string);
+
+  //serializeJsonPretty(chat_doc, json_string);
+  Serial.println("=== Request for update memory ===");
+  Serial.println(json_string);
+  Serial.println("====================");
+
+  response = execChatGpt(json_string, calledFunc);
+  save_userInfo(response);
+
+  return response;
 }
 
 

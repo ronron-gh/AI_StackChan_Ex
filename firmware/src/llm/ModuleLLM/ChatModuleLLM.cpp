@@ -23,36 +23,16 @@ ChatModuleLLM::ChatModuleLLM(llm_param_t param) : LLMBase(param, 0) {
   load_role();
 }
 
-bool ChatModuleLLM::save_role(){
+bool ChatModuleLLM::save_role(String role){
   //※現状、ModuleLLM用のロールはSPIFFSへの保存は非対応
+  Serial.println("Currently, role settings for ModuleLLM are not supported.");
   
-#if 0
-  InitBuffer="";
-  serializeJson(chat_doc, InitBuffer);
-  Serial.println("InitBuffer = " + InitBuffer);
-
-  // SPIFFSをマウントする
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return false;
-  }
-
-  // JSONファイルを作成または開く
-  File file = SPIFFS.open("/data.json", "w");
-  if(!file){
-    Serial.println("Failed to open file for writing");
-    return false;
-  }
-
-  // JSONデータをシリアル化して書き込む
-  serializeJson(chat_doc, file);
-  file.close();
-#endif
   return true;
 }
 
 void ChatModuleLLM::load_role(){
   //※現状、ModuleLLM用のロールはSPIFFSへの保存は非対応
+  Serial.println("Currently, role settings for ModuleLLM are not supported.");
 
 #if 0   //inferenceAndWaitResult()にJSONを渡してよいのだろうか？
   //String promptBase = "{\"messages\":[{\"role\": \"system\", \"content\": \"あなたはスタックチャンという名前のアシスタントロボットです.\"}]}";

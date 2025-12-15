@@ -4,7 +4,7 @@
 
 #include "Avatar.h"
 namespace m5avatar {
-const uint32_t DEFAULT_STACK_SIZE = 2048;
+//const uint32_t DEFAULT_STACK_SIZE = 2048;
 
 unsigned int seed = 0;
 
@@ -86,12 +86,12 @@ void Avatar::setFace(Face *face) { this->face = face; }
 
 Face *Avatar::getFace() const { return face; }
 
-void Avatar::addTask(TaskFunction_t f, const char* name) {
+void Avatar::addTask(TaskFunction_t f, const char* name, int stackSize) {
   DriveContext *ctx = new DriveContext(this);
   // TODO(meganetaaan): set a task handler
   xTaskCreate(f, /* Function to implement the task */
                           name, /* Name of the task */
-                          DEFAULT_STACK_SIZE, /* Stack size in words */
+                          stackSize, /* Stack size in words */
                           ctx,                /* Task input parameter */
                           1,                  /* P2014riority of the task */
                           NULL);              /* Task handle. */
