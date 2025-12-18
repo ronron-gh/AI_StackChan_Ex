@@ -221,6 +221,7 @@ void handle_role() {
  * 出力形式をJSONに変更
 */
 void handle_role_set() {
+  String html = "";
 
   // POST以外は拒否
   if (server.method() != HTTP_POST) {
@@ -229,12 +230,14 @@ void handle_role_set() {
   String role = server.arg("plain");
 
   // JSONデータをSPIFFSに保存
-  robot->llm->save_role(role);
-
-  // 整形したJSONデータを出力するHTMLデータを作成する
-  String html = "";
-  serializeJsonPretty(robot->llm->get_chat_doc(), html);
-  html = "<html><body><pre>" + html + "</pre></body></html>";
+  if(robot->llm->save_role(role)){
+    // 整形したJSONデータを出力するHTMLデータを作成する
+    serializeJsonPretty(robot->llm->get_chat_doc(), html);
+    html = "<html><body><pre>" + html + "</pre></body></html>";
+  }
+  else{
+    html = "Failed to save role to SPIFFS.";
+  }
 
   // HTMLデータをシリアルに出力する
   //Serial.println(html);

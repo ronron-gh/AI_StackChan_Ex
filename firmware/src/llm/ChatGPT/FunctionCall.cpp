@@ -8,11 +8,11 @@
 //#include <EMailSender.h>
 #include "MailClient.h"
 #include "driver/WakeWord.h"
-#include "Robot.h"
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
 #include "SDUtil.h"
 #include "MCPClient.h"
+#include "llm/LLMBase.h"
 using namespace m5avatar;
 
 
@@ -72,6 +72,20 @@ void init_func_call_settings(StackchanExConfig& system_config)
 
 const String json_Functions =
 "["
+  "{"
+    "\"name\": \"update_memory\","
+    "\"description\": \"Update long-term memory.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"memory\":{"
+          "\"type\": \"string\","
+          "\"description\": \"Summary of user attributes and memorable conversations.\""
+        "}"
+      "},"
+      "\"required\": [\"memory\"]"
+    "}"
+  "},"
   "{"
     "\"name\": \"timer\","
     "\"description\": \"指定した時間が経過したら、指定した動作を実行する。指定できる動作はalarmとshutdown。\","
@@ -300,6 +314,19 @@ void powerOffTimerCallback(TimerHandle_t _xTimer){
   avatar.setSpeechText("");
   M5.Power.powerOff();
 }
+
+
+String fn_update_memory(LLMBase* llm, const char* memory){
+  String response = "";
+  if(llm->save_userInfo(memory)){
+    response = "Memory update successful.";
+  }else{
+    response = "Memory update failure.";
+  }
+  Serial.println(response);
+  return response;
+}
+
 
 String timer(int32_t time, const char* action){
   String response = "";

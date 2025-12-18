@@ -29,12 +29,12 @@ public:
 
   LLMBase(llm_param_t param, int _promptMaxSize);
   virtual void chat(String text, const char *base64_buf = NULL) = 0;
-  virtual bool init_chat_doc(const char *data) {};  //TODO: LLMBaseで実装してもよいかも
-  virtual bool save_chat_doc_to_spiffs() {};        //TODO: LLMBaseで実装してもよいかも
-  virtual bool save_role(String role) {};
-  virtual bool save_userInfo(String userInfo) {};
+  virtual bool init_chat_doc(const char *data) { return false; };  //TODO: LLMBaseで実装してもよいかも
+  virtual bool save_chat_doc_to_spiffs() { return false; };        //TODO: LLMBaseで実装してもよいかも
+  virtual bool save_role(String role) { return false; };
+  virtual bool save_userInfo(String userInfo) { return false; };
   virtual void load_role() {};
-  virtual String update_memory() {};
+  virtual String update_memory() { return String(""); };
 
   String get_InitBuffer() { return InitBuffer; };
   SpiRamJsonDocument get_chat_doc() { return chat_doc; };

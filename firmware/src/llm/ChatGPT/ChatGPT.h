@@ -11,6 +11,11 @@
 
 #define CHATGPT_PROMPT_MAX_SIZE   (1024*50)
 
+#define SYSTEM_PROMPT_INDEX_USER_ROLE     (0)
+#define SYSTEM_PROMPT_INDEX_SYSTEM_ROLE   (1)
+#define SYSTEM_PROMPT_INDEX_USER_INFO     (2)
+
+
 extern String InitBuffer;
 extern String json_ChatString;
 

@@ -19,13 +19,17 @@ extern Avatar avatar;
 
 String json_ChatString = 
 "{\"model\": \"gpt-4o\","
-  "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"
-                  "{\"role\": \"system\", \"content\": \"User Info: \"}],"
+  "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
+                  "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
+                  "{\"role\": \"system\", \"content\": \"User Info: \"}],"  // 長期記憶の要約
   "\"functions\": [],"
   "\"function_call\":\"auto\""
 "}";
 
+// ユーザーが設定するロール
 String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
+// システム用のロール（Function Callingの利用方針など）
+String systemRole = "If the conversation contains user attributes (such as hobbies and interests) or memorable episodes, summarize them and use the update_memory function to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
 
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)
@@ -93,14 +97,18 @@ bool ChatGPT::save_role(String role){
   init_chat_doc(InitBuffer.c_str());
 
   if (role != "") {
-    chat_doc["messages"][0]["content"] = role;
+    chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
+    chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   } else {
     Serial.println("Input role is empty. Initialize by default.");
-    chat_doc["messages"][0]["content"] = defaultRole;
+    chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
+    chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   }
 
   // 更新したプロンプトをSPIFFSに保存
-  save_chat_doc_to_spiffs();
+  if(!save_chat_doc_to_spiffs()){
+    return false;
+  }
 
   // 会話履歴を初期化
   //chatHistory.clear();
@@ -119,10 +127,12 @@ bool ChatGPT::save_userInfo(String userInfo){
   Serial.println("Save role to SPIFFS.");
 
   init_chat_doc(InitBuffer.c_str());
-  chat_doc["messages"][1]["content"] = String("User Info: ") + userInfo;
+  chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = String("User Info: ") + userInfo;
 
   // 更新したプロンプトをSPIFFSに保存
-  save_chat_doc_to_spiffs();
+  if(!save_chat_doc_to_spiffs()){
+    return false;
+  }
 
   // InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
   serializeJson(chat_doc, InitBuffer);
@@ -144,12 +154,13 @@ void ChatGPT::load_role(){
       if(error){
         Serial.println("Failed to deserialize JSON. Init doc by default.");
         init_chat_doc(json_ChatString.c_str());
-        chat_doc["messages"][0]["content"] = defaultRole;
+        chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
+        chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
       }
       else{
-        String role = String((const char*)chat_doc["messages"][0]["content"]);
+        String role = String((const char*)chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
         //Serial.println(role);
-        String userInfo = String((const char*)chat_doc["messages"][1]["content"]);
+        String userInfo = String((const char*)chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
         //Serial.println(userInfo);
         int idx = userInfo.indexOf("User Info");
         if(idx < 0){
@@ -160,19 +171,20 @@ void ChatGPT::load_role(){
         init_chat_doc(json_ChatString.c_str());
 
         if (role != "") {
-          chat_doc["messages"][0]["content"] = role;
+          chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
         } else {
           Serial.println("Loaded role is empty. Initialize by default.");
-          chat_doc["messages"][0]["content"] = defaultRole;
+          chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
         }
-
-        chat_doc["messages"][1]["content"] = userInfo;
+        chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
+        chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
       }
 
     } else {
       Serial.println("Failed to open file. Initialize by default.");
       init_chat_doc(json_ChatString.c_str());
-      chat_doc["messages"][0]["content"] = defaultRole;
+      chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
+      chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
     }
 
   } else {
@@ -419,7 +431,7 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
       if(data == 0){
         const char* name = doc["choices"][0]["message"]["function_call"]["name"];
         const char* args = doc["choices"][0]["message"]["function_call"]["arguments"];
-
+        calledFunc = String(name);
         //avatar.setSpeechFont(&fonts::efontJA_12);
         //avatar.setSpeechText(name);
         response = exec_calledFunc(name, args);
@@ -474,13 +486,16 @@ String ChatGPT::exec_calledFunc(const char* name, const char* args){
       }
     }
 
-
-    if(strcmp(name, "timer") == 0){
+    if(strcmp(name, "update_memory") == 0){
+      const char* memory = argsDoc["memory"];
+      Serial.println(memory);
+      response = fn_update_memory(this, memory);
+    }
+    else if(strcmp(name, "timer") == 0){
       const int time = argsDoc["time"];
       const char* action = argsDoc["action"];
       Serial.printf("time:%d\n",time);
       Serial.println(action);
-
       response = timer(time, action);
     }
     else if(strcmp(name, "timer_change") == 0){
