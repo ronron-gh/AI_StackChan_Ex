@@ -37,7 +37,7 @@ public:
   virtual String update_memory() { return String(""); };
 
   String get_InitBuffer() { return InitBuffer; };
-  SpiRamJsonDocument get_chat_doc() { return chat_doc; };
+  SpiRamJsonDocument& get_chat_doc() { return chat_doc; };
 
   // for async TTS
   //

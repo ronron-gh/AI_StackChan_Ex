@@ -86,14 +86,14 @@ void Avatar::setFace(Face *face) { this->face = face; }
 
 Face *Avatar::getFace() const { return face; }
 
-void Avatar::addTask(TaskFunction_t f, const char* name, int stackSize) {
+void Avatar::addTask(TaskFunction_t f, const char* name, int stackSize, int priority) {
   DriveContext *ctx = new DriveContext(this);
   // TODO(meganetaaan): set a task handler
   xTaskCreate(f, /* Function to implement the task */
                           name, /* Name of the task */
                           stackSize, /* Stack size in words */
                           ctx,                /* Task input parameter */
-                          1,                  /* P2014riority of the task */
+                          priority,                  /* Priority of the task */
                           NULL);              /* Task handle. */
   // xTaskCreatePinnedToCore(f, /* Function to implement the task */
   //                         name, /* Name of the task */

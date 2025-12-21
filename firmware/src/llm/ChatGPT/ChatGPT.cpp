@@ -26,10 +26,10 @@ String json_ChatString =
   "\"function_call\":\"auto\""
 "}";
 
-// ユーザーが設定するロール
+// ユーザーが設定するロールのデフォルト設定用
 String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
 // システム用のロール（Function Callingの利用方針など）
-String systemRole = "If the conversation contains user attributes (such as hobbies and interests) or memorable episodes, summarize them and use the update_memory function to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
+String systemRole = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
 
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)

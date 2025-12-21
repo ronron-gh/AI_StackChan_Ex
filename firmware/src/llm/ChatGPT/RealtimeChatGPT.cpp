@@ -110,6 +110,14 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
                 // instructionsにロール、前回会話の要約を設定
                 //
+                SpiRamJsonDocument& sysPrmpt = p_this->get_chat_doc();
+                String role = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
+                Serial.printf("role: %s\n", role.c_str());
+                String sysRole = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"]);
+                Serial.printf("sysRole: %s\n", sysRole.c_str());
+                String userInfo = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
+                Serial.printf("userInfo: %s\n", userInfo.c_str());
+                sessionUpdateDoc["session"]["instructions"] = role + sysRole + userInfo;
 
                 // MCP tools listをfunctionとして挿入
                 //
@@ -201,28 +209,35 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
 #endif
             else if(msgType.equals("response.done")){
-                Serial.printf("[WSc] response.done\n");
+                Serial.printf("[WSc] response.done payload: %s\n", payload);
+                int outputNum = msgDoc["response"]["output"].size();
+                Serial.printf("output num: %d\n", outputNum);
+                bool isFuncCall = false;
+                for(int i = 0; i < outputNum; i++){
+                    String outputType = msgDoc["response"]["output"][i]["type"].as<String>();
+                    if(outputType.equals("function_call")){
+                        //Serial.printf("[WSc] function call payload: %s\n", payload);
+                        isFuncCall = true;
+                        const char* name = msgDoc["response"]["output"][i]["name"];
+                        const char* args = msgDoc["response"]["output"][i]["arguments"];
+                        const char* call_id = msgDoc["response"]["output"][i]["call_id"];
+                        Serial.printf("name: %s, args: %s\n", name, args);
 
-                String outputType = msgDoc["response"]["output"][0]["type"].as<String>();
-                if(outputType.equals("function_call")){
-                    Serial.printf("[WSc] function call payload: %s\n", payload);
-                    const char* name = msgDoc["response"]["output"][0]["name"];
-                    const char* args = msgDoc["response"]["output"][0]["arguments"];
-                    const char* call_id = msgDoc["response"]["output"][0]["call_id"];
+                        //avatar.setSpeechFont(&fonts::efontJA_12);
+                        //avatar.setSpeechText(name);
+                        String response = p_this->exec_calledFunc(name, args);
+                        response.replace("\"", "\\\"");     //JSON内の文字列を囲む"にエスケープ(\)を付ける
 
-                    //avatar.setSpeechFont(&fonts::efontJA_12);
-                    //avatar.setSpeechText(name);
-                    String response = p_this->exec_calledFunc(name, args);
-                    response.replace("\"", "\\\"");     //JSON内の文字列を囲む"にエスケープ(\)を付ける
-
-                    String json(conversation_item_create);
-                    json.replace("REPLACE_TO_CALL_ID", call_id);
-                    json.replace("REPLACE_TO_OUTPUT", response.c_str());
-                    Serial.printf("[WSc] function output: %s\n", json.c_str());
-                    webSocket.sendTXT(json);
-                    webSocket.sendTXT(response_create);
+                        String json(conversation_item_create);
+                        json.replace("REPLACE_TO_CALL_ID", call_id);
+                        json.replace("REPLACE_TO_OUTPUT", response.c_str());
+                        Serial.printf("[WSc] function output: %s\n", json.c_str());
+                        webSocket.sendTXT(json);
+                        webSocket.sendTXT(response_create);
+                    }
                 }
-                else{
+
+                if(!isFuncCall){
 #ifndef REALTIME_API_WITH_TTS
                     p_this->startRealtimeRecord();
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
@@ -267,7 +282,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
 
 RealtimeChatGPT::RealtimeChatGPT(llm_param_t param) : 
-    ChatGPT(param, 0),
+    ChatGPT(param),
     rtRecSamplerate(RT_REC_SAMPLE_RATE),
     rtRecLength(RT_REC_LENGTH),
     realtime_recording(false),
