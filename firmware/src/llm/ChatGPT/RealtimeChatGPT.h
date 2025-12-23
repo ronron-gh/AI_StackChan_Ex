@@ -23,7 +23,7 @@
 #endif
 
 extern String InitBuffer;
-extern String json_ChatString;
+extern const String json_ChatString;
 
 class RealtimeChatGPT: public ChatGPT{
 //private:

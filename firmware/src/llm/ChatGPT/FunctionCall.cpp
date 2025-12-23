@@ -318,11 +318,17 @@ void powerOffTimerCallback(TimerHandle_t _xTimer){
 
 String fn_update_memory(LLMBase* llm, const char* memory){
   String response = "";
-  if(llm->save_userInfo(memory)){
-    response = "Memory update successful.";
-  }else{
-    response = "Memory update failure.";
+  if(llm->enableMemory()){
+    if(llm->save_userInfo(memory)){
+      response = "Memory update successful.";
+    }else{
+      response = "Memory update failure.";
+    }
   }
+  else{
+    response = "Memory is disabled.";
+  }
+
   Serial.println(response);
   return response;
 }

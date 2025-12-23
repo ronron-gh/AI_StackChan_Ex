@@ -17,7 +17,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 
 
-String json_ChatString = 
+const String json_ChatString = 
 "{\"model\": \"gpt-4o\","
   "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
                   "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
@@ -27,9 +27,10 @@ String json_ChatString =
 "}";
 
 // ユーザーが設定するロールのデフォルト設定用
-String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
+const String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
 // システム用のロール（Function Callingの利用方針など）
-String systemRole = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
+const String systemRole_memory = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
+const String systemRole_noMemory = "Memory function disabled. Do not use update_memory tool.";
 
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)
@@ -42,6 +43,12 @@ ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
     if(mcp_client[i]->isConnected()){
       M5.Lcd.println(param.llm_conf.mcpServer[i].name);
     }
+  }
+
+  enableMemory(param.llm_conf.enableMemory);
+  if(enableMemory()){
+    Serial.println("Memory is enabled");
+    M5.Lcd.println("Memory is enabled");
   }
 
   if(promptMaxSize != 0){
@@ -92,17 +99,15 @@ bool ChatGPT::save_chat_doc_to_spiffs(){
 }
 
 bool ChatGPT::save_role(String role){
+  String systemRole = "";
   Serial.println("Save role to SPIFFS.");
 
   init_chat_doc(InitBuffer.c_str());
-
   if (role != "") {
     chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
-    chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   } else {
     Serial.println("Input role is empty. Initialize by default.");
     chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
-    chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   }
 
   // 更新したプロンプトをSPIFFSに保存
@@ -145,7 +150,13 @@ bool ChatGPT::save_userInfo(String userInfo){
 }
 
 void ChatGPT::load_role(){
-  Serial.println("\nLoad role from SPIFFS.");
+  String systemRole = "";
+  Serial.println("Load role from SPIFFS.");
+  if(enableMemory()){
+    systemRole = systemRole_memory;
+  }else{
+    systemRole = systemRole_noMemory;
+  }
 
   if(SPIFFS.begin(true)){
     File file = SPIFFS.open("/data.json", "r");
@@ -163,7 +174,7 @@ void ChatGPT::load_role(){
         String userInfo = String((const char*)chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
         //Serial.println(userInfo);
         int idx = userInfo.indexOf("User Info");
-        if(idx < 0){
+        if(idx < 0 || !enableMemory()){
           userInfo = "User Info: ";
         }
 
@@ -372,36 +383,6 @@ void ChatGPT::chat(String text, const char *base64_buf) {
   //チャット履歴の容量を圧迫しないように、functionロールを削除する
   chatHistory.clean_function_role();
 }
-
-String ChatGPT::update_memory() {
-  String response = "";
-  String calledFunc = "";   // dummy
-
-  JsonArray messages = chat_doc["messages"];
-  for (int i = 0; i < chatHistory.get_size(); i++){
-    JsonObject systemMessage1 = messages.createNestedObject();
-    systemMessage1["role"] = chatHistory.get_role(i);
-    systemMessage1["content"] = chatHistory.get_content(i);
-  }
-
-  JsonObject systemMessage1 = messages.createNestedObject();
-  systemMessage1["role"] = String("user");
-  systemMessage1["content"] = String("Please summarize the conversation history and user attributes.");
-
-  String json_string;
-  serializeJson(chat_doc, json_string);
-
-  //serializeJsonPretty(chat_doc, json_string);
-  Serial.println("=== Request for update memory ===");
-  Serial.println(json_string);
-  Serial.println("====================");
-
-  response = execChatGpt(json_string, calledFunc);
-  save_userInfo(response);
-
-  return response;
-}
-
 
 String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   String response = "";
