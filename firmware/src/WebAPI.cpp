@@ -74,6 +74,7 @@ static const char APIKEY_HTML[] PROGMEM = R"KEWL(
   </body>
 </html>)KEWL";
 
+#if 0
 static const char ROLE_HTML[] PROGMEM = R"KEWL(
 <!DOCTYPE html>
 <html>
@@ -122,6 +123,23 @@ static const char ROLE_HTML[] PROGMEM = R"KEWL(
 	</script>
 </body>
 </html>)KEWL";
+#endif
+
+#define IMPORT_FILE(section, filename, symbol) \
+static constexpr const char* filename_##symbol = filename; \
+extern const uint8_t symbol[], sizeof_##symbol[]; \
+asm(\
+  ".section " #section "\n"\
+  ".balign 4\n"\
+  ".global " #symbol "\n"\
+  #symbol ":\n"\
+  ".incbin \"incbin/" filename "\"\n"\
+  ".global sizeof_" #symbol "\n"\
+  ".set sizeof_" #symbol ", . - " #symbol "\n"\
+  ".balign 4\n"\
+  ".section \".text\"\n")
+
+IMPORT_FILE(.rodata, "index.html", index_html);
 
 
 void handleRoot() {
@@ -212,7 +230,8 @@ void handle_apikey_set() {
 
 void handle_role() {
   // ファイルを読み込み、クライアントに送信する
-  server.send(200, "text/html", ROLE_HTML);
+  //server.send(200, "text/html", ROLE_HTML);
+  server.send(200, "text/html", (const char*)index_html);
 }
 
 

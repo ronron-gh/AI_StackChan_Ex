@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>ロール設定</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		textarea {
+			width: 80%;
+			height: 200px;
+			resize: both;
+		}
+	</style>
+</head>
+<body>
+	<h1>ロール設定</h1>
+	<form onsubmit="postData(event)">
+		<label for="textarea">ここにロールを記述してください。:</label><br>
+		<textarea id="textarea" name="textarea"></textarea><br><br>
+		<input type="submit" value="Submit">
+	</form>
+	<script>
+		function postData(event) {
+			event.preventDefault();
+			const textAreaContent = document.getElementById("textarea").value.trim();
+//			if (textAreaContent.length > 0) {
+				const xhr = new XMLHttpRequest();
+				xhr.open("POST", "/role_set", true);
+				xhr.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
+			// xhr.onload = () => {
+			// 	location.reload(); // 送信後にページをリロード
+			// };
+			xhr.onload = () => {
+				document.open();
+				document.write(xhr.responseText);
+				document.close();
+			};
+				xhr.send(textAreaContent);
+//        document.getElementById("textarea").value = "";
+				alert("Data sent successfully!");
+//			} else {
+//				alert("Please enter some text before submitting.");
+//			}
+		}
+	</script>
+</body>
+</html>
