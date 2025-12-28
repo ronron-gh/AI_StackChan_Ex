@@ -18,7 +18,8 @@ typedef enum e_sub_draw_type
 {
   SUB_DRAW_TYPE_CAM565,
   SUB_DRAW_TYPE_JPG,
-  SUB_DRAW_TYPE_TXT
+  SUB_DRAW_TYPE_TXT,
+  SUB_DRAW_TYPE_QRCODE
 } SUB_DRAW_TYPE;
 
 class SubWindow final : public Drawable {
@@ -44,8 +45,9 @@ class SubWindow final : public Drawable {
   M5Canvas *spriteTxt;  //テキスト表示用のスプライト
 
   size_t copySDFileToRAM(const char *path, uint8_t *out, int outBufSize);
-
- public:
+  void pushSpriteTxt(M5Canvas *spi, BoundingRect rect, DrawContext *ctx, String txt);
+ 
+public:
   // constructor
   SubWindow();
   ~SubWindow() = default;
@@ -58,6 +60,7 @@ class SubWindow final : public Drawable {
   void updateDrawContentCam565(uint8_t* buf);
   bool updateDrawContentJpg(String& fname);
   void updateDrawContentTxt(String txt);
+  void updateDrawContentQrcode(String txt);
 };
 
 }  // namespace m5avatar

@@ -56,6 +56,32 @@ SubWindow::SubWindow() {
   // AvatarをSetup()内でnewするように変更すれば、ここで確保してもSPIRAMから確保できるはず。
 }
 
+void SubWindow::pushSpriteTxt(M5Canvas *spi, BoundingRect rect, DrawContext *ctx, String txt) {
+  int x = rect.getLeft();
+  int y = rect.getTop();
+  int w = rect.getWidth();
+  int h = rect.getHeight();
+  spriteTxt->setColorDepth(ctx->getColorDepth());
+  //spriteTxt->createSprite(M5.Display.width(), M5.Display.height());
+  spriteTxt->createSprite(w, h);
+  spriteTxt->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
+    ctx->getColorPalette()->get(COLOR_BACKGROUND));
+  if (ctx->getColorDepth() != 1) {
+    spriteTxt->fillSprite(ctx->getColorPalette()->get(COLOR_BACKGROUND));
+  } else {
+    spriteTxt->fillSprite(0);
+  }
+  //spi->setClipRect(x, y, w, h);
+  spriteTxt->fillRect(0, 0, w, h, BLACK);
+  spriteTxt->setFont(&fonts::lgfxJapanGothic_20);
+  spriteTxt->setTextSize(1);
+  spriteTxt->setTextColor(WHITE, BLACK);
+  spriteTxt->setTextDatum(0);
+  spriteTxt->setCursor(0, 0);
+  spriteTxt->print(txt);
+  spriteTxt->pushSprite(spi, x, y);
+  spriteTxt->deleteSprite();
+}
 
 void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
  
@@ -83,30 +109,14 @@ void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
 #endif
     }
     else if(drawType == SUB_DRAW_TYPE_TXT){
-      int x = rect.getLeft();
-      int y = rect.getTop();
-      int w = rect.getWidth();
-      int h = rect.getHeight();
-      spriteTxt->setColorDepth(ctx->getColorDepth());
-      //spriteTxt->createSprite(M5.Display.width(), M5.Display.height());
-      spriteTxt->createSprite(w, h);
-      spriteTxt->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
-        ctx->getColorPalette()->get(COLOR_BACKGROUND));
-      if (ctx->getColorDepth() != 1) {
-        spriteTxt->fillSprite(ctx->getColorPalette()->get(COLOR_BACKGROUND));
-      } else {
-        spriteTxt->fillSprite(0);
-      }
-      //spi->setClipRect(x, y, w, h);
-      spriteTxt->fillRect(0, 0, w, h, BLACK);
-      spriteTxt->setFont(&fonts::lgfxJapanGothic_20);
-      spriteTxt->setTextSize(1);
-      spriteTxt->setTextColor(WHITE, BLACK);
-      spriteTxt->setTextDatum(0);
-      spriteTxt->setCursor(0, 0);
-      spriteTxt->print(subWdTxtBuf);
-      spriteTxt->pushSprite(spi, x, y);
-      spriteTxt->deleteSprite();
+      pushSpriteTxt(spi, rect, ctx, subWdTxtBuf);
+    }
+    else if(drawType == SUB_DRAW_TYPE_QRCODE){
+      BoundingRect urlTxtRect;
+      urlTxtRect.setPosition(210, 0);
+      urlTxtRect.setSize(320, 30);
+      pushSpriteTxt(spi, urlTxtRect, ctx, subWdTxtBuf);
+      spi->qrcode(subWdTxtBuf,60,10,200,5);
     }
   }
 }
@@ -186,6 +196,10 @@ void SubWindow::updateDrawContentTxt(String txt){
   subWdTxtBuf = txt;
 }
 
+void SubWindow::updateDrawContentQrcode(String txt){
+  drawType = SUB_DRAW_TYPE_QRCODE;
+  subWdTxtBuf = txt;
+}
 
 
 // SDカードのファイルを配列にコピー

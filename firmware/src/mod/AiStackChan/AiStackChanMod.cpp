@@ -211,8 +211,17 @@ void AiStackChanMod::btnB_longPressed(void)
 
 void AiStackChanMod::btnC_pressed(void)
 {
-  sw_tone();
-  report_batt_level();
+  static bool isQrDrawing = false;
+  if(!isQrDrawing){
+    avatar.setSpeechText("");
+    String url = String("http://") + WiFi.localIP().toString();
+    avatar.updateSubWindowQrcode(url);
+    avatar.set_isSubWindowEnable(true);
+    isQrDrawing = true;
+  }else{
+    avatar.set_isSubWindowEnable(false);
+    isQrDrawing = false;
+  }
 }
 
 void AiStackChanMod::display_touched(int16_t x, int16_t y)
@@ -239,7 +248,7 @@ void AiStackChanMod::display_touched(int16_t x, int16_t y)
   if (box_servo.contain(x, y))
   {
     //servo_home = !servo_home;
-    sw_tone();
+    //sw_tone();
   }
 #endif
   if (box_BtnA.contain(x, y))
@@ -255,12 +264,12 @@ void AiStackChanMod::display_touched(int16_t x, int16_t y)
     delay(2000);
     avatar.setSpeechText("");
 #else
-    sw_tone();
+    //sw_tone();
 #endif
   }
   if (box_BtnC.contain(x, y))
   {
-    //sw_tone();
+    btnC_pressed();
   }
 #if defined(ENABLE_CAMERA)
   if (box_subWindow.contain(x, y))

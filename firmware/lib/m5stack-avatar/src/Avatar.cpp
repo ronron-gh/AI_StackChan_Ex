@@ -257,7 +257,13 @@ void Avatar::updateSubWindowTxt(String txt, int top, int left, int width, int he
   face->subWindowPos->setPosition(top, left);
   face->subWindowPos->setSize(width, height);
 }
-  
+
+//motoh
+void Avatar::updateSubWindowQrcode(String& txt) {
+  face->subWindow->updateDrawContentQrcode(txt);
+  face->subWindowPos->setPosition(0, 0);
+  face->subWindowPos->setSize(0, 0);
+}  
 
 //motoh
 void Avatar::set_isSubWindowEnable(bool isEnable){
