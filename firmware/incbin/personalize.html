@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Personalize - Custom Instructions</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="personalize.js" defer></script>
+  <style>
+    html {
+      font-size: 18px;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      background: #f9f9f9;
+      color: #222;
+    }
+    h1 {
+      font-size: 1.5em;
+      margin-top: 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: bold;
+    }
+    textarea {
+      width: 100%;
+      height: 7em;
+      margin-bottom: 1em;
+      font-size: 1em;
+      padding: 0.7em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 0.7em 2em;
+      font-size: 1em;
+      border-radius: 6px;
+      border: none;
+      background: #0077cc;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover, button:active {
+      background: #005fa3;
+    }
+    #status {
+      margin-top: 1em;
+      color: #007700;
+    }
+    #error {
+      margin-top: 1em;
+      color: #bb2222;
+    }
+    .container {
+      max-width: 95vw;
+      width: 100%;
+      max-width: 32em;
+      margin: auto;
+      background: #fff;
+      padding: 2em 1em;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px #0001;
+    }
+    .section {
+      margin-bottom: 2em;
+    }
+    .memory-label {
+      margin-top: 2em;
+    }
+    #memoryInput {
+      background: #f0f0f0;
+      resize: none;
+    }
+    @media (max-width: 600px) {
+      html {
+        font-size: 16px;
+      }
+      .container {
+        padding: 1em 0.5em;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      textarea {
+        font-size: 1em;
+        height: 6em;
+      }
+      button {
+        width: 100%;
+        padding: 0.9em 0;
+        font-size: 1.1em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Personalize</h1>
+  <div class="container">
+    <div class="section">
+      <h1>Role (Custom Instructions)</h1>
+      <form id="roleForm">
+        <label for="roleInput">Custom Instructions</label>
+        <textarea id="roleInput" name="role"></textarea>
+        <button type="submit" id="setButton">Set</button>
+      </form>
+    </div>
+    <div class="section">
+      <h1 class="memory-label">Memory</h1>
+      <label for="memoryInput">Current Memory</label>
+      <textarea id="memoryInput" name="memory" readonly></textarea>
+      <button type="button" id="clearMemoryButton">Clear</button>
+    </div>
+    <div id="status"></div>
+    <div id="error"></div>
+  </div>
+</body>
+</html>

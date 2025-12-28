@@ -38,6 +38,9 @@ public:
     virtual bool save_role(String role);
     virtual bool save_userInfo(String userInfo);
     virtual void load_role();
+    virtual String get_userRole();
+    virtual String get_userInfo();
+    virtual bool clear_userInfo();
 };
 
 

@@ -23,13 +23,26 @@ WebAPI.cpp のインラインアセンブラ(マクロ：IMPORT_FILE)で incbin�
   - incbin/personalize.html
   - incbin/personalize.js
 - 言語
-  - ページやダイアログ内の言語は英語のみ。
+  - ページやダイアログ内の言語は英語版のみ。
+- 画面構成
+  - Role (Custom Instructions)
 
-#### Custom Instructions (Role)
+#### Role (Custom Instructions)
 - 構成
   - フォーム
-    - カスタム指示（ロール）の入出力。
+    - ロール（カスタム指示）の入出力。
   - 設定ボタン
     - API /role_set をPOSTし、フォームの内容を設定する。
 - 画面更新時の動作
   - API /role_get をPOSTし、現在設定されているカスタム指示を取得してフォームに表示する。 
+
+#### Memory
+- 構成
+  - フォーム
+    - 取得した記憶内容を表示。
+  - Clearボタン
+    - API /memory_clear をPOSTし、記憶内容を消去する。
+    - 消去を実行する前に、OK/Cancelのダイアログを表示して本当に消去してよいかを確認する。
+- 画面更新時の動作
+  - API /memory_get をPOSTし、記憶内容を取得してフォームに表示する。
+ 

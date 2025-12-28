@@ -241,6 +241,17 @@ void ChatGPT::load_role(){
   Serial.println(json_str);
 }
 
+String ChatGPT::get_userRole() {
+  return chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"];
+}
+
+String ChatGPT::get_userInfo() {
+  return chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"];
+}
+
+bool ChatGPT::clear_userInfo() {
+  return save_userInfo("");
+}
 
 String ChatGPT::https_post_json(const char* url, const char* json_string, const char* root_ca) {
   String payload = "";

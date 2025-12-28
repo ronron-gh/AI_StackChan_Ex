@@ -139,13 +139,24 @@ asm(\
   ".balign 4\n"\
   ".section \".text\"\n")
 
-IMPORT_FILE(.rodata, "index.html", index_html);
+//IMPORT_FILE(.rodata, "index.html", index_html);
+IMPORT_FILE(.rodata, "personalize.html", personalize_html);
+IMPORT_FILE(.rodata, "personalize.js", personalize_js);
 
 
 void handleRoot() {
-  server.send(200, "text/plain", "hello from m5stack!");
+  //Serial.println("handleRoot");
+  //server.send(200, "text/plain", "hello from m5stack!");
+  server.send_P(200, "text/html", (const char*)personalize_html, (size_t)sizeof_personalize_html);
 }
 
+void handle_personalize_html() {
+  server.send_P(200, "text/html", (const char*)personalize_html, (size_t)sizeof_personalize_html);
+}
+
+void handle_personalize_js() {
+  server.send_P(200, "application/javascript", (const char*)personalize_js, (size_t)sizeof_personalize_js);
+}
 
 void handleNotFound(){
   String message = "File Not Found\n\n";
@@ -228,17 +239,6 @@ void handle_apikey_set() {
 }
 #endif
 
-void handle_role() {
-  // ファイルを読み込み、クライアントに送信する
-  //server.send(200, "text/html", ROLE_HTML);
-  server.send(200, "text/html", (const char*)index_html);
-}
-
-
-/**
- * アプリからテキスト(文字列)と共にRoll情報が配列でPOSTされてくることを想定してJSONを扱いやすい形に変更
- * 出力形式をJSONに変更
-*/
 void handle_role_set() {
   String html = "";
 
@@ -250,22 +250,25 @@ void handle_role_set() {
 
   // JSONデータをSPIFFSに保存
   if(robot->llm->save_role(role)){
+#if 0
     // 整形したJSONデータを出力するHTMLデータを作成する
     serializeJsonPretty(robot->llm->get_chat_doc(), html);
     html = "<html><body><pre>" + html + "</pre></body></html>";
+    //Serial.println(html);
+#endif
+    server.send(200, "text/plain", String("Role set successful"));
   }
   else{
-    html = "Failed to save role to SPIFFS.";
+    //html = "Failed to save role to SPIFFS.";
+    server.send(500, "text/plain", String("Role set failed"));
   }
 
   // HTMLデータをシリアルに出力する
-  //Serial.println(html);
-  server.send(200, "text/html", html);
+  //server.send(200, "text/html", html);
 };
 
-// 整形したJSONデータを出力するHTMLデータを作成する
 void handle_role_get() {
-
+#if 0
   String html = "";
   serializeJsonPretty(robot->llm->get_chat_doc(), html);
   html = "<html><body><pre>" + html + "</pre></body></html>";
@@ -273,6 +276,26 @@ void handle_role_get() {
   // HTMLデータをシリアルに出力する
   //Serial.println(html);
   server.send(200, "text/html", String(HEAD) + html);
+#endif
+  Serial.println("http request: handle_role_get");
+  Serial.println(robot->llm->get_userRole());
+  server.send(200, "text/plain", robot->llm->get_userRole());
+};
+
+void handle_memory_get() {
+  Serial.println("http request: handle_memory_get");
+  Serial.println(robot->llm->get_userInfo());
+  server.send(200, "text/plain", robot->llm->get_userInfo());
+};
+
+void handle_memory_clear() {
+  Serial.println("http request: handle_memory_clear");
+  bool result = robot->llm->clear_userInfo();
+  if(result){
+    server.send(200, "text/plain", String("Memory clear successful"));
+  }else{
+    server.send(500, "text/plain", String("Memory clear failed"));
+  }
 };
 
 void handle_face() {
@@ -332,25 +355,35 @@ void handle_setting() {
 }
 #endif
 
+
 void init_web_server(void)
 {
-
+  // Files
+  //
   server.on("/", handleRoot);
-  server.on("/inline", [](){
-    server.send(200, "text/plain", "this works as well");
-  });
+  server.on("/personalize.html", handle_personalize_html);
+  server.on("/personalize.js", handle_personalize_js);
 
-  // And as regular external functions:
+
+  // APIs
+  //
   server.on("/speech", handle_speech);
   server.on("/face", handle_face);
   server.on("/chat", handle_chat);
   server.on("/apikey", handle_apikey);
   //server.on("/setting", handle_setting);
   //server.on("/apikey_set", HTTP_POST, handle_apikey_set);
-  server.on("/role", handle_role);
   server.on("/role_set", HTTP_POST, handle_role_set);
   server.on("/role_get", handle_role_get);
+  server.on("/memory_get", handle_memory_get);
+  server.on("/memory_clear", handle_memory_clear);
+
+  // Other
+  //
   server.onNotFound(handleNotFound);
+  server.on("/inline", [](){
+    server.send(200, "text/plain", "this works as well");
+  });
 
   server.begin();
   Serial.println("HTTP server started");

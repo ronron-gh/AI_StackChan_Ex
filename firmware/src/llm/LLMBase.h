@@ -36,6 +36,9 @@ public:
   virtual bool save_role(String role) { return false; };
   virtual bool save_userInfo(String userInfo) { return false; };
   virtual void load_role() {};
+  virtual String get_userRole() { return ""; };
+  virtual String get_userInfo() { return ""; };
+  virtual bool clear_userInfo() { return true; };
 
   String get_InitBuffer() { return InitBuffer; };
   SpiRamJsonDocument& get_chat_doc() { return chat_doc; };
