@@ -391,6 +391,7 @@ void AiStackChanMod::idle(void)
 
   if (alarmTimerCallbacked) {
     alarmTimerCallbacked = false;
+    avatar.setSpeechText("");
 #if defined(ENABLE_CAMERA)
     avatar.set_isSubWindowEnable(false);
 #endif    

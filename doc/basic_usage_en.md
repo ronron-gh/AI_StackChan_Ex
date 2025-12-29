@@ -10,6 +10,8 @@ This article explains how to use the basic AI conversation function (AI conversa
 - [2. Settings and build](#2-settings-and-build)
   - [2.1. Initial setup with YAML](#21-initial-setup-with-yaml)
   - [2.2. Build \& Flash](#22-build--flash)
+- [3. Personalization](#3-personalization)
+  - [3.1. Memory (Long-term Memory)](#31-memory-long-term-memory)
 
 ## 1. Available AI services
 This shows the support status of various AI services required for conversation.  
@@ -182,3 +184,26 @@ The required libraries will start installing, and you will see progress at the b
 > The default env is m5stack-core2(s3), but for example, if you want to use the OpenAI Realtime API, select m5stack-core2(s3)-realtime (see the explanation for each feature). When you select an env, library installation may start again as in step 3, so please wait for it to complete before building and flashing.
 
 ![](../images/build_and_flash.png)
+
+## 3. Personalization
+Custom instructions (so-called "roles") and memory (long-term memory) allow you to customize the AI conversation function according to the user's attributes.
+
+You can open the settings screen by accessing http://(Stack-chan's IP address) from a PC or smartphone web browser. (A QR code for access will be displayed by pressing the C button or touching the right edge of the LCD.)
+
+![](../images/Personalize.png)
+
+### 3.1. Memory (Long-term Memory)
+To enable memory, set `enableMemory` to `true` in `/app/AiStackChanEx/SC_ExConfig.yaml` on the SD card.
+
+> Currently, only ChatGPT (including the Realtime API) supports memory.
+
+SC_ExConfig.yaml
+```
+llm:
+  type: 0                   # 0:ChatGPT  1:ModuleLLM
+  enableMemory: true        # Enable memory with true (ChatGPT only, default is false)
+```
+
+When memory is enabled, if there are user attributes (such as hobbies or work) or impressive episodes in the conversation, they will be summarized and saved to SPIFFS. The contents of SPIFFS are retained even when the power is turned off and will be read as memory information at the next startup.
+
+> Whether or not something is remembered is determined by the LLM during the conversation, so it may not always be remembered as the user expects (it is also possible to explicitly instruct "Save the current conversation content to memory"). Also, information that has been remembered may be lost in the process of repeated summarization.

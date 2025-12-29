@@ -156,9 +156,6 @@ void RealtimeAiMod::idle(void)
     avatar.set_isSubWindowEnable(true);
     avatar.updateSubWindowTxt(avatarText, 0, 0, 200, 50);
   }
-  else{
-    avatar.set_isSubWindowEnable(false);
-  }
 
   if (alarmTimerCallbacked) {
     alarmTimerCallbacked = false;

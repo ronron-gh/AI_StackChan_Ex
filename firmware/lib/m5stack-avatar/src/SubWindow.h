@@ -16,6 +16,7 @@ namespace m5avatar {
 
 typedef enum e_sub_draw_type
 {
+  SUB_DRAW_TYPE_NONE,
   SUB_DRAW_TYPE_CAM565,
   SUB_DRAW_TYPE_JPG,
   SUB_DRAW_TYPE_TXT,

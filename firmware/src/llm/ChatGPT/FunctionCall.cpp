@@ -301,14 +301,13 @@ const String json_Functions =
 
 void alarmTimerCallback(TimerHandle_t _xTimer){
   xAlarmTimer = NULL;
-  Serial.println("時間になりました。");
-  avatar.setSpeechText("");
+  //Serial.println("時間になりました。");
   alarmTimerCallbacked = true;
 }
 
 void powerOffTimerCallback(TimerHandle_t _xTimer){
   xAlarmTimer = NULL;
-  Serial.println("おやすみなさい。");
+  //Serial.println("おやすみなさい。");
   avatar.setSpeechText("おやすみなさい。");
   delay(2000);
   avatar.setSpeechText("");

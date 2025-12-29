@@ -8,10 +8,11 @@
 
 namespace m5avatar {
 
-SubWindow::SubWindow() {
-  isDrawEnable = false;
-  drawingBufIdx = 0;
-
+SubWindow::SubWindow() : 
+  drawType(SUB_DRAW_TYPE_NONE),
+  isDrawEnable(false),
+  drawingBufIdx(0) 
+{
   //LCD_WIDTH = 320;
   //LCD_HEIGHT = 240;
   //RESIZE_RATIO = 3;
@@ -123,11 +124,18 @@ void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
 
 void SubWindow::set_isDrawEnable(bool _isDrawEnable){
   isDrawEnable = _isDrawEnable;
+  if(!isDrawEnable){
+    drawType = SUB_DRAW_TYPE_NONE;
+  }
 }
 
 void SubWindow::updateDrawContentCam565(uint8_t* src){
-
   uint16_t* resizeBuf;
+
+  if((drawType != SUB_DRAW_TYPE_NONE) && (drawType != SUB_DRAW_TYPE_CAM565)){
+    Serial.println("Can't update sub window (sub window is used for another type");
+    return ;
+  }
 
   drawType = SUB_DRAW_TYPE_CAM565;
 
@@ -170,6 +178,12 @@ void SubWindow::updateDrawContentCam565(uint8_t* src){
 
 bool SubWindow::updateDrawContentJpg(String& fname){
   bool result;
+  
+  if((drawType != SUB_DRAW_TYPE_NONE) && (drawType != SUB_DRAW_TYPE_JPG)){
+    Serial.println("Can't update sub window (sub window is used for another type");
+    return false;
+  }
+
   drawType = SUB_DRAW_TYPE_JPG;
 
   if(jpgBuf == nullptr){
@@ -192,11 +206,21 @@ bool SubWindow::updateDrawContentJpg(String& fname){
 }
 
 void SubWindow::updateDrawContentTxt(String txt){
+  if((drawType != SUB_DRAW_TYPE_NONE) && (drawType != SUB_DRAW_TYPE_TXT)){
+    Serial.println("Can't update sub window (sub window is used for another type");
+    return ;
+  }
+
   drawType = SUB_DRAW_TYPE_TXT;
   subWdTxtBuf = txt;
 }
 
 void SubWindow::updateDrawContentQrcode(String txt){
+  if((drawType != SUB_DRAW_TYPE_NONE) && (drawType != SUB_DRAW_TYPE_QRCODE)){
+    Serial.println("Can't update sub window (sub window is used for another type");
+    return ;
+  }
+
   drawType = SUB_DRAW_TYPE_QRCODE;
   subWdTxtBuf = txt;
 }
