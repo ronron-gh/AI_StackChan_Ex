@@ -20,7 +20,7 @@ public:
     virtual void chat(String text, const char *base64_buf = NULL);
     String execChatGpt(String json_string, String* calledFunc);
     
-    virtual bool save_role();
+    virtual bool save_role(String role);
     virtual void load_role();
 };
 

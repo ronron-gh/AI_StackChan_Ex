@@ -148,7 +148,6 @@ void StackchanExConfig::extendConfigNotFoundCallback(void)
 
 void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
-
     _ex_parameters.mail.account     = doc["mail"]["account"].as<String>();
     _ex_parameters.mail.app_pwd     = doc["mail"]["app_pwd"].as<String>();
     _ex_parameters.mail.to_addr     = doc["mail"]["to_addr"].as<String>();
@@ -163,6 +162,7 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
         _ex_parameters.llm.mcpServer[i].url = doc["llm"]["mcpServers"][i]["url"].as<String>();
         _ex_parameters.llm.mcpServer[i].port = doc["llm"]["mcpServers"][i]["port"].as<int>();
     }
+    _ex_parameters.llm.enableMemory = doc["llm"]["enableMemory"].as<bool>();
 
     _ex_parameters.tts.type         = doc["tts"]["type"].as<int>();
     _ex_parameters.tts.model        = doc["tts"]["model"].as<String>();
@@ -189,6 +189,8 @@ void StackchanExConfig::printExtParameters(void)
         M5_LOGI("llm mcpServer[%d] url: %s", i, _ex_parameters.llm.mcpServer[i].url.c_str());
         M5_LOGI("llm mcpServer[%d] port: %d", i, _ex_parameters.llm.mcpServer[i].port);
     }
+    M5_LOGI("llm enableMemory: %s", _ex_parameters.llm.enableMemory ? "true":"false");
+
 
     M5_LOGI("tts type: %d", _ex_parameters.tts.type);
     M5_LOGI("tts model: %s", _ex_parameters.tts.model.c_str());

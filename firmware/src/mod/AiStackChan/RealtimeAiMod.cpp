@@ -86,7 +86,17 @@ void RealtimeAiMod::btnB_longPressed(void)
 
 void RealtimeAiMod::btnC_pressed(void)
 {
-
+  static bool isQrDrawing = false;
+  if(!isQrDrawing){
+    avatar.setSpeechText("");
+    String url = String("http://") + WiFi.localIP().toString();
+    avatar.updateSubWindowQrcode(url);
+    avatar.set_isSubWindowEnable(true);
+    isQrDrawing = true;
+  }else{
+    avatar.set_isSubWindowEnable(false);
+    isQrDrawing = false;
+  }
 }
 
 void RealtimeAiMod::display_touched(int16_t x, int16_t y)
@@ -109,7 +119,7 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   }
   if (box_BtnC.contain(x, y))
   {
-    //sw_tone();
+    btnC_pressed();
   }
 
 }
@@ -145,9 +155,6 @@ void RealtimeAiMod::idle(void)
     avatarText = "Alarm countdown: " + String(xRemainingTime / 1000);
     avatar.set_isSubWindowEnable(true);
     avatar.updateSubWindowTxt(avatarText, 0, 0, 200, 50);
-  }
-  else{
-    avatar.set_isSubWindowEnable(false);
   }
 
   if (alarmTimerCallbacked) {

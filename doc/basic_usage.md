@@ -10,6 +10,8 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 - [2. 設定、ビルド手順](#2-設定ビルド手順)
   - [2.1. YAMLによる初期設定](#21-yamlによる初期設定)
   - [2.2. ビルド＆書き込み](#22-ビルド書き込み)
+- [3. パーソナライズ](#3-パーソナライズ)
+  - [3.1. メモリー（長期記憶）について](#31-メモリー長期記憶について)
 
 ## 1. 利用可能なAIサービス
 会話に必要な各種AIサービスの対応状況を示します。  
@@ -39,7 +41,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |ElevenLabs|×|〇|〇|別途APIキーを取得していただく必要があります|
 |OpenAI TTS|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](tts_aquestalk.md)|
-|ModuleLLM TTS|〇|〇🆕|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください（日本語化する場合は同ページの付録Cもご確認ください） |
+|ModuleLLM TTS|〇|〇|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください（日本語化する場合は同ページの付録Cもご確認ください） |
 
 ### 1.4. Wake Word
 
@@ -183,3 +185,28 @@ git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
 >envは、基本はm5stack-core2(s3)ですが、例えばOpenAI Realtime APIを使用するときはm5stack-core2(s3)-realtimeを選択します（各機能の解説に従ってください）。envを選択したときに手順③のときと同じようにライブラリのインストールが始まる場合があるので、その場合は完了まで待ってからビルド＆書き込みしてください。
 
 ![](../images/build_and_flash.png)
+
+
+## 3. パーソナライズ
+カスタム指示（いわゆるロール）、及びメモリー（長期記憶）により、AI会話機能をユーザーの属性に合わせてカスタマイズすることができます。
+
+PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝのIPアドレス) にアクセスすると次のような設定画面が開きます。（CボタンまたはLCD右端をタッチするとアクセス用のQRコードが表示されます。）
+
+![](../images/Personalize.png)
+
+
+### 3.1. メモリー（長期記憶）について
+メモリーを有効にするには SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で enableMemory を true に設定してください。
+
+> 現在、メモリーに対応しているLLMはChatGPT（Realtime API含む）のみです。
+
+SC_ExConfig.yaml
+```
+llm:
+  type: 0                   # 0:ChatGPT  1:ModuleLLM
+  enableMemory: true        # true でメモリー有効（ChatGPTのみ。デフォルトはfalse）
+```
+
+メモリーを有効にすると、会話の中でユーザーの属性（趣味や仕事など）や印象的なエピソードがあれば要約してSPIFFSに保存されます。電源をOFFにしてもSPIFFSの内容は保持され、次回起動時に記憶情報として読み出されます。
+
+> 記憶するかどうかはLLMが会話中に判断するため、ユーザーの期待通りに記憶されない場合があります（「今の会話内容をメモリーに保存して」と明示的に指示することも可能です）。また、一度記憶した情報も、要約を繰り返す過程で失われる可能性があります。

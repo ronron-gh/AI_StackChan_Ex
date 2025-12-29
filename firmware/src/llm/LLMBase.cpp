@@ -20,7 +20,7 @@ SpiRamJsonDocument chat_doc(0);     // PSRAMから確保するように変更。
 
 
 LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
-  : param(param), promptMaxSize(_promptMaxSize), isOfflineService(false) 
+  : param(param), promptMaxSize(_promptMaxSize), isOfflineService(false) ,_enableMemory(false)
 {
   chat_doc = SpiRamJsonDocument(promptMaxSize);
 

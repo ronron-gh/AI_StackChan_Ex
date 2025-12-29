@@ -11,14 +11,21 @@
 
 #define CHATGPT_PROMPT_MAX_SIZE   (1024*50)
 
+#define SYSTEM_PROMPT_INDEX_USER_ROLE     (0)
+#define SYSTEM_PROMPT_INDEX_SYSTEM_ROLE   (1)
+#define SYSTEM_PROMPT_INDEX_USER_INFO     (2)
+
+
 extern String InitBuffer;
-extern String json_ChatString;
+extern const String json_ChatString;
 
 class ChatGPT: public LLMBase{
 //protected:
-public:  //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
-
+public:  //本当はprotectedにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
     MCPClient* mcp_client[LLM_N_MCP_SERVERS_MAX];
+
+protected:
+    virtual bool save_chat_doc_to_spiffs();
 
 public:
     ChatGPT(llm_param_t param, int _promptMaxSize = CHATGPT_PROMPT_MAX_SIZE);
@@ -28,8 +35,12 @@ public:
     String https_post_json(const char* url, const char* json_string, const char* root_ca);
     
     virtual bool init_chat_doc(const char *data);
-    virtual bool save_role();
+    virtual bool save_role(String role);
+    virtual bool save_userInfo(String userInfo);
     virtual void load_role();
+    virtual String get_userRole();
+    virtual String get_userInfo();
+    virtual bool clear_userInfo();
 };
 
 

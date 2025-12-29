@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include "StackchanExConfig.h" 
 #include "MCPClient.h"
+#include "llm/LLMBase.h"
 
 //#define USE_EXTENSION_FUNCTIONS
 
@@ -29,6 +30,8 @@ void init_func_call_settings(StackchanExConfig& system_config);
 //
 // Functions for Function Calling
 //
+String fn_update_memory(LLMBase* llm, const char* memory);
+
 String timer(int32_t time, const char* action);
 String timer_change(int32_t time);
 

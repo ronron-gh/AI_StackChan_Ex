@@ -18,20 +18,33 @@ struct llm_param_t
 
 class LLMBase{
 //protected:
-public:   //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
-
+public:   //本当はprotectedにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
   llm_param_t param;
   String InitBuffer;
   int promptMaxSize;
+
+protected:
+  bool _enableMemory;
+  virtual bool save_chat_doc_to_spiffs() { return false; };        //TODO: LLMBaseで実装してもよいかも
 
 public:
   bool isOfflineService;
 
   LLMBase(llm_param_t param, int _promptMaxSize);
   virtual void chat(String text, const char *base64_buf = NULL) = 0;
-  virtual bool init_chat_doc(const char *data) {};
-  virtual bool save_role() {};
+  virtual bool init_chat_doc(const char *data) { return false; };  //TODO: LLMBaseで実装してもよいかも
+  virtual bool save_role(String role) { return false; };
+  virtual bool save_userInfo(String userInfo) { return false; };
   virtual void load_role() {};
+  virtual String get_userRole() { return ""; };
+  virtual String get_userInfo() { return ""; };
+  virtual bool clear_userInfo() { return true; };
+
+  String get_InitBuffer() { return InitBuffer; };
+  SpiRamJsonDocument& get_chat_doc() { return chat_doc; };
+
+  bool enableMemory() { return _enableMemory; };
+  void enableMemory(bool isEnable) { _enableMemory = isEnable; };
 
   // for async TTS
   //
