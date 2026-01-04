@@ -73,7 +73,7 @@ typedef struct MCPServerConf {
 
 typedef struct LLMConf {
     int type;
-    String model;
+    String model = "";
     int nMcpServers;
     mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
     bool enableMemory;

@@ -122,7 +122,10 @@ void Robot::initLLM(StackchanExConfig& config){
     llm = new ChatModuleLLM(llm_param);
     module_llm_param.enableLLM = true;
     module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t(); //default setting
-    if(llm_param.llm_conf.model != ""){
+    if((llm_param.llm_conf.model.c_str() != nullptr)
+      && (llm_param.llm_conf.model != "null")
+      && (llm_param.llm_conf.model != ""))
+    {
       module_llm_param.m5llm_config.model = llm_param.llm_conf.model;
     }
     module_llm_param.m5llm_config.max_token_len = 511;
@@ -176,7 +179,10 @@ void Robot::initSTT(StackchanExConfig& config){
 #if defined(USE_LLM_MODULE)
     stt = new ModuleLLMWhisper();
     module_llm_param.enableWhisper = true;
-    if(stt_param.stt_conf.model != ""){
+    if((stt_param.stt_conf.model.c_str() != nullptr)
+      && (stt_param.stt_conf.model != "null")
+      && (stt_param.stt_conf.model != ""))
+    {
       module_llm_param.whisper_model = stt_param.stt_conf.model;
     }
 #else
