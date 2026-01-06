@@ -94,11 +94,9 @@ Function Callingと、Function Callingを応用して実装したMCPも使用可
 ## TTSとの組み合わせ
 VOICEVOX等（※）のTTSを組み合わせることで、お好みの声に変更することができます（ただし、応答の遅延は若干増えます）。
 
-> ※現在はVOICEVOXのみ対応です。
+> ※動作確認はVOICEVOXとAquesTalkで行っています。Core2はメモリ不足によりVOICEVOXとRealtime APIの組み合わせは上手く動作しませんでした（AquesTalkは問題なく動作しました）。 
 
-> Core2だとメモリ不足などにより若干不安定な動きになります。よって、TTSを組み合わせる場合はCoreS3をお勧めします。 
-
-> 技術的には、Realtime APIの出力をストリーミングのテキストのみに設定し、「。」、「？」、「！」の区切り文字を受信したタイミングでVOICEVOXに渡しています。VOICEVOXの出力もストリーミングなので、発話しながら次の区切り文字までのテキストを受信することで、次のテキストの発話までの遅延を抑えています（が、やはりRealtime APIから直接音声出力するよりは遅延が生じます）。
+> 技術的には、Realtime APIの出力をストリーミングのテキストのみに設定し、「。」、「？」、「！」の区切り文字を受信したタイミングでTTSに渡しています。TTSで発話しながら次の区切り文字までのテキストを受信することで、次のテキストの発話までの遅延を抑えています。
 
 ### 設定方法
 platformio.iniの[realtime_api]セクションのbuild_flagsにDREALTIME_API_WITH_TTSを追加してビルド、書き込み。
@@ -111,7 +109,7 @@ build_flags =
 ```
 
 SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で使用したいTTSを設定。
-> 現在はVOICEVOXのみ対応です。
+> 動作確認はVOICEVOXとAquesTalkで行っています。AquelTalkを使用する場合は別途[こちら](./tts_aquestalk.md)に記載しているセットアップも必要です。
 
 ```yaml
 tts:
