@@ -28,6 +28,7 @@
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
 #include "llm/ChatHistory.h"
+#include "llm/Gemini/GeminiLive.h"
 
 #include "WebAPI.h"
 
@@ -108,7 +109,8 @@ void lipSync(void *args)
 #ifdef REALTIME_API_WITH_TTS
     level = robot->tts->getLevel();
 #else
-    level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+    //level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+    level = ((GeminiLive*)(robot->llm))->getAudioLevel();
 #endif
 #else
     level = robot->tts->getLevel();

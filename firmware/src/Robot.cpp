@@ -12,6 +12,7 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/RealtimeChatGPT.h"
+#include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
 #include "Avatar.h"
@@ -61,7 +62,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   llm_param_t llm_param;
   llm_param.api_key = api_key->ai_service;
   llm_param.llm_conf = config.getExConfig().llm;
-  llm = new RealtimeChatGPT(llm_param);
+  //llm = new RealtimeChatGPT(llm_param);
+  llm = new GeminiLive(llm_param);
 
   #if defined(REALTIME_API_WITH_TTS)
     initTTS(config);

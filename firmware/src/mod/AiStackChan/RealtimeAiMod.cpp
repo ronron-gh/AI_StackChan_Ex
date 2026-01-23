@@ -10,6 +10,7 @@
 #include "Robot.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
+#include "llm/Gemini/GeminiLive.h"
 //#include "driver/PlayMP3.h"
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
@@ -38,7 +39,8 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   box_BtnA.setupBox(0, 100, 40, 60);
   box_BtnC.setupBox(280, 100, 40, 60);
 
-  pRtLLM = (RealtimeChatGPT*)robot->llm;
+  //pRtLLM = (RealtimeChatGPT*)robot->llm;
+  pRtLLM = (GeminiLive*)robot->llm;
 
   //servo_home = false;
 
