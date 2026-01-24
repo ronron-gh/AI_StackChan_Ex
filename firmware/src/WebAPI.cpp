@@ -249,7 +249,7 @@ void handle_role_set() {
   String role = server.arg("plain");
 
   // JSONデータをSPIFFSに保存
-  if(robot->llm->save_role(role)){
+  if(robot->llm->save_userRole(role)){
 #if 0
     // 整形したJSONデータを出力するHTMLデータを作成する
     serializeJsonPretty(robot->llm->get_chat_doc(), html);
