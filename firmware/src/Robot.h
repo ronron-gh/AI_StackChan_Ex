@@ -29,6 +29,7 @@ public:
     Robot(StackchanExConfig& config);
     bool isAllOfflineService();
     void initLLM(StackchanExConfig& config);
+    void initRtLLM(StackchanExConfig& config);
     void initSTT(StackchanExConfig& config);
     void initTTS(StackchanExConfig& config);
 

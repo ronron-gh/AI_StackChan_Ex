@@ -40,7 +40,7 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   box_BtnC.setupBox(280, 100, 40, 60);
 
   //pRtLLM = (RealtimeChatGPT*)robot->llm;
-  pRtLLM = (GeminiLive*)robot->llm;
+  pRtLLM = (RealtimeLLMBase*)robot->llm;
 
   //servo_home = false;
 

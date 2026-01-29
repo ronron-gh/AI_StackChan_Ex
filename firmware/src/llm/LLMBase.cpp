@@ -14,13 +14,10 @@ const int MAX_HISTORY = 20;
 // 過去の質問と回答を保存するデータ構造
 ChatHistory chatHistory(MAX_HISTORY);   // TODO: 本当はLLMBaseのメンバ変数にしたい
 
-//DynamicJsonDocument chat_doc(1024*10);
-SpiRamJsonDocument chat_doc(0);     // PSRAMから確保するように変更。サイズの確保はsetup()で実施（初期化後でないとPSRAMが使えないため）。
-                                    // TODO: 本当はLLMBaseのメンバ変数にしたい
-
-SpiRamJsonDocument systemPrompt(0);
+#define SYSTEM_PROMPT_PATH  "/data.json"
 const String SYSTEM_PROMPT_FORMAT = 
 "{"
+  "\"version\": 1,"
   "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
                   "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
                   "{\"role\": \"system\", \"content\": \"User Info: \"}]"  // 長期記憶の要約
@@ -39,7 +36,9 @@ LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
     promptMaxSize(_promptMaxSize),
     isOfflineService(false),
     speaking(false),
-    _enableMemory(false)
+    _enableMemory(false),
+    chat_doc(0),
+    systemPrompt(0)
 {
   chat_doc = SpiRamJsonDocument(promptMaxSize);
   systemPrompt = SpiRamJsonDocument(2048);
@@ -93,7 +92,7 @@ bool LLMBase::save_system_prompt_to_spiffs()
   }
 
   // JSONファイルを作成または開く
-  File file = SPIFFS.open("/data.json", "w");
+  File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "w");
   if(!file){
     Serial.println("Failed to open file for writing");
     return false;
@@ -108,9 +107,10 @@ bool LLMBase::save_system_prompt_to_spiffs()
 bool LLMBase::load_system_prompt_from_spiffs()
 {
   bool result = true;
+  int promptVersion = 0;
 
   if(SPIFFS.begin(true)){
-    File file = SPIFFS.open("/data.json", "r");
+    File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "r");
     //Serial.printf("SPIFFS file size: %d\n", file.size());
     if(file.size() > 0){
       DeserializationError error = deserializeJson(systemPrompt, file);
@@ -119,6 +119,8 @@ bool LLMBase::load_system_prompt_from_spiffs()
         result = false;
       }
       else{
+        promptVersion = systemPrompt["version"].as<int>();
+        Serial.printf("System Prompt Version: %d\n", promptVersion);
         result = true;
       }
     } else {
@@ -130,7 +132,7 @@ bool LLMBase::load_system_prompt_from_spiffs()
     result = false;
   }
 
-  if(!result){
+  if(!result || (promptVersion != 1)){
     Serial.println("Initialize SPIFFS System Prompt by default.");
     DeserializationError error = deserializeJson(systemPrompt, SYSTEM_PROMPT_FORMAT);
     if (error) {
@@ -140,6 +142,12 @@ bool LLMBase::load_system_prompt_from_spiffs()
       result = true;
     }
   }
+
+  String json_str;
+  serializeJsonPretty(systemPrompt, json_str);  // 文字列をシリアルポートに出力する
+  Serial.println("System prompt:");
+  Serial.println(json_str);
+  
   return result;
 }
 

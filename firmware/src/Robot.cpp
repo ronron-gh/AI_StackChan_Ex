@@ -58,12 +58,7 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   //
 #if defined(REALTIME_API)
   //LLM setting
-  api_keys_s* api_key = config.getAPISetting();
-  llm_param_t llm_param;
-  llm_param.api_key = api_key->ai_service;
-  llm_param.llm_conf = config.getExConfig().llm;
-  //llm = new RealtimeChatGPT(llm_param);
-  llm = new GeminiLive(llm_param);
+  initRtLLM(config);
 
   #if defined(REALTIME_API_WITH_TTS)
     initTTS(config);
@@ -148,10 +143,32 @@ void Robot::initLLM(StackchanExConfig& config){
 #endif
     break;
   default:
-    Serial.printf("Error: undefined STT type %d\n", llm_type);
+    Serial.printf("Error: undefined LLM type %d\n", llm_type);
     llm = nullptr;
   }
 }
+
+void Robot::initRtLLM(StackchanExConfig& config){
+  int llm_type = config.getExConfig().llm.type;
+  api_keys_s* api_key = config.getAPISetting();
+
+  llm_param_t llm_param;
+  llm_param.api_key = api_key->ai_service;
+  llm_param.llm_conf = config.getExConfig().llm;
+
+  switch(llm_type){
+  case LLM_TYPE_CHATGPT:
+    llm = new RealtimeChatGPT(llm_param);
+    break;
+  case LLM_TYPE_GEMINI:
+    llm = new GeminiLive(llm_param);
+    break;
+  default:
+    Serial.printf("Error: undefined LLM type %d\n", llm_type);
+    llm = nullptr;
+  }
+}
+
 
 void Robot::initSTT(StackchanExConfig& config){
   int stt_type = config.getExConfig().stt.type;

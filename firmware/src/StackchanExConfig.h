@@ -48,6 +48,7 @@ typedef struct FnNews {
 #define LLM_TYPE_CHATGPT                0
 #define LLM_TYPE_MODULE_LLM             1
 #define LLM_TYPE_MODULE_LLM_FNCL        2
+#define LLM_TYPE_GEMINI                 3
 #define LLM_N_MCP_SERVERS_MAX           10
 
 #define TTS_TYPE_WEB_VOICEVOX           0

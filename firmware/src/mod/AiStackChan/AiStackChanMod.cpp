@@ -124,10 +124,6 @@ AiStackChanMod::AiStackChanMod(bool _isOffline)
     init_schedule();
   }
 
-  if(robot->m_config.getExConfig().llm.type == LLM_TYPE_CHATGPT){
-    // Function Call関連の設定
-    init_func_call_settings(robot->m_config);
-  }
 
   if(robot->m_config.getExConfig().wakeword.type == WAKEWORD_TYPE_MODULE_LLM_KWS){
 #if defined(USE_LLM_MODULE)

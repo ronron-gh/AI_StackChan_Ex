@@ -5,8 +5,9 @@
 
 #include <Arduino.h>
 #include "mod/ModBase.h"
-#include "llm/ChatGPT/RealtimeChatGPT.h"
-#include "llm/Gemini/GeminiLive.h"
+#include "llm/RealtimeLLMBase.h"
+//#include "llm/ChatGPT/RealtimeChatGPT.h"
+//#include "llm/Gemini/GeminiLive.h"
 
 class RealtimeAiMod: public ModBase{
 private:
@@ -19,7 +20,7 @@ private:
     bool isOffline;
 
     //RealtimeChatGPT* pRtLLM;
-    GeminiLive* pRtLLM;
+    RealtimeLLMBase* pRtLLM;
 
     // for TTS
     String ttsText;

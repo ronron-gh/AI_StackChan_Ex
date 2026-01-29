@@ -33,6 +33,9 @@ public:   //本当はprotectedにしたいところだがコールバック関�
   String InitBuffer;
   int promptMaxSize;
 
+  SpiRamJsonDocument chat_doc;
+  SpiRamJsonDocument systemPrompt;
+
 protected:
   bool _enableMemory;
   bool save_system_prompt_to_spiffs();
