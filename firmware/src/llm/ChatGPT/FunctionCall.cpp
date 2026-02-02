@@ -106,7 +106,7 @@ const String json_Functions =
   "},"
   "{"
     "\"name\": \"get_time\","
-    "\"description\": \"現在の時刻を取得する。タイマー設定したり時刻表を調べたりする前にこの関数で現在時刻を調べる。\","
+    "\"description\": \"現在の時刻を取得する。\","
     "\"parameters\": {"
       "\"type\":\"object\","
       "\"properties\": {}"

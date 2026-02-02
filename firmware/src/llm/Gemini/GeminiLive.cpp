@@ -9,7 +9,7 @@
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
 #include "GeminiLive.h"
-//#include "FunctionCall.h"
+#include "../ChatGPT/FunctionCall.h"    // GeminiとChatGPTのFunction Calling仕様は共通
 //#include "MCPClient.h"
 #include "Robot.h"
 
@@ -20,7 +20,7 @@
 using namespace m5avatar;
 extern Avatar avatar;
 
-const char session_update[] =
+static const char session_update[] =
         "{"
           "\"setup\": {"
             "\"model\": \"models/gemini-2.5-flash-native-audio-preview-12-2025\","
@@ -28,6 +28,33 @@ const char session_update[] =
               "\"responseModalities\": [\"AUDIO\"]"
             "},"
             "\"tools\": ["
+#if 0
+              "{\"googleSearch\": {}},"
+              "{\"functionDeclarations\": ["
+                "{"
+                  "\"parameters\": {"
+                      "\"type\": \"OBJECT\","
+                      "\"properties\": {"
+                          "\"memory\": {"
+                              "\"type\": \"STRING\","
+                              "\"description\": \"Summary of user attributes and memorable conversations.\""
+                          "}"
+                      "}"
+                  "},"
+                  "\"name\": \"update_memory\","
+                  "\"description\": \"Update long-term memory.\""
+                "},"
+                "{"
+                  "\"parameters\": {"
+                      "\"type\": \"OBJECT\","
+                      "\"properties\": {}"
+                  "},"
+                  "\"name\": \"get_time\","
+                  "\"description\": \"Get the current time.\""
+                "}"
+              "]}"
+#endif
+              "{\"functionDeclarations\": []},"
               "{\"googleSearch\": {}}"
             "],"
             "\"systemInstruction\": {"
@@ -37,7 +64,7 @@ const char session_update[] =
           "}"
         "}";
 
-const char input_audio_append[] =
+static const char input_audio_append[] =
         "{"
           "\"realtimeInput\": {"
             "\"audio\":{"
@@ -49,21 +76,37 @@ const char input_audio_append[] =
 
 // for function calling
 //
-const char conversation_item_create[] =
+static const char function_response[] =
         "{"
-            "\"type\": \"conversation.item.create\","
-            "\"item\": {"
-                "\"type\": \"function_call_output\","
-                "\"call_id\": \"REPLACE_TO_CALL_ID\","
-                "\"output\": \"{\\\"result\\\":\\\"REPLACE_TO_OUTPUT\\\"}\""
+            "\"tool_response\": {"
+              "\"function_responses\": [{"
+                "\"name\": \"REPLACE_TO_TOOL_NAME\","
+                //"\"response\"= \"{\\\"result\\\":\\\"REPLACE_TO_OUTPUT\\\"}\","
+                "\"response\": {\"result\":\"REPLACE_TO_OUTPUT\"},"
+                "\"id\": \"REPLACE_TO_CALL_ID\""
+              "}]"
             "}"
         "}";
 
+// for debug (音声の代わりにテキストのプロンプトを入力する)
+//
+static const char input_text[] =
+     "{"
+        "\"client_content\": {"
+          "\"turn_complete\": true,"
+          "\"turns\": [{"
+              "\"role\": \"user\","
+              "\"parts\": ["
+                  "{\"inline_data\": {\"mime_type\": \"text/plain\", \"data\": \"REPLACE_TO_TEXT_BASE64\"}}"
+              "]"
+          "}]"
+        "}"
+      "}";
 
 // WebSocketのコールバック関数としてクラスメソッドを渡せないので、コールバック関数を
 // 通常の関数にして静的変数を経由してクラスのthisポインタを渡す。
-static RealtimeLLMBase* p_this;
-void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+static GeminiLive* p_this;
+static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     String msgType, delta;
     DeserializationError error;
 
@@ -75,7 +118,7 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
 			Serial.printf("[WSc] Connected to url: %s\n", payload);
 
             /*
-             * session.updateでAPIの振る舞いをカスタマイズする
+             * JSON "setup"でAPIの振る舞いをカスタマイズする
              */
             {
                 SpiRamJsonDocument sessionUpdateDoc(1024*10);
@@ -83,18 +126,17 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
                 if (error) {
                     Serial.println("webSocketEvent: JSON deserialization error (session_update)");
                 }
-#if 0
+
                 // instructionsにロール、前回会話の要約を設定
                 //
-                SpiRamJsonDocument& sysPrmpt = p_this->get_chat_doc();
-                String role = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
-                Serial.printf("role: %s\n", role.c_str());
-                String sysRole = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"]);
-                Serial.printf("sysRole: %s\n", sysRole.c_str());
-                String userInfo = String((const char*)sysPrmpt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
-                Serial.printf("userInfo: %s\n", userInfo.c_str());
-                sessionUpdateDoc["session"]["instructions"] = role + sysRole + userInfo;
+                Serial.printf("role: %s\n", p_this->role.c_str());
+                Serial.printf("sysRole: %s\n", p_this->systemRole.c_str());
+                Serial.printf("userInfo: %s\n", p_this->userInfo.c_str());
+                sessionUpdateDoc["setup"]["systemInstruction"]["parts"][0]["text"] = p_this->role;
+                sessionUpdateDoc["setup"]["systemInstruction"]["parts"][1]["text"] = p_this->systemRole;
+                sessionUpdateDoc["setup"]["systemInstruction"]["parts"][2]["text"] = p_this->userInfo;
 
+#if 0
                 // MCP tools listをfunctionとして挿入
                 //
                 for(int s=0; s<p_this->param.llm_conf.nMcpServers; s++){
@@ -107,7 +149,7 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
                         sessionUpdateDoc["session"]["tools"][t]["type"] = "function";
                     }
                 }
-
+#endif
                 // FunctionCall.cppで定義したfunctionをsession.updateに挿入
                 //
                 SpiRamJsonDocument functionsDoc(1024*10);
@@ -117,12 +159,13 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
                 }
 
                 int nFuncs = functionsDoc.size();
-                int nMcpFuncs = sessionUpdateDoc["session"]["tools"].size();
+                //int nMcpFuncs = sessionUpdateDoc["session"]["tools"].size();
                 for(int i=0; i<nFuncs; i++){
-                    sessionUpdateDoc["session"]["tools"].add(functionsDoc[i]);
-                    sessionUpdateDoc["session"]["tools"][nMcpFuncs + i]["type"] = "function";
+                    sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"].add(functionsDoc[i]);
+                    //sessionUpdateDoc["session"]["tools"][nMcpFuncs + i]["type"] = "function";
                 }
-#endif
+
+
                 String sessionUpdateStr;
                 serializeJson(sessionUpdateDoc, sessionUpdateStr);
                 String jsonPretty;
@@ -150,6 +193,15 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
                 Serial.printf("[WSc] setupComplete\n");
                 //Serial.printf("[WSc] payload: %s\n", payload);
                 avatar.setSpeechText("Please touch");
+
+#if 0   // for debug (音声の代わりにテキストのプロンプトを入力する)
+                String text_base64;
+                text_base64 = base64::encode((u8*)"What time is it now ?", strlen("What time is it now ?"));
+                String json(input_text);
+                json.replace("REPLACE_TO_TEXT_BASE64", text_base64.c_str());
+                Serial.printf("[WSc] input text for test: %s\n", json.c_str());
+                p_this->webSocket.sendTXT(json);
+#endif
             }
             //else if(msgType.equals("input_audio_buffer.speech_started")){
             //    p_this->resetRealtimeRecordStartTime();
@@ -187,6 +239,24 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
                 }
             }
 #endif
+            else if(!p_this->msgDoc["toolCall"]["functionCalls"][0].isNull()){
+                Serial.printf("[WSc] toolCall: %s\n", payload);
+
+                String name = p_this->msgDoc["toolCall"]["functionCalls"][0]["name"].as<String>();
+                String args = p_this->msgDoc["toolCall"]["functionCalls"][0]["args"].as<String>();
+                String call_id = p_this->msgDoc["toolCall"]["functionCalls"][0]["id"].as<String>();
+                Serial.printf("name: %s, args: %s, id: %s\n", name.c_str(), args.c_str(), call_id.c_str());
+
+                String response = p_this->fnCall->exec_calledFunc(name.c_str(), args.c_str());
+                response.replace("\"", "\\\"");     //JSON内の文字列を囲む"にエスケープ(\)を付ける
+
+                String json(function_response);
+                json.replace("REPLACE_TO_TOOL_NAME", name.c_str());
+                json.replace("REPLACE_TO_CALL_ID", call_id.c_str());
+                json.replace("REPLACE_TO_OUTPUT", response.c_str());
+                Serial.printf("[WSc] function output: %s\n", json.c_str());
+                p_this->webSocket.sendTXT(json);
+            }
             else if(!p_this->msgDoc["serverContent"]["turnComplete"].isNull()){
                 Serial.printf("[WSc] turnComplete: %s\n", payload);
                 bool isFuncCall = false;
@@ -255,15 +325,39 @@ void GeminiLive_webSocketEvent(WStype_t type, uint8_t * payload, size_t length) 
 GeminiLive::GeminiLive(llm_param_t param) : RealtimeLLMBase(param)
 {
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
-
   msgDoc = SpiRamJsonDocument(1024*150);
+
+#if 0
+  M5.Lcd.println("MCP Servers:");
+  for(int i=0; i<param.llm_conf.nMcpServers; i++){
+    mcpClient[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
+                                  param.llm_conf.mcpServer[i].port);
+    
+    if(mcpClient[i]->isConnected()){
+      M5.Lcd.println(param.llm_conf.mcpServer[i].name);
+    }
+  }
+#endif
+  fnCall = new FunctionCall(param, this, mcpClient);
+  //fnCall->init_func_call_settings(robot->m_config);
+
+
+
+  enableMemory(param.llm_conf.enableMemory);
+  if(enableMemory()){
+    Serial.println("Memory is enabled");
+    M5.Lcd.println("Memory is enabled");
+  }
+
+  load_role();
+
 
   // WebSocket connect
   //
   avatar.setSpeechText("Connecting...");
   webSocket.beginSslWithCA("generativelanguage.googleapis.com", 443, "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent", root_ca_google_gemini);
   
-  webSocket.onEvent(GeminiLive_webSocketEvent);
+  webSocket.onEvent(webSocketEvent);
   String auth = "x-goog-api-key: " + param.api_key;
   
   //webSocket.setAuthorization(auth.c_str());
@@ -272,6 +366,37 @@ GeminiLive::GeminiLive(llm_param_t param) : RealtimeLLMBase(param)
   // try ever 5000 again if connection has failed
   webSocket.setReconnectInterval(5000);
 
+}
+
+
+void GeminiLive::load_role(){
+  Serial.println("Load role from SPIFFS.");
+  if(enableMemory()){
+    systemRole = systemRole_memory;
+  }else{
+    systemRole = systemRole_noMemory;
+  }
+
+  if(load_system_prompt_from_spiffs()){
+    role = String((const char*)systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
+    //Serial.printf("role length: %d\n", role.length());
+    if (role == "") {
+      Serial.println("SPIFFS user role is empty. set default role.");
+      role = defaultRole;
+    }
+
+    userInfo = String((const char*)systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
+    //Serial.println(userInfo);
+    int idx = userInfo.indexOf("User Info");
+    if(idx < 0 || !enableMemory()){
+      userInfo = "User Info: ";
+    }
+  }else{
+    // load_system_prompt_from_spiffs()内でSPIFFSからの取得失敗かつ
+    // デフォルトのシステムプロンプト設定に失敗した場合（通常起こり得ない）。
+    role = defaultRole;
+    userInfo = "User Info: ";
+  }
 }
 
 String& GeminiLive::buildInputAudioJson(String& jsonBuf, String& base64)

@@ -9,15 +9,25 @@
 #include "SpiRamJsonDocument.h"
 #include "../ChatHistory.h"
 #include "../RealtimeLLMBase.h"
+#include "../ChatGPT/FunctionCall.h"
 #include <WebSocketsClient.h>
 
 
 class GeminiLive: public RealtimeLLMBase{
+public:   //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
+    MCPClient* mcpClient[LLM_N_MCP_SERVERS_MAX];
+    FunctionCall* fnCall;
+    
+    String role;
+    String userInfo;
+    String systemRole;
+
 public:
     GeminiLive(llm_param_t param);
 
     virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
     virtual String& buildInputAudioJson(String& jsonBuf, String& base64);
+    virtual void load_role();
 };
 
 
