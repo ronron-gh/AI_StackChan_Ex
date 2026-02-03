@@ -30,15 +30,3 @@ moduleLLM:
   rxPin: 13
   txPin: 14
 
-
-# Function Calling
-mail:
-  account: "********@gmail.com"
-  app_pwd: "********"
-  to_addr: "********@gmail.com"
-
-weather:
-  city_id: "140010"
-
-news:
-  apikey: "********"

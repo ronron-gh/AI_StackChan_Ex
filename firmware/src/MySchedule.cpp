@@ -4,7 +4,6 @@
 #include "Robot.h"
 #include "Expression.h"
 #include <Avatar.h>
-#include "MailClient.h"
 using namespace m5avatar;
 
 extern Avatar avatar;
@@ -42,20 +41,6 @@ void sched_fn_announce_time(void)
     }
 
     robot->speech(String(now_time.tm_hour) + "時です");
-}
-
-void sched_fn_recv_mail(void)
-{
-    avatar.setSpeechText("受信メール確認中");
-    Serial.println("imapReadMail()");
-    imapReadMail();
-    avatar.setSpeechText("");
-
-    int nMail = recvMessages.size();
-    if(nMail > prev_nMail){
-      prev_nMail = nMail;
-      robot->speech(String(nMail) + "件のメールを受信しています。");
-    }
 }
 
 void init_schedule(void)

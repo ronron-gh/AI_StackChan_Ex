@@ -6,7 +6,6 @@
 #include <HTTPClient.h>
 #include <SD.h>
 //#include <EMailSender.h>
-#include "MailClient.h"
 #include "driver/WakeWord.h"
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
@@ -96,6 +95,40 @@ const String json_Functions =
       "\"required\": [\"time\"]"
     "}"
   "},"
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+  "{"
+    "\"name\": \"register_wakeword\","
+    "\"description\": \"ウェイクワードを登録する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"wakeword_enable\","
+    "\"description\": \"ウェイクワードを有効化する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"delete_wakeword\","
+    "\"description\": \"ウェイクワードを削除する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"idx\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"削除するウェイクワードの番号。\""
+        "}"
+      "},"
+      "\"required\": [\"idx\"]"
+    "}"
+  "},"
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
   "{"
     "\"name\": \"get_date\","
     "\"description\": \"今日の日付を取得する。\","
@@ -158,120 +191,6 @@ const String json_Functions =
       "}"
     "}"
   "},"
-  "{"
-    "\"name\": \"save_note\","
-    "\"description\": \"メモを保存する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"text\":{"
-          "\"type\": \"string\","
-          "\"description\": \"メモの内容。\""
-        "}"
-      "},"
-      "\"required\": [\"text\"]"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"read_note\","
-    "\"description\": \"メモを読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"delete_note\","
-    "\"description\": \"メモを消去する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"get_bus_time\","
-    "\"description\": \"次のバス（または電車）の時刻を取得する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"nNext\":{"
-          "\"type\": \"integer\","
-          "\"description\": \"次の発車時刻を取得する場合は0にする。次の次の発車時刻を取得する場合は1にする。\""
-        "}"
-      "},"
-      "\"required\": [\"nNext\"]"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"send_mail\","
-    "\"description\": \"メールを送信する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"message\":{"
-          "\"type\": \"string\","
-          "\"description\": \"メールの内容。\""
-        "}"
-      "}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"read_mail\","
-    "\"description\": \"受信メールを読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-#if defined(ARDUINO_M5STACK_CORES3)
-  "{"
-    "\"name\": \"register_wakeword\","
-    "\"description\": \"ウェイクワードを登録する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"wakeword_enable\","
-    "\"description\": \"ウェイクワードを有効化する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"delete_wakeword\","
-    "\"description\": \"ウェイクワードを削除する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"idx\":{"
-          "\"type\": \"integer\","
-          "\"description\": \"削除するウェイクワードの番号。\""
-        "}"
-      "},"
-      "\"required\": [\"idx\"]"
-    "}"
-  "},"
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-  "{"
-    "\"name\": \"get_news\","
-    "\"description\": \"最新のニュースを取得して読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"get_weathers\","
-    "\"description\": \"天気予報を取得。\","
-    "\"parameters\":  {"
-      "\"type\":\"object\","
-      "\"properties\": {},"
-      "\"required\": []"
-    "}"
-  "}"
 #endif //if defined(USE_EXTENSION_FUNCTIONS)
 "]";
 
@@ -303,21 +222,7 @@ FunctionCall::FunctionCall(llm_param_t param, LLMBase* llm, MCPClient** mcpClien
 // Function Call関連の初期化
 void FunctionCall::init_func_call_settings(StackchanExConfig& system_config)
 {
-  newsApiKey = system_config.getExConfig().news.apikey;
-  weatherCityID = system_config.getExConfig().weather.city_id;
-  authMailAdr = system_config.getExConfig().mail.account;
-  authAppPass = system_config.getExConfig().mail.app_pwd;
-  toMailAdr = system_config.getExConfig().mail.to_addr;
 
-  /// メモがあるか確認
-  {
-    String filename = String(APP_DATA_PATH) + String(FNAME_NOTEPAD);
-    char buf[512];
-    if(read_sd_file(filename.c_str(), buf, sizeof(buf))){
-      note = String(buf);
-      Serial.printf("Notepad: %s\n", buf);
-    }
-  }
 }
 
 
@@ -367,6 +272,21 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
       const int time = argsDoc["time"];
       response = timer_change(time);    
     }
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+    else if(strcmp(name, "register_wakeword") == 0){
+      response = register_wakeword();    
+    }
+    else if(strcmp(name, "wakeword_enable") == 0){
+      response = wakeword_enable();    
+    }
+    else if(strcmp(name, "delete_wakeword") == 0){
+      const int idx = argsDoc["idx"];
+      Serial.printf("idx:%d\n",idx);   
+      response = delete_wakeword(idx);    
+    }
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
     else if(strcmp(name, "get_date") == 0){
       response = get_date();    
     }
@@ -387,49 +307,6 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
       const char* text = argsDoc["text"];
       Serial.println(text);
       response = ask(text);
-    }
-    else if(strcmp(name, "save_note") == 0){
-      const char* text = argsDoc["text"];
-      Serial.println(text);
-      response = save_note(text);
-    }
-    else if(strcmp(name, "read_note") == 0){
-      response = read_note();    
-    }
-    else if(strcmp(name, "delete_note") == 0){
-      response = delete_note();    
-    }
-    else if(strcmp(name, "get_bus_time") == 0){
-      const int nNext = argsDoc["nNext"];
-      Serial.printf("nNext:%d\n",nNext);   
-      response = get_bus_time(nNext);    
-    }
-    else if(strcmp(name, "send_mail") == 0){
-      const char* text = argsDoc["message"];
-      Serial.println(text);
-      response = send_mail(text);
-    }
-    else if(strcmp(name, "read_mail") == 0){
-      response = read_mail();    
-    }
-#if defined(ARDUINO_M5STACK_CORES3)
-    else if(strcmp(name, "register_wakeword") == 0){
-      response = register_wakeword();    
-    }
-    else if(strcmp(name, "wakeword_enable") == 0){
-      response = wakeword_enable();    
-    }
-    else if(strcmp(name, "delete_wakeword") == 0){
-      const int idx = argsDoc["idx"];
-      Serial.printf("idx:%d\n",idx);   
-      response = delete_wakeword(idx);    
-    }
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-    else if(strcmp(name, "get_news") == 0){
-      response = get_news();    
-    }
-    else if(strcmp(name, "get_weathers") == 0){
-      response = get_weathers();    
     }
 #endif  //if defined(USE_EXTENSION_FUNCTIONS)
 

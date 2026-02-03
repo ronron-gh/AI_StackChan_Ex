@@ -12,7 +12,6 @@
 #include "driver/WakeWord.h"
 #include "driver/ModuleLLM.h"
 #include <WiFiClientSecure.h>
-#include "MailClient.h"
 #include "Scheduler.h"
 #include "MySchedule.h"
 #include "SDUtil.h"
@@ -118,8 +117,6 @@ AiStackChanMod::AiStackChanMod(bool _isOffline)
   //copySDFileToSPIFFS(fname.c_str(), false);
 
   if(!isOffline){
-    //メール受信設定
-    imap_init();
     //スケジューラ設定
     init_schedule();
   }
@@ -356,7 +353,6 @@ void AiStackChanMod::idle(void)
     }
 
 #if defined(ARDUINO_M5STACK_CORES3)
-#if defined(USE_EXTENSION_FUNCTIONS)
     // Function Callからの要求でウェイクワード有効化
     if (wakeword_enable_required)
     {
@@ -370,7 +366,6 @@ void AiStackChanMod::idle(void)
       register_wakeword_required = false;
       btnB_longPressed();
     }
-#endif  //defined(USE_EXTENSION_FUNCTIONS)
 #endif  //defined(ARDUINO_M5STACK_CORES3)
 #endif  //ENABLE_WAKEWORD
   }
