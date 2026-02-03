@@ -28,32 +28,6 @@ static const char session_update[] =
               "\"responseModalities\": [\"AUDIO\"]"
             "},"
             "\"tools\": ["
-#if 0
-              "{\"googleSearch\": {}},"
-              "{\"functionDeclarations\": ["
-                "{"
-                  "\"parameters\": {"
-                      "\"type\": \"OBJECT\","
-                      "\"properties\": {"
-                          "\"memory\": {"
-                              "\"type\": \"STRING\","
-                              "\"description\": \"Summary of user attributes and memorable conversations.\""
-                          "}"
-                      "}"
-                  "},"
-                  "\"name\": \"update_memory\","
-                  "\"description\": \"Update long-term memory.\""
-                "},"
-                "{"
-                  "\"parameters\": {"
-                      "\"type\": \"OBJECT\","
-                      "\"properties\": {}"
-                  "},"
-                  "\"name\": \"get_time\","
-                  "\"description\": \"Get the current time.\""
-                "}"
-              "]}"
-#endif
               "{\"functionDeclarations\": []},"
               "{\"googleSearch\": {}}"
             "],"
@@ -188,7 +162,6 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 Serial.printf("WebSocket Event: JSON deserialization error %d\n", error.code());
             }
 
-#ifndef REALTIME_API_WITH_TTS
             if(!p_this->msgDoc["setupComplete"].isNull()){
                 Serial.printf("[WSc] setupComplete\n");
                 //Serial.printf("[WSc] payload: %s\n", payload);
@@ -209,6 +182,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             else if(!p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["text"].isNull()){
                 Serial.printf("[WSc] modelTurn text\n");
             }
+#ifndef REALTIME_API_WITH_TTS
             else if(!p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["inlineData"]["data"].isNull()){
                 if(p_this->speaking == false){
                     Serial.printf("[WSc] input audio committed\n");
@@ -259,50 +233,20 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
             else if(!p_this->msgDoc["serverContent"]["turnComplete"].isNull()){
                 Serial.printf("[WSc] turnComplete: %s\n", payload);
-                bool isFuncCall = false;
-#if 0
-                int outputNum = msgDoc["response"]["output"].size();
-                Serial.printf("output num: %d\n", outputNum);
-                for(int i = 0; i < outputNum; i++){
-                    String outputType = msgDoc["response"]["output"][i]["type"].as<String>();
-                    if(outputType.equals("function_call")){
-                        //Serial.printf("[WSc] function call payload: %s\n", payload);
-                        isFuncCall = true;
-                        const char* name = msgDoc["response"]["output"][i]["name"];
-                        const char* args = msgDoc["response"]["output"][i]["arguments"];
-                        const char* call_id = msgDoc["response"]["output"][i]["call_id"];
-                        Serial.printf("name: %s, args: %s\n", name, args);
 
-                        //avatar.setSpeechFont(&fonts::efontJA_12);
-                        //avatar.setSpeechText(name);
-                        String response = p_this->exec_calledFunc(name, args);
-                        response.replace("\"", "\\\"");     //JSON内の文字列を囲む"にエスケープ(\)を付ける
-
-                        String json(conversation_item_create);
-                        json.replace("REPLACE_TO_CALL_ID", call_id);
-                        json.replace("REPLACE_TO_OUTPUT", response.c_str());
-                        Serial.printf("[WSc] function output: %s\n", json.c_str());
-                        webSocket.sendTXT(json);
-                        webSocket.sendTXT(response_create);
-                    }
-                }
-#endif
-
-                if(!isFuncCall){
 #ifndef REALTIME_API_WITH_TTS
-                    p_this->startRealtimeRecord();
-                    while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
-                    M5.Speaker.end();
-                    M5.Mic.begin();
+                p_this->startRealtimeRecord();
+                while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+                M5.Speaker.end();
+                M5.Mic.begin();
 
-                    for(int i=0; i<2; i++){
-                        memset(p_this->audioBuf[i], 0, 100 * 1024);
-                    }
-                    p_this->speaking = false;
-#else
-                    p_this->response_done = true;
-#endif
+                for(int i=0; i<2; i++){
+                    memset(p_this->audioBuf[i], 0, 100 * 1024);
                 }
+                p_this->speaking = false;
+#else
+                p_this->response_done = true;
+#endif
             }
 
             break;
