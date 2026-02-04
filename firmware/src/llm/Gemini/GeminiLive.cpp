@@ -55,7 +55,6 @@ static const char function_response[] =
             "\"tool_response\": {"
               "\"function_responses\": [{"
                 "\"name\": \"REPLACE_TO_TOOL_NAME\","
-                //"\"response\"= \"{\\\"result\\\":\\\"REPLACE_TO_OUTPUT\\\"}\","
                 "\"response\": {\"result\":\"REPLACE_TO_OUTPUT\"},"
                 "\"id\": \"REPLACE_TO_CALL_ID\""
               "}]"
@@ -110,20 +109,18 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 sessionUpdateDoc["setup"]["systemInstruction"]["parts"][1]["text"] = p_this->systemRole;
                 sessionUpdateDoc["setup"]["systemInstruction"]["parts"][2]["text"] = p_this->userInfo;
 
-#if 0
                 // MCP tools listをfunctionとして挿入
                 //
                 for(int s=0; s<p_this->param.llm_conf.nMcpServers; s++){
-                    if(!p_this->mcp_client[s]->isConnected()){
+                    if(!p_this->mcpClient[s]->isConnected()){
                         continue;
                     }
 
-                    for(int t=0; t < p_this->mcp_client[s]->nTools; t++){
-                        sessionUpdateDoc["session"]["tools"].add(p_this->mcp_client[s]->toolsListDoc["result"]["tools"][t]);
-                        sessionUpdateDoc["session"]["tools"][t]["type"] = "function";
+                    for(int t=0; t < p_this->mcpClient[s]->nTools; t++){
+                        sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"].add(p_this->mcpClient[s]->toolsListDoc["result"]["tools"][t]);
                     }
                 }
-#endif
+
                 // FunctionCall.cppで定義したfunctionをsession.updateに挿入
                 //
                 SpiRamJsonDocument functionsDoc(1024*10);
@@ -133,10 +130,8 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 }
 
                 int nFuncs = functionsDoc.size();
-                //int nMcpFuncs = sessionUpdateDoc["session"]["tools"].size();
                 for(int i=0; i<nFuncs; i++){
                     sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"].add(functionsDoc[i]);
-                    //sessionUpdateDoc["session"]["tools"][nMcpFuncs + i]["type"] = "function";
                 }
 
 
@@ -176,9 +171,6 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->webSocket.sendTXT(json);
 #endif
             }
-            //else if(msgType.equals("input_audio_buffer.speech_started")){
-            //    p_this->resetRealtimeRecordStartTime();
-            //}
             else if(!p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["text"].isNull()){
                 Serial.printf("[WSc] modelTurn text\n");
             }
@@ -271,7 +263,6 @@ GeminiLive::GeminiLive(llm_param_t param) : RealtimeLLMBase(param)
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
   msgDoc = SpiRamJsonDocument(1024*150);
 
-#if 0
   M5.Lcd.println("MCP Servers:");
   for(int i=0; i<param.llm_conf.nMcpServers; i++){
     mcpClient[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
@@ -281,7 +272,7 @@ GeminiLive::GeminiLive(llm_param_t param) : RealtimeLLMBase(param)
       M5.Lcd.println(param.llm_conf.mcpServer[i].name);
     }
   }
-#endif
+
   fnCall = new FunctionCall(param, this, mcpClient);
   //fnCall->init_func_call_settings(robot->m_config);
 
