@@ -59,8 +59,8 @@ void StatusMonitorMod::update(int page_no)
                     heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) );
     str += tmp;
     sprintf(tmp, "Prompt buffer usage:\n  %d / %d [byte]\n",
-                    chat_doc.memoryUsage(),
-                    chat_doc.capacity() );
+                    robot->llm->chat_doc.memoryUsage(),
+                    robot->llm->chat_doc.capacity() );
     str += tmp;
     sprintf(tmp, "Battery level:  %d %%\n", M5.Power.getBatteryLevel());
     str += tmp;
@@ -78,11 +78,7 @@ void StatusMonitorMod::update(int page_no)
       }
     }
   }
-  else if(page_no == 2){
-    str += "===== Function call info  =====\n";
-    str += "Memo:\n";
-    str += note;
-  }
+
 
   //M5.Display.print(str);
   avatar.updateSubWindowTxt(str);

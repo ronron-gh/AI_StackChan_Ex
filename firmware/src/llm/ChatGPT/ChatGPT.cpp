@@ -26,24 +26,22 @@ const String json_ChatString =
   "\"function_call\":\"auto\""
 "}";
 
-// ユーザーが設定するロールのデフォルト設定用
-const String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
-// システム用のロール（Function Callingの利用方針など）
-const String systemRole_memory = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
-const String systemRole_noMemory = "Memory function disabled. Do not use update_memory tool.";
 
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)
 {
   M5.Lcd.println("MCP Servers:");
   for(int i=0; i<param.llm_conf.nMcpServers; i++){
-    mcp_client[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
+    mcpClient[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
                                   param.llm_conf.mcpServer[i].port);
     
-    if(mcp_client[i]->isConnected()){
+    if(mcpClient[i]->isConnected()){
       M5.Lcd.println(param.llm_conf.mcpServer[i].name);
     }
   }
+
+  fnCall = new FunctionCall(param, this, mcpClient);
+  //fnCall->init_func_call_settings(robot->m_config);
 
   enableMemory(param.llm_conf.enableMemory);
   if(enableMemory()){
@@ -78,78 +76,9 @@ bool ChatGPT::init_chat_doc(const char *data)
   return true;
 }
 
-bool ChatGPT::save_chat_doc_to_spiffs(){
-  // SPIFFSをマウントする
-  if(!SPIFFS.begin(true)){
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    return false;
-  }
-
-  // JSONファイルを作成または開く
-  File file = SPIFFS.open("/data.json", "w");
-  if(!file){
-    Serial.println("Failed to open file for writing");
-    return false;
-  }
-
-  // JSONデータをシリアル化して書き込む
-  serializeJson(chat_doc, file);
-  file.close();
-  return true;
-}
-
-bool ChatGPT::save_role(String role){
-  String systemRole = "";
-  Serial.println("Save role to SPIFFS.");
-
-  init_chat_doc(InitBuffer.c_str());
-  if (role != "") {
-    chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
-  } else {
-    Serial.println("Input role is empty. Initialize by default.");
-    chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
-  }
-
-  // 更新したプロンプトをSPIFFSに保存
-  if(!save_chat_doc_to_spiffs()){
-    return false;
-  }
-
-  // 会話履歴を初期化
-  //chatHistory.clear();
-
-  // InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
-  serializeJson(chat_doc, InitBuffer);
-  String json_str; 
-  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
-  Serial.println("Initialized prompt:");
-  Serial.println(json_str);
-
-  return true;
-}
-
-bool ChatGPT::save_userInfo(String userInfo){
-  Serial.println("Save role to SPIFFS.");
-
-  init_chat_doc(InitBuffer.c_str());
-  chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = String("User Info: ") + userInfo;
-
-  // 更新したプロンプトをSPIFFSに保存
-  if(!save_chat_doc_to_spiffs()){
-    return false;
-  }
-
-  // InitBuffer(会話履歴を挿入する前のプロンプト)を初期化
-  serializeJson(chat_doc, InitBuffer);
-  String json_str; 
-  serializeJsonPretty(chat_doc, json_str);  // 文字列をシリアルポートに出力する
-  Serial.println("Initialized prompt:");
-  Serial.println(json_str);
-
-  return true;
-}
-
 void ChatGPT::load_role(){
+  String role = "";
+  String userInfo = "User Info: ";
   String systemRole = "";
   Serial.println("Load role from SPIFFS.");
   if(enableMemory()){
@@ -158,62 +87,43 @@ void ChatGPT::load_role(){
     systemRole = systemRole_noMemory;
   }
 
-  if(SPIFFS.begin(true)){
-    File file = SPIFFS.open("/data.json", "r");
-    if(file){
-      DeserializationError error = deserializeJson(chat_doc, file);
-      if(error){
-        Serial.println("Failed to deserialize JSON. Init doc by default.");
-        init_chat_doc(json_ChatString.c_str());
-        chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
-        chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
-      }
-      else{
-        String role = String((const char*)chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
-        //Serial.println(role);
-        String userInfo = String((const char*)chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
-        //Serial.println(userInfo);
-        int idx = userInfo.indexOf("User Info");
-        if(idx < 0 || !enableMemory()){
-          userInfo = "User Info: ";
-        }
-
-        // data.jsonファイルからロードしたプロンプトは旧バージョンの可能性があるため現バージョンで初期化する
-        init_chat_doc(json_ChatString.c_str());
-
-        if (role != "") {
-          chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
-        } else {
-          Serial.println("Loaded role is empty. Initialize by default.");
-          chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
-        }
-        chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
-        chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
-      }
-
-    } else {
-      Serial.println("Failed to open file. Initialize by default.");
-      init_chat_doc(json_ChatString.c_str());
-      chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
-      chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
+  if(load_system_prompt_from_spiffs()){
+    role = String((const char*)systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
+    //Serial.printf("role length: %d\n", role.length());
+    if (role == "") {
+      Serial.println("SPIFFS user role is empty. set default role.");
+      role = defaultRole;
     }
 
-  } else {
-    Serial.println("An Error has occurred while mounting SPIFFS");
-    init_chat_doc(json_ChatString.c_str());
+    userInfo = String((const char*)systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"]);
+    //Serial.println(userInfo);
+    int idx = userInfo.indexOf("User Info");
+    if(idx < 0 || !enableMemory()){
+      userInfo = "User Info: ";
+    }
+  }else{
+    // load_system_prompt_from_spiffs()内でSPIFFSからの取得失敗かつ
+    // デフォルトのシステムプロンプト設定に失敗した場合（通常起こり得ない）。
+    role = defaultRole;
+    userInfo = "User Info: ";
   }
 
+  init_chat_doc(json_ChatString.c_str());   // chat_docを初期化
+
+  chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
+  chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
+  chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
 
   /*
    * MCP tools listをfunctionとして挿入
    */
   for(int s=0; s<param.llm_conf.nMcpServers; s++){
-    if(!mcp_client[s]->isConnected()){
+    if(!mcpClient[s]->isConnected()){
       continue;
     }
 
-    for(int t=0; t<mcp_client[s]->nTools; t++){
-      chat_doc["functions"].add(mcp_client[s]->toolsListDoc["result"]["tools"][t]);
+    for(int t=0; t<mcpClient[s]->nTools; t++){
+      chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
     }
   }
 
@@ -241,17 +151,6 @@ void ChatGPT::load_role(){
   Serial.println(json_str);
 }
 
-String ChatGPT::get_userRole() {
-  return chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"];
-}
-
-String ChatGPT::get_userInfo() {
-  return chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"];
-}
-
-bool ChatGPT::clear_userInfo() {
-  return save_userInfo("");
-}
 
 String ChatGPT::https_post_json(const char* url, const char* json_string, const char* root_ca) {
   String payload = "";
@@ -426,7 +325,7 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
         calledFunc = String(name);
         //avatar.setSpeechFont(&fonts::efontJA_12);
         //avatar.setSpeechText(name);
-        response = exec_calledFunc(name, args);
+        response = fnCall->exec_calledFunc(name, args);
       }
       else{
         Serial.println(data);
@@ -447,123 +346,3 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   return response;
 }
 
-
-String ChatGPT::exec_calledFunc(const char* name, const char* args){
-  String response = "";
-
-  Serial.println(name);
-  Serial.println(args);
-
-  DynamicJsonDocument argsDoc(256);
-  DeserializationError error = deserializeJson(argsDoc, args);
-  if (error) {
-    Serial.print(F("deserializeJson(arguments) failed: "));
-    Serial.println(error.f_str());
-    avatar.setExpression(Expression::Sad);
-    avatar.setSpeechText("エラーです");
-    response = "エラーです";
-    delay(1000);
-    avatar.setSpeechText("");
-    avatar.setExpression(Expression::Neutral);
-  }else{
-
-    //関数名がいずれかのMCPサーバに属するかを検索し、ヒットしたらリクエストを送信する
-    for(int s=0; s<param.llm_conf.nMcpServers; s++){
-      if(mcp_client[s]->search_tool(String(name))){
-        DynamicJsonDocument tool_params(512);
-        tool_params["name"] = String(name);
-        tool_params["arguments"] = argsDoc;
-        response = mcp_client[s]->mcp_call_tool(tool_params);
-        goto END;
-      }
-    }
-
-    if(strcmp(name, "update_memory") == 0){
-      const char* memory = argsDoc["memory"];
-      Serial.println(memory);
-      response = fn_update_memory(this, memory);
-    }
-    else if(strcmp(name, "timer") == 0){
-      const int time = argsDoc["time"];
-      const char* action = argsDoc["action"];
-      Serial.printf("time:%d\n",time);
-      Serial.println(action);
-      response = timer(time, action);
-    }
-    else if(strcmp(name, "timer_change") == 0){
-      const int time = argsDoc["time"];
-      response = timer_change(time);    
-    }
-    else if(strcmp(name, "get_date") == 0){
-      response = get_date();    
-    }
-    else if(strcmp(name, "get_time") == 0){
-      response = get_time();    
-    }
-    else if(strcmp(name, "get_week") == 0){
-      response = get_week();    
-    }
-#if defined(USE_EXTENSION_FUNCTIONS)
-    else if(strcmp(name, "reminder") == 0){
-      const int hour = argsDoc["hour"];
-      const int min = argsDoc["min"];
-      const char* text = argsDoc["text"];
-      response = reminder(hour, min, text);
-    }
-    else if(strcmp(name, "ask") == 0){
-      const char* text = argsDoc["text"];
-      Serial.println(text);
-      response = ask(text);
-    }
-    else if(strcmp(name, "save_note") == 0){
-      const char* text = argsDoc["text"];
-      Serial.println(text);
-      response = save_note(text);
-    }
-    else if(strcmp(name, "read_note") == 0){
-      response = read_note();    
-    }
-    else if(strcmp(name, "delete_note") == 0){
-      response = delete_note();    
-    }
-    else if(strcmp(name, "get_bus_time") == 0){
-      const int nNext = argsDoc["nNext"];
-      Serial.printf("nNext:%d\n",nNext);   
-      response = get_bus_time(nNext);    
-    }
-    else if(strcmp(name, "send_mail") == 0){
-      const char* text = argsDoc["message"];
-      Serial.println(text);
-      response = send_mail(text);
-    }
-    else if(strcmp(name, "read_mail") == 0){
-      response = read_mail();    
-    }
-#if defined(ARDUINO_M5STACK_CORES3)
-    else if(strcmp(name, "register_wakeword") == 0){
-      response = register_wakeword();    
-    }
-    else if(strcmp(name, "wakeword_enable") == 0){
-      response = wakeword_enable();    
-    }
-    else if(strcmp(name, "delete_wakeword") == 0){
-      const int idx = argsDoc["idx"];
-      Serial.printf("idx:%d\n",idx);   
-      response = delete_wakeword(idx);    
-    }
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-#if !defined(MCP_BRAVE_SEARCH)
-    else if(strcmp(name, "get_news") == 0){
-      response = get_news();    
-    }
-#endif
-    else if(strcmp(name, "get_weathers") == 0){
-      response = get_weathers();    
-    }
-#endif  //if defined(USE_EXTENSION_FUNCTIONS)
-
-  }
-
-END:
-  return response;
-}

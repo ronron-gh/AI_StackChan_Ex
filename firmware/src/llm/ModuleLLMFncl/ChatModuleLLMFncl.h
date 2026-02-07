@@ -8,12 +8,14 @@
 #include "SpiRamJsonDocument.h"
 #include "../ChatHistory.h"
 #include "../LLMBase.h"
+#include "../ChatGPT/FunctionCall.h"
 
 extern String InitBuffer;
 
 
 class ChatModuleLLMFncl: public LLMBase{
 private:
+    FunctionCall* fnCall;
 
 public:
     ChatModuleLLMFncl(llm_param_t param);

@@ -8,15 +8,11 @@
 #include "RealtimeAiMod.h"
 #include <Avatar.h>
 #include "Robot.h"
-#include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
-//#include "driver/PlayMP3.h"
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
 #include "MySchedule.h"
 #include "SDUtil.h"
-
-
 
 using namespace m5avatar;
 
@@ -38,7 +34,7 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   box_BtnA.setupBox(0, 100, 40, 60);
   box_BtnC.setupBox(280, 100, 40, 60);
 
-  pRtLLM = (RealtimeChatGPT*)robot->llm;
+  pRtLLM = (RealtimeLLMBase*)robot->llm;
 
   //servo_home = false;
 
@@ -46,11 +42,6 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   if(!isOffline){
     //スケジューラ設定
     init_schedule();
-  }
-
-  if(robot->m_config.getExConfig().llm.type == LLM_TYPE_CHATGPT){
-    // Function Call関連の設定
-    init_func_call_settings(robot->m_config);
   }
 #endif
 }
@@ -104,7 +95,11 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   if (box_stt.contain(x, y))
   {
     sw_tone();
-    pRtLLM->startRealtimeRecord();
+    if(pRtLLM->isRealtimeRecording()){
+      pRtLLM->stopRealtimeRecord();
+    }else{
+      pRtLLM->startRealtimeRecord();
+    }
   }
 #ifdef USE_SERVO
   if (box_servo.contain(x, y))
@@ -145,8 +140,20 @@ void RealtimeAiMod::idle(void)
 
 #endif  //REALTIME_API_WITH_TTS
 
-  // Alarm
-  //
+  // Alarm (Function Calling)
+  alarmEventHandler();
+
+#if 0 
+  //スケジューラ処理
+  if(!isOffline){
+    run_schedule();
+  }
+#endif
+
+}
+
+void RealtimeAiMod::alarmEventHandler()
+{
   if(xAlarmTimer != NULL){
     TickType_t xRemainingTime;
 
@@ -163,12 +170,10 @@ void RealtimeAiMod::idle(void)
     alarm_tone();
   }
 
-#if 0 
-  //スケジューラ処理
-  if(!isOffline){
-    run_schedule();
+  if (alarmTimerCanceled) {
+    alarmTimerCanceled = false;
+    avatar.set_isSubWindowEnable(false);
   }
-#endif
 
 }
 

@@ -109,51 +109,10 @@ void StackchanExConfig::extendConfigNotFoundCallback(void)
 {
     M5_LOGE("load extend config from txt files\n");
 
-    /// News API key
-    {
-        char buf[128], key[128];
-        if(read_sd_file("/news_api_key.txt", buf, sizeof(buf))){
-            read_line_from_buf(buf, key);
-            _ex_parameters.news.apikey = String(key);
-        }
-    }
-
-    /// Weather city ID
-    {
-        char buf[128], key[128];
-        if(read_sd_file("/weather_city_id.txt", buf, sizeof(buf))){
-            read_line_from_buf(buf, key);
-            _ex_parameters.weather.city_id = String(key);
-        }
-        else{
-            _ex_parameters.weather.city_id = "130010";
-        }
-    }
-
-    /// Gmail
-    {
-        char buf[256], key[256];
-        if(read_sd_file("/gmail.txt", buf, sizeof(buf))){
-            read_line_from_buf(buf, key);
-            _ex_parameters.mail.account = String(key);
-
-            read_line_from_buf(nullptr, key);
-            _ex_parameters.mail.app_pwd = String(key);
-
-            read_line_from_buf(nullptr, key);
-            _ex_parameters.mail.to_addr = String(key);
-        }
-    }
 }
 
 void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
-    _ex_parameters.mail.account     = doc["mail"]["account"].as<String>();
-    _ex_parameters.mail.app_pwd     = doc["mail"]["app_pwd"].as<String>();
-    _ex_parameters.mail.to_addr     = doc["mail"]["to_addr"].as<String>();
-    _ex_parameters.weather.city_id  = doc["weather"]["city_id"].as<String>();
-    _ex_parameters.news.apikey      = doc["news"]["apikey"].as<String>();
-
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
     _ex_parameters.llm.model        = doc["llm"]["model"].as<String>();
     _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
@@ -205,10 +164,4 @@ void StackchanExConfig::printExtParameters(void)
     M5_LOGI("module llm rxPin: %d", _ex_parameters.moduleLLM.rxPin);
     M5_LOGI("module llm txPin: %d", _ex_parameters.moduleLLM.txPin);
     
-    M5_LOGI("mail account: %s", _ex_parameters.mail.account.c_str());
-    M5_LOGI("mail app password: %s", _ex_parameters.mail.app_pwd.c_str());
-    M5_LOGI("mail to addr: %s", _ex_parameters.mail.to_addr.c_str());
-    M5_LOGI("weather city id: %s", _ex_parameters.weather.city_id.c_str());
-    M5_LOGI("news apikey: %s", _ex_parameters.news.apikey.c_str());
-
 }

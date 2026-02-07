@@ -11,7 +11,7 @@ private:
     box_t box_BtnC;
     box_t box_BtnUA;
     box_t box_BtnUC;
-    const int MAX_PAGE_NO = 3;
+    const int MAX_PAGE_NO = 2;
     int current_page_no;
 public:
     StatusMonitorMod(void);

@@ -28,6 +28,7 @@
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
 #include "llm/ChatHistory.h"
+#include "llm/Gemini/GeminiLive.h"
 
 #include "WebAPI.h"
 
@@ -108,7 +109,8 @@ void lipSync(void *args)
 #ifdef REALTIME_API_WITH_TTS
     level = robot->tts->getLevel();
 #else
-    level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+    //level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
+    level = ((GeminiLive*)(robot->llm))->getAudioLevel();
 #endif
 #else
     level = robot->tts->getLevel();
@@ -412,8 +414,11 @@ void setup()
   avatar.addTask(battery_check, "battery_check", 2048);
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  //robot->spk_volume = 120;
+#if defined(ARDUINO_M5STACK_CORES3)
+  robot->spk_volume = 120;
+#else
   robot->spk_volume = 200;
+#endif
   M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)

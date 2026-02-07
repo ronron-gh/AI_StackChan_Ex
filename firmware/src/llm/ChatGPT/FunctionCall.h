@@ -23,42 +23,45 @@ extern String note;
 extern bool register_wakeword_required;
 extern bool wakeword_enable_required;
 extern bool alarmTimerCallbacked;
+extern bool alarmTimerCanceled;
 
-void init_func_call_settings(StackchanExConfig& system_config);
 
+class FunctionCall{
+private:
+    llm_param_t _param;
+    LLMBase* _llm;
+    MCPClient** _mcpClient;
 
-//
-// Functions for Function Calling
-//
-String fn_update_memory(LLMBase* llm, const char* memory);
+public:
+    FunctionCall(llm_param_t param, LLMBase* llm, MCPClient** mcpClient = nullptr);
 
-String timer(int32_t time, const char* action);
-String timer_change(int32_t time);
+    void init_func_call_settings(StackchanExConfig& system_config);
+    String exec_calledFunc(const char* name, const char* args);
+    
 
-String get_date();
-String get_time();
-String get_week();
+    // Functions for Function Calling
+    //
+    String fn_update_memory(LLMBase* llm, const char* memory);
 
-#if defined(USE_EXTENSION_FUNCTIONS)
-String reminder(int hour, int min, const char* text);
-String ask(const char* text);
+    String timer(int32_t time, const char* action);
+    String timer_change(int32_t time);
 
-String save_note(const char* text);
-String read_note();
-String delete_note();
+    String get_date();
+    String get_time();
+    String get_week();
 
-String get_bus_time(int nNext);
+    #if defined(ARDUINO_M5STACK_CORES3)
+    #if defined(ENABLE_WAKEWORD)
+    String register_wakeword(void);
+    String wakeword_enable(void);
+    String delete_wakeword(int idx);
+    #endif
+    #endif
 
-String send_mail(String msg);
-String read_mail(void);
+    #if defined(USE_EXTENSION_FUNCTIONS)
+    String reminder(int hour, int min, const char* text);
+    String ask(const char* text);
+    #endif  //USE_EXTENSION_FUNCTIONS
+};
 
-#if defined(ARDUINO_M5STACK_CORES3)
-String register_wakeword(void);
-String wakeword_enable(void);
-String delete_wakeword(int idx);
-#endif
-String get_news();
-String get_weathers();
-#endif
-
-#endif //_FUNCTION_CALL_
+#endif //_FUNCTION_CALL_H

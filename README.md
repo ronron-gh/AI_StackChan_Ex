@@ -4,7 +4,7 @@
 robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackChan2)をベースに、次のように機能拡張しています。  
 - AI機能の拡張
   - Module LLM（M5Stackの拡張モジュール）によるAI会話機能の完全ローカル化
-  - OpenAI Realtime APIによる遅延のない会話
+  - Realtime APIによる遅延のない会話
 - [stackchan-arduinoライブラリ](https://github.com/mongonta0716/stackchan-arduino)に対応
   - これにより、YAMLによる初期設定や、シリアルサーボへの対応が可能になりました。
 - ユーザアプリケーションを追加作成しやすいクラス設計
@@ -22,7 +22,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 - [開発環境](#開発環境)
 - [基本的な利用方法](#基本的な利用方法)
 - [Module LLMの利用方法](#module-llmの利用方法)
-- [OpenAI Realtime APIの利用方法](#openai-realtime-apiの利用方法)
+- [Realtime APIの利用方法](#realtime-apiの利用方法)
 - [その他の機能](#その他の機能)
   - [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
   - [SD Updaterに対応（Core2のみ）](#sd-updaterに対応core2のみ)
@@ -45,7 +45,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 LLM、STT、TTSをModule LLMのAPIに置き換えることで、AI会話機能を完全ローカル化することができます。  
 上記の[基本的な利用方法](doc/basic_usage.md)をご確認の上、[こちら](doc/module_llm.md)のページに従って設定してください。
 
-## OpenAI Realtime APIの利用方法
+## Realtime APIの利用方法
 上記の従来のAI会話機能は、STTで音声をテキストに変換→テキストをLLMに入力→LLMのテキスト出力をTTSで音声に変換というステップが必要なため各APIにおける遅延が重なり応答に10秒以上かかっていました。Realtime APIを利用すると、音声データを直接LLMに入力でき、応答も音声データで返ってくるため、遅延を最小限に抑えられます。  
 Realtime APIを利用する際は、[こちら](doc/realtime_api.md)のページに従って設定してください。
 

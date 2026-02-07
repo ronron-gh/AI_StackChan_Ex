@@ -198,13 +198,13 @@ PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝの
 ### 3.1. メモリー（長期記憶）について
 メモリーを有効にするには SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で enableMemory を true に設定してください。
 
-> 現在、メモリーに対応しているLLMはChatGPT（Realtime API含む）のみです。
+> 現在、メモリーに対応しているLLMは、ChatGPT（Realtime API含む）、Gemini Liveです。
 
 SC_ExConfig.yaml
 ```
 llm:
-  type: 0                   # 0:ChatGPT  1:ModuleLLM
-  enableMemory: true        # true でメモリー有効（ChatGPTのみ。デフォルトはfalse）
+  type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
+  enableMemory: true    # true でメモリー有効（デフォルトはfalse）
 ```
 
 メモリーを有効にすると、会話の中でユーザーの属性（趣味や仕事など）や印象的なエピソードがあれば要約してSPIFFSに保存されます。電源をOFFにしてもSPIFFSの内容は保持され、次回起動時に記憶情報として読み出されます。

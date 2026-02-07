@@ -195,13 +195,13 @@ You can open the settings screen by accessing http://(Stack-chan's IP address) f
 ### 3.1. Memory (Long-term Memory)
 To enable memory, set `enableMemory` to `true` in `/app/AiStackChanEx/SC_ExConfig.yaml` on the SD card.
 
-> Currently, only ChatGPT (including the Realtime API) supports memory.
+> Currently, ChatGPT (including the Realtime API) and Gemini Live supports memory.
 
 SC_ExConfig.yaml
 ```
 llm:
-  type: 0                   # 0:ChatGPT  1:ModuleLLM
-  enableMemory: true        # Enable memory with true (ChatGPT only, default is false)
+  type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
+  enableMemory: true    # Enable memory with true (default is false)
 ```
 
 When memory is enabled, if there are user attributes (such as hobbies or work) or impressive episodes in the conversation, they will be summarized and saved to SPIFFS. The contents of SPIFFS are retained even when the power is turned off and will be read as memory information at the next startup.

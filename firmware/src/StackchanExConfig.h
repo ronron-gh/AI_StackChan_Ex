@@ -20,27 +20,6 @@
   #define DEFAULT_SERVO_PIN_Y 17
 #endif
 
-//
-// Function Call設定
-//
-
-//Gmailアカウント、アプリパスワード
-typedef struct FnMail {
-    String account;
-    String app_pwd;
-    String to_addr;
-} mail_s;
-
-//天気予報APIのCity ID
-typedef struct FnWeather {
-    String city_id;
-} weather_s;
-
-//NEWS APIのAPIキー
-typedef struct FnNews {
-    String apikey;
-} news_s;
-
 
 //
 // AI機能設定 
@@ -48,6 +27,7 @@ typedef struct FnNews {
 #define LLM_TYPE_CHATGPT                0
 #define LLM_TYPE_MODULE_LLM             1
 #define LLM_TYPE_MODULE_LLM_FNCL        2
+#define LLM_TYPE_GEMINI                 3
 #define LLM_N_MCP_SERVERS_MAX           10
 
 #define TTS_TYPE_WEB_VOICEVOX           0
@@ -106,9 +86,6 @@ typedef struct ExConfig {
     stt_s stt;
     wakeword_s wakeword;
     moduleLLM_s moduleLLM;
-    mail_s mail;
-    weather_s weather;
-    news_s news;
 } ex_config_s;
 
 

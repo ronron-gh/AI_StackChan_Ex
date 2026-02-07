@@ -5,8 +5,7 @@
 #include "driver/AudioOutputM5Speaker.h"
 #include <HTTPClient.h>
 #include <SD.h>
-//#include <EMailSender.h>
-#include "MailClient.h"
+#include <SPIFFS.h>
 #include "driver/WakeWord.h"
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
@@ -25,49 +24,13 @@ extern void sw_tone();
 
 static String avatarText;
 
-// メモ機能関連
-String note = "";
-
-// 天気予報取得機能関連
-//   city IDはsetup()でSDカードのファイルから読み込む。
-//   city IDの定義はここを見てください。https://weather.tsukumijima.net/primary_area.xml
-String weatherUrl = "http://weather.tsukumijima.net/api/forecast/city/";
-String weatherCityID = "";
-
-// 最新ニュース取得機能関連
-//   API keyはsetup()でSDカードのファイルから読み込む。
-String newsApiUrl = "https://newsapi.org/v2/top-headlines?country=jp&apiKey=";
-String newsApiKey = "";
-
 // タイマー機能関連
 TimerHandle_t xAlarmTimer;
 bool alarmTimerCallbacked = false;
+bool alarmTimerCanceled = false;
 void alarmTimerCallback(TimerHandle_t xTimer);
 void powerOffTimerCallback(TimerHandle_t xTimer);
 
-//static String timer(int32_t time, const char* action);
-//static String timer_change(int32_t time);
-
-
-// Function Call関連の初期化
-void init_func_call_settings(StackchanExConfig& system_config)
-{
-  newsApiKey = system_config.getExConfig().news.apikey;
-  weatherCityID = system_config.getExConfig().weather.city_id;
-  authMailAdr = system_config.getExConfig().mail.account;
-  authAppPass = system_config.getExConfig().mail.app_pwd;
-  toMailAdr = system_config.getExConfig().mail.to_addr;
-
-  /// メモがあるか確認
-  {
-    String filename = String(APP_DATA_PATH) + String(FNAME_NOTEPAD);
-    char buf[512];
-    if(read_sd_file(filename.c_str(), buf, sizeof(buf))){
-      note = String(buf);
-      Serial.printf("Notepad: %s\n", buf);
-    }
-  }
-}
 
 
 const String json_Functions =
@@ -119,6 +82,40 @@ const String json_Functions =
       "\"required\": [\"time\"]"
     "}"
   "},"
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+  "{"
+    "\"name\": \"register_wakeword\","
+    "\"description\": \"ウェイクワードを登録する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"wakeword_enable\","
+    "\"description\": \"ウェイクワードを有効化する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"delete_wakeword\","
+    "\"description\": \"ウェイクワードを削除する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"idx\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"削除するウェイクワードの番号。\""
+        "}"
+      "},"
+      "\"required\": [\"idx\"]"
+    "}"
+  "},"
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
   "{"
     "\"name\": \"get_date\","
     "\"description\": \"今日の日付を取得する。\","
@@ -129,7 +126,7 @@ const String json_Functions =
   "},"
   "{"
     "\"name\": \"get_time\","
-    "\"description\": \"現在の時刻を取得する。タイマー設定したり時刻表を調べたりする前にこの関数で現在時刻を調べる。\","
+    "\"description\": \"現在の時刻を取得する。\","
     "\"parameters\": {"
       "\"type\":\"object\","
       "\"properties\": {}"
@@ -181,120 +178,6 @@ const String json_Functions =
       "}"
     "}"
   "},"
-  "{"
-    "\"name\": \"save_note\","
-    "\"description\": \"メモを保存する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"text\":{"
-          "\"type\": \"string\","
-          "\"description\": \"メモの内容。\""
-        "}"
-      "},"
-      "\"required\": [\"text\"]"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"read_note\","
-    "\"description\": \"メモを読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"delete_note\","
-    "\"description\": \"メモを消去する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"get_bus_time\","
-    "\"description\": \"次のバス（または電車）の時刻を取得する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"nNext\":{"
-          "\"type\": \"integer\","
-          "\"description\": \"次の発車時刻を取得する場合は0にする。次の次の発車時刻を取得する場合は1にする。\""
-        "}"
-      "},"
-      "\"required\": [\"nNext\"]"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"send_mail\","
-    "\"description\": \"メールを送信する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"message\":{"
-          "\"type\": \"string\","
-          "\"description\": \"メールの内容。\""
-        "}"
-      "}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"read_mail\","
-    "\"description\": \"受信メールを読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-#if defined(ARDUINO_M5STACK_CORES3)
-  "{"
-    "\"name\": \"register_wakeword\","
-    "\"description\": \"ウェイクワードを登録する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"wakeword_enable\","
-    "\"description\": \"ウェイクワードを有効化する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"delete_wakeword\","
-    "\"description\": \"ウェイクワードを削除する。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {"
-        "\"idx\":{"
-          "\"type\": \"integer\","
-          "\"description\": \"削除するウェイクワードの番号。\""
-        "}"
-      "},"
-      "\"required\": [\"idx\"]"
-    "}"
-  "},"
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-  "{"
-    "\"name\": \"get_news\","
-    "\"description\": \"最新のニュースを取得して読み上げる。\","
-    "\"parameters\": {"
-      "\"type\":\"object\","
-      "\"properties\": {}"
-    "}"
-  "},"
-  "{"
-    "\"name\": \"get_weathers\","
-    "\"description\": \"天気予報を取得。\","
-    "\"parameters\":  {"
-      "\"type\":\"object\","
-      "\"properties\": {},"
-      "\"required\": []"
-    "}"
-  "}"
 #endif //if defined(USE_EXTENSION_FUNCTIONS)
 "]";
 
@@ -315,7 +198,113 @@ void powerOffTimerCallback(TimerHandle_t _xTimer){
 }
 
 
-String fn_update_memory(LLMBase* llm, const char* memory){
+FunctionCall::FunctionCall(llm_param_t param, LLMBase* llm, MCPClient** mcpClient)
+  : _param(param),
+    _llm(llm),
+    _mcpClient(mcpClient)
+{
+
+}
+
+// Function Call関連の初期化
+void FunctionCall::init_func_call_settings(StackchanExConfig& system_config)
+{
+
+}
+
+
+String FunctionCall::exec_calledFunc(const char* name, const char* args){
+  String response = "";
+
+  Serial.println(name);
+  Serial.println(args);
+
+  DynamicJsonDocument argsDoc(256);
+  DeserializationError error = deserializeJson(argsDoc, args);
+  if (error) {
+    Serial.print(F("deserializeJson(arguments) failed: "));
+    Serial.println(error.f_str());
+    avatar.setExpression(Expression::Sad);
+    avatar.setSpeechText("エラーです");
+    response = "エラーです";
+    delay(1000);
+    avatar.setSpeechText("");
+    avatar.setExpression(Expression::Neutral);
+  }else{
+
+    //関数名がいずれかのMCPサーバに属するかを検索し、ヒットしたらリクエストを送信する
+    for(int s=0; s<_param.llm_conf.nMcpServers; s++){
+      if(_mcpClient[s]->search_tool(String(name))){
+        DynamicJsonDocument tool_params(512);
+        tool_params["name"] = String(name);
+        tool_params["arguments"] = argsDoc;
+        response = _mcpClient[s]->mcp_call_tool(tool_params);
+        goto END;
+      }
+    }
+
+    if(strcmp(name, "update_memory") == 0){
+      const char* memory = argsDoc["memory"];
+      Serial.println(memory);
+      response = fn_update_memory(_llm, memory);
+    }
+    else if(strcmp(name, "timer") == 0){
+      const int time = argsDoc["time"];
+      const char* action = argsDoc["action"];
+      Serial.printf("time:%d\n",time);
+      Serial.println(action);
+      response = timer(time, action);
+    }
+    else if(strcmp(name, "timer_change") == 0){
+      const int time = argsDoc["time"];
+      response = timer_change(time);    
+    }
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+    else if(strcmp(name, "register_wakeword") == 0){
+      response = register_wakeword();    
+    }
+    else if(strcmp(name, "wakeword_enable") == 0){
+      response = wakeword_enable();    
+    }
+    else if(strcmp(name, "delete_wakeword") == 0){
+      const int idx = argsDoc["idx"];
+      Serial.printf("idx:%d\n",idx);   
+      response = delete_wakeword(idx);    
+    }
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
+    else if(strcmp(name, "get_date") == 0){
+      response = get_date();    
+    }
+    else if(strcmp(name, "get_time") == 0){
+      response = get_time();    
+    }
+    else if(strcmp(name, "get_week") == 0){
+      response = get_week();    
+    }
+#if defined(USE_EXTENSION_FUNCTIONS)
+    else if(strcmp(name, "reminder") == 0){
+      const int hour = argsDoc["hour"];
+      const int min = argsDoc["min"];
+      const char* text = argsDoc["text"];
+      response = reminder(hour, min, text);
+    }
+    else if(strcmp(name, "ask") == 0){
+      const char* text = argsDoc["text"];
+      Serial.println(text);
+      response = ask(text);
+    }
+#endif  //if defined(USE_EXTENSION_FUNCTIONS)
+
+  }
+
+END:
+  return response;
+}
+
+
+String FunctionCall::fn_update_memory(LLMBase* llm, const char* memory){
   String response = "";
   if(llm->enableMemory()){
     if(llm->save_userInfo(memory)){
@@ -333,7 +322,7 @@ String fn_update_memory(LLMBase* llm, const char* memory){
 }
 
 
-String timer(int32_t time, const char* action){
+String FunctionCall::timer(int32_t time, const char* action){
   String response = "";
 
   if(xAlarmTimer != NULL){
@@ -366,12 +355,13 @@ String timer(int32_t time, const char* action){
   return response;
 }
 
-String timer_change(int32_t time){
+String FunctionCall::timer_change(int32_t time){
   String response = "";
   if(time == 0){
     xTimerDelete(xAlarmTimer, 0);
     xAlarmTimer = NULL;
     response = "タイマーをキャンセルしました。";
+    alarmTimerCanceled = true;
   }
   else{
     xTimerChangePeriod(xAlarmTimer, time * 1000, 0);
@@ -382,7 +372,7 @@ String timer_change(int32_t time){
 }
 
 
-String get_date(){
+String FunctionCall::get_date(){
   String response = "";
   struct tm timeInfo; 
 
@@ -397,7 +387,7 @@ String get_date(){
   return response;
 }
 
-String get_time(){
+String FunctionCall::get_time(){
   String response = "";
   struct tm timeInfo; 
 
@@ -411,7 +401,7 @@ String get_time(){
 }
 
 
-String get_week(){
+String FunctionCall::get_week(){
   String response = "";
   struct tm timeInfo; 
   const char week[][8] = {"日", "月", "火", "水", "木", "金", "土"};
@@ -425,9 +415,40 @@ String get_week(){
   return response;
 }
 
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+bool register_wakeword_required = false;
+String FunctionCall::register_wakeword(void){
+  String response = "ウェイクワードを登録します。合図の後にウェイクワードを発声してください。";
+  register_wakeword_required = true;
+  return response;
+}
+
+bool wakeword_enable_required = false;
+String FunctionCall::wakeword_enable(void){
+  String response = "ウェイクワードを有効化しました。";
+  wakeword_enable_required = true;
+  return response;
+}
+
+String FunctionCall::delete_wakeword(int idx){
+  SPIFFS.begin(true);
+  String filename = filename_base + String(idx) + String(".bin");
+  if (SPIFFS.exists(filename.c_str()))
+  {
+    SPIFFS.remove(filename.c_str());
+    delete_mfcc(idx);
+  }
+  String response = String("ウェイクワード#") + String(idx) + String("を削除しました。");
+  return response;
+}
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
+
+
 #if defined(USE_EXTENSION_FUNCTIONS)
 
-String reminder(int hour, int min, const char* text){
+String FunctionCall::reminder(int hour, int min, const char* text){
   String response = "";
   int ret;
   
@@ -449,7 +470,7 @@ String reminder(int hour, int min, const char* text){
 }
 
 
-String ask(const char* text){
+String FunctionCall::ask(const char* text){
 
   bool prev_servo_home = servo_home;
 //#ifdef USE_SERVO
@@ -483,7 +504,7 @@ String ask(const char* text){
 }
 
 
-String save_note(const char* text){
+String FunctionCall::save_note(const char* text){
   String response = "";
   String filename = String(APP_DATA_PATH) + String(FNAME_NOTEPAD);
   
@@ -516,7 +537,7 @@ String save_note(const char* text){
   return response;
 }
 
-String read_note(){
+String FunctionCall::read_note(){
   String response = "";
   if(note == ""){
     response = "メモはありません";
@@ -527,7 +548,7 @@ String read_note(){
   return response;
 }
 
-String delete_note(){
+String FunctionCall::delete_note(){
   String response = "";
   String filename = String(APP_DATA_PATH) + String(FNAME_NOTEPAD);
 
@@ -554,7 +575,7 @@ String delete_note(){
 }
 
 
-String get_bus_time(int nNext){
+String FunctionCall::get_bus_time(int nNext){
   String response = "";
   String filename = "";
   int now;
@@ -636,7 +657,7 @@ String get_bus_time(int nNext){
 
 //メッセージをメールで送信する関数
 // ※EMailSenderライブラリのインクルード、及びplatformio.iniのlib_depsでの宣言を有効化してください。
-String send_mail(String msg) {
+String FunctionCall::send_mail(String msg) {
   String response = "";
   EMailSender::EMailMessage message;
 
@@ -665,7 +686,7 @@ String send_mail(String msg) {
 }
 
 //受信したメールを読み上げる
-String read_mail(void) {
+String FunctionCall::read_mail(void) {
   String response = "";
 
   if(recvMessages.size() > 0){
@@ -680,206 +701,7 @@ String read_mail(void) {
   return response;
 }
 
-#if defined(ARDUINO_M5STACK_CORES3)
-bool register_wakeword_required = false;
-String register_wakeword(void){
-  String response = "ウェイクワードを登録します。合図の後にウェイクワードを発声してください。";
-  register_wakeword_required = true;
-  return response;
-}
-
-bool wakeword_enable_required = false;
-String wakeword_enable(void){
-  String response = "ウェイクワードを有効化しました。";
-  wakeword_enable_required = true;
-  return response;
-}
-
-
-String delete_wakeword(int idx){
-  SPIFFS.begin(true);
-  String filename = filename_base + String(idx) + String(".bin");
-  if (SPIFFS.exists(filename.c_str()))
-  {
-    SPIFFS.remove(filename.c_str());
-    delete_mfcc(idx);
-  }
-  String response = String("ウェイクワード#") + String(idx) + String("を削除しました。");
-  return response;
-}
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-
-// 最新のニュースをWeb APIで取得する関数
-String get_news(){
-  String response = "";
-  DynamicJsonDocument doc(2048*10);//ここの数値が小さいと上手く取得できませんでした。
-
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-
-    // ニュースAPIのURL
-    String url = newsApiUrl + newsApiKey;
-
-    // HTTPリクエストを送信します
-    http.begin(url); // URLをHTTPクライアントに渡す
-    int httpCode = http.GET(); // URLはbegin()で渡しているため、GET()メソッドには引数が必要ありません
-
-    // HTTPステータスコードを確認します
-    if (httpCode == HTTP_CODE_OK) {
-      // レスポンスデータを取得します
-      String payload = http.getString();
-
-      // JSONデータをパースして必要な情報を抽出します
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        // ニュースの一覧が空でないことを確認します
-        if (doc.containsKey("articles") && doc["articles"].size() > 0) {
-          // ニュースの一覧から最初の5件のタイトルを取得します
-          for (int j = 0; j < 5; j++) {
-            String title = doc["articles"][j]["title"];
-            response += title + "\n"; // タイトルを改行してresponseに追加
-          }
-        } else {
-          response = "ニュースが見つかりませんでした。";
-        }
-      } else {
-        response = "JSONの解析に失敗しました。";
-        Serial.print("deserializeJson() failed: ");
-        Serial.println(error.c_str());
-      }
-    } else {
-      response = "HTTPリクエストが失敗しました。";
-      Serial.printf("HTTP error: %d\n", httpCode);
-    }
-
-  //  http.end(); // HTTPセッションを閉じます
-  } else {
-    response = "WiFiに接続されていません。";
-    Serial.println("WiFi is not connected.");
-  }
-
-  return response;
-}
-
-
-// 今日の天気をWeb APIで取得する関数
-String get_weathers(){
-  String payload;
-  String response = "";
-  DynamicJsonDocument doc(4096);
-
-  if ((WiFi.status() == WL_CONNECTED))
-  {
-    HTTPClient http;
-    //http.begin("http://weather.tsukumijima.net/api/forecast/city/140010");
-    http.begin(weatherUrl + weatherCityID);
-    int httpCode = http.GET();
-
-    if (httpCode > 0)
-    {
-      if (httpCode == HTTP_CODE_OK)
-      {
-        payload = http.getString();
-      }
-    }
-    if (httpCode <= 0)
-    {
-      Serial.println("Error on HTTP request");
-      return "エラーです。";
-    }
-
-    deserializeJson(doc, payload);
-    String date = doc["publicTimeFormatted"];
-    String forecast = doc["description"]["bodyText"];
-
-    Serial.println(date);
-    Serial.println(forecast);
-
-    response = forecast;
-  }
-  return response;
-}
 
 #endif  //if defined(USE_EXTENSION_FUNCTIONS)
 
-
-
-#ifdef MCP_GOOGLE_CALENDAR
-
-String calendar_search(){
-  /*
-   *  リクエストのJSONに挿入するツールパラメータのJSONを作成
-   */
-  DynamicJsonDocument tool_params(512);
-  tool_params["name"] = "search_calendar_events";
-  //tool_params["arguments"]["calendar_type"] = "primary";
-
-  //String json_str;
-  //serializeJsonPretty(tool_params, json_str);  // 文字列をシリアルポートに出力する
-  //Serial.println(json_str);
-
-  /*
-   *  MCPサーバにリクエスト
-   */
-  //String result = mcp_call_tool("192.168.3.105", 8000, tool_params);
-  String result = mcp_calendar->mcp_call_tool(tool_params);
-
-#if 0
-  /*
-   *  レスポンスを解析
-   */
-  DynamicJsonDocument tool_res(1024);
-  DeserializationError error = deserializeJson(tool_res, result);
-  if (error) {
-    Serial.println("DeserializationError");
-  }
-  //String json_str;
-  //serializeJsonPretty(tool_res, json_str);  // 文字列をシリアルポートに出力する
-  //Serial.println(json_str);
-
-  DynamicJsonDocument event(1024);
-  JsonArray events = tool_res["result"]["content"];
-  String events_str;
-  for(int i=0; i < events.size(); i++){
-    error = deserializeJson(event, events[i]["text"]);
-    if (error) {
-      Serial.println("DeserializationError");
-    }
-    //serializeJsonPretty(event, json_str);  // 文字列をシリアルポートに出力する
-    //Serial.println(json_str);
-
-    events_str += event["start"].as<String>() + " " + event["summary"].as<String>() + "\n";
-  }
-  Serial.println(events_str);
-  return events_str;
-#endif
-  return result;
-}
-
-#endif  //MCP_GOOGLE_CALENDAR
-
-#ifdef MCP_BRAVE_SEARCH
-
-String web_search(String& query){
-  /*
-   *  リクエストのJSONに挿入するツールパラメータのJSONを作成
-   */
-  DynamicJsonDocument tool_params(512);
-  tool_params["name"] = "brave_web_search";
-  tool_params["arguments"]["query"] = query;
-
-  String json_str;
-  serializeJsonPretty(tool_params, json_str);  // 文字列をシリアルポートに出力する
-  Serial.println(json_str);
-
-  /*
-   *  MCPサーバにリクエスト
-   */
-  //String result = mcp_call_tool("192.168.3.105", 8003, tool_params);
-  String result = mcp_web_search->mcp_call_tool(tool_params);
-
-  return result;
-}
-
-#endif  //MCP_BRAVE_SEARCH
 
