@@ -149,6 +149,7 @@ void Robot::initLLM(StackchanExConfig& config){
 }
 
 void Robot::initRtLLM(StackchanExConfig& config){
+#if defined(REALTIME_API)
   int llm_type = config.getExConfig().llm.type;
   api_keys_s* api_key = config.getAPISetting();
 
@@ -167,6 +168,7 @@ void Robot::initRtLLM(StackchanExConfig& config){
     Serial.printf("Error: undefined LLM type %d\n", llm_type);
     llm = nullptr;
   }
+#endif
 }
 
 

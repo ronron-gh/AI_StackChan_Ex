@@ -18,6 +18,7 @@ extern Avatar avatar;
 ChatModuleLLMFncl::ChatModuleLLMFncl(llm_param_t param) : LLMBase(param, 0) {
   isOfflineService = true;  //オフラインで使用可能とする
   load_role();
+  fnCall = new FunctionCall(param, this, NULL);
 }
 
 bool ChatModuleLLMFncl::save_role(){
@@ -77,10 +78,10 @@ String ChatModuleLLMFncl::executeFunction(DynamicJsonDocument doc){
   if(strcmp(name, "set_alarm") == 0){
     const int min = doc["arguments"]["min"];
     Serial.printf("min:%d\n",min);
-    timer(min * 60, "alarm");
+    fnCall->timer(min * 60, "alarm");
   }
   else if(strcmp(name, "stop_alarm") == 0){
-    timer_change(0);
+    fnCall->timer_change(0);
   }
 
   return response;

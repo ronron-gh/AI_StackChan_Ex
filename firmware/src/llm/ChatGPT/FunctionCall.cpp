@@ -5,7 +5,7 @@
 #include "driver/AudioOutputM5Speaker.h"
 #include <HTTPClient.h>
 #include <SD.h>
-//#include <EMailSender.h>
+#include <SPIFFS.h>
 #include "driver/WakeWord.h"
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
@@ -24,23 +24,10 @@ extern void sw_tone();
 
 static String avatarText;
 
-// メモ機能関連
-String note = "";
-
-// 天気予報取得機能関連
-//   city IDはsetup()でSDカードのファイルから読み込む。
-//   city IDの定義はここを見てください。https://weather.tsukumijima.net/primary_area.xml
-String weatherUrl = "http://weather.tsukumijima.net/api/forecast/city/";
-String weatherCityID = "";
-
-// 最新ニュース取得機能関連
-//   API keyはsetup()でSDカードのファイルから読み込む。
-String newsApiUrl = "https://newsapi.org/v2/top-headlines?country=jp&apiKey=";
-String newsApiKey = "";
-
 // タイマー機能関連
 TimerHandle_t xAlarmTimer;
 bool alarmTimerCallbacked = false;
+bool alarmTimerCanceled = false;
 void alarmTimerCallback(TimerHandle_t xTimer);
 void powerOffTimerCallback(TimerHandle_t xTimer);
 
@@ -374,6 +361,7 @@ String FunctionCall::timer_change(int32_t time){
     xTimerDelete(xAlarmTimer, 0);
     xAlarmTimer = NULL;
     response = "タイマーをキャンセルしました。";
+    alarmTimerCanceled = true;
   }
   else{
     xTimerChangePeriod(xAlarmTimer, time * 1000, 0);
@@ -426,6 +414,37 @@ String FunctionCall::get_week(){
   }
   return response;
 }
+
+#if defined(ARDUINO_M5STACK_CORES3)
+#if defined(ENABLE_WAKEWORD)
+bool register_wakeword_required = false;
+String FunctionCall::register_wakeword(void){
+  String response = "ウェイクワードを登録します。合図の後にウェイクワードを発声してください。";
+  register_wakeword_required = true;
+  return response;
+}
+
+bool wakeword_enable_required = false;
+String FunctionCall::wakeword_enable(void){
+  String response = "ウェイクワードを有効化しました。";
+  wakeword_enable_required = true;
+  return response;
+}
+
+String FunctionCall::delete_wakeword(int idx){
+  SPIFFS.begin(true);
+  String filename = filename_base + String(idx) + String(".bin");
+  if (SPIFFS.exists(filename.c_str()))
+  {
+    SPIFFS.remove(filename.c_str());
+    delete_mfcc(idx);
+  }
+  String response = String("ウェイクワード#") + String(idx) + String("を削除しました。");
+  return response;
+}
+#endif  //defined(ENABLE_WAKEWORD)
+#endif  //defined(ARDUINO_M5STACK_CORES3)
+
 
 #if defined(USE_EXTENSION_FUNCTIONS)
 
@@ -682,125 +701,6 @@ String FunctionCall::read_mail(void) {
   return response;
 }
 
-#if defined(ARDUINO_M5STACK_CORES3)
-bool register_wakeword_required = false;
-String FunctionCall::register_wakeword(void){
-  String response = "ウェイクワードを登録します。合図の後にウェイクワードを発声してください。";
-  register_wakeword_required = true;
-  return response;
-}
-
-bool wakeword_enable_required = false;
-String FunctionCall::wakeword_enable(void){
-  String response = "ウェイクワードを有効化しました。";
-  wakeword_enable_required = true;
-  return response;
-}
-
-
-String FunctionCall::delete_wakeword(int idx){
-  SPIFFS.begin(true);
-  String filename = filename_base + String(idx) + String(".bin");
-  if (SPIFFS.exists(filename.c_str()))
-  {
-    SPIFFS.remove(filename.c_str());
-    delete_mfcc(idx);
-  }
-  String response = String("ウェイクワード#") + String(idx) + String("を削除しました。");
-  return response;
-}
-#endif  //defined(ARDUINO_M5STACK_CORES3)
-
-// 最新のニュースをWeb APIで取得する関数
-String FunctionCall::get_news(){
-  String response = "";
-  DynamicJsonDocument doc(2048*10);//ここの数値が小さいと上手く取得できませんでした。
-
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-
-    // ニュースAPIのURL
-    String url = newsApiUrl + newsApiKey;
-
-    // HTTPリクエストを送信します
-    http.begin(url); // URLをHTTPクライアントに渡す
-    int httpCode = http.GET(); // URLはbegin()で渡しているため、GET()メソッドには引数が必要ありません
-
-    // HTTPステータスコードを確認します
-    if (httpCode == HTTP_CODE_OK) {
-      // レスポンスデータを取得します
-      String payload = http.getString();
-
-      // JSONデータをパースして必要な情報を抽出します
-      DeserializationError error = deserializeJson(doc, payload);
-      if (!error) {
-        // ニュースの一覧が空でないことを確認します
-        if (doc.containsKey("articles") && doc["articles"].size() > 0) {
-          // ニュースの一覧から最初の5件のタイトルを取得します
-          for (int j = 0; j < 5; j++) {
-            String title = doc["articles"][j]["title"];
-            response += title + "\n"; // タイトルを改行してresponseに追加
-          }
-        } else {
-          response = "ニュースが見つかりませんでした。";
-        }
-      } else {
-        response = "JSONの解析に失敗しました。";
-        Serial.print("deserializeJson() failed: ");
-        Serial.println(error.c_str());
-      }
-    } else {
-      response = "HTTPリクエストが失敗しました。";
-      Serial.printf("HTTP error: %d\n", httpCode);
-    }
-
-  //  http.end(); // HTTPセッションを閉じます
-  } else {
-    response = "WiFiに接続されていません。";
-    Serial.println("WiFi is not connected.");
-  }
-
-  return response;
-}
-
-
-// 今日の天気をWeb APIで取得する関数
-String FunctionCall::get_weathers(){
-  String payload;
-  String response = "";
-  DynamicJsonDocument doc(4096);
-
-  if ((WiFi.status() == WL_CONNECTED))
-  {
-    HTTPClient http;
-    //http.begin("http://weather.tsukumijima.net/api/forecast/city/140010");
-    http.begin(weatherUrl + weatherCityID);
-    int httpCode = http.GET();
-
-    if (httpCode > 0)
-    {
-      if (httpCode == HTTP_CODE_OK)
-      {
-        payload = http.getString();
-      }
-    }
-    if (httpCode <= 0)
-    {
-      Serial.println("Error on HTTP request");
-      return "エラーです。";
-    }
-
-    deserializeJson(doc, payload);
-    String date = doc["publicTimeFormatted"];
-    String forecast = doc["description"]["bodyText"];
-
-    Serial.println(date);
-    Serial.println(forecast);
-
-    response = forecast;
-  }
-  return response;
-}
 
 #endif  //if defined(USE_EXTENSION_FUNCTIONS)
 

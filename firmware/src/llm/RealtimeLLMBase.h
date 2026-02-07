@@ -54,7 +54,6 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     int nextBufIdx;          // 次回データを格納するダブルバッファの面（0 or 1）
 
 public:
-    //RealtimeLLMBase(llm_param_t param, String host, String url, String auth, String root_ca, WebSocketsClient::WebSocketClientEvent _webSocketEvent);
     RealtimeLLMBase(llm_param_t param);
 
     virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
@@ -66,6 +65,7 @@ public:
     void stopRealtimeRecord();
     void resetRealtimeRecordStartTime();
     portTickType checkRealtimeRecordTimeout();
+    bool isRealtimeRecording() {return realtime_recording;};
 
     int base64_decode(const char* input, int size, char* output);
     void hexdump(const void *mem, uint32_t len, uint8_t cols = 16);

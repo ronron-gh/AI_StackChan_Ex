@@ -25,7 +25,13 @@ static const char session_update[] =
           "\"setup\": {"
             "\"model\": \"models/gemini-2.5-flash-native-audio-preview-12-2025\","
             "\"generationConfig\": {"
+#ifndef REALTIME_API_WITH_TTS
               "\"responseModalities\": [\"AUDIO\"]"
+#else
+              "\"responseModalities\": [\"TEXT\"]"
+              // 2026.2.5現在、出力形式をテキストに設定すると Code: 1007 (Cannot extract voices from a non-audio request.)
+              // というエラーが返ってくる。Googleに対してissueは投げられている模様 (https://github.com/livekit/agents/issues/4423)
+#endif
             "},"
             "\"tools\": ["
               "{\"functionDeclarations\": []},"
@@ -192,6 +198,8 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 p_this->streamAudioDelta(delta);
             }
 #else
+            // TODO: Gemini Liveのメッセージ形式に変更（これはOpenAIの形式)
+            #if 0
             else if(msgType.equals("response.output_text.delta")){
                 p_this->outputText += msgDoc["delta"].as<String>();
 
@@ -204,6 +212,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     p_this->outputText = p_this->outputText.substring(idx + strlen("。"), p_this->outputText.length());
                 }
             }
+            #endif
 #endif
             else if(!p_this->msgDoc["toolCall"]["functionCalls"][0].isNull()){
                 Serial.printf("[WSc] toolCall: %s\n", payload);
@@ -275,8 +284,6 @@ GeminiLive::GeminiLive(llm_param_t param) : RealtimeLLMBase(param)
 
   fnCall = new FunctionCall(param, this, mcpClient);
   //fnCall->init_func_call_settings(robot->m_config);
-
-
 
   enableMemory(param.llm_conf.enableMemory);
   if(enableMemory()){

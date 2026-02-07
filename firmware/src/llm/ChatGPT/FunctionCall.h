@@ -23,6 +23,7 @@ extern String note;
 extern bool register_wakeword_required;
 extern bool wakeword_enable_required;
 extern bool alarmTimerCallbacked;
+extern bool alarmTimerCanceled;
 
 
 class FunctionCall{
@@ -49,26 +50,17 @@ public:
     String get_time();
     String get_week();
 
-    #if defined(USE_EXTENSION_FUNCTIONS)
-    String reminder(int hour, int min, const char* text);
-    String ask(const char* text);
-
-    String save_note(const char* text);
-    String read_note();
-    String delete_note();
-
-    String get_bus_time(int nNext);
-
-    String send_mail(String msg);
-    String read_mail(void);
-
     #if defined(ARDUINO_M5STACK_CORES3)
+    #if defined(ENABLE_WAKEWORD)
     String register_wakeword(void);
     String wakeword_enable(void);
     String delete_wakeword(int idx);
     #endif
-    String get_news();
-    String get_weathers();
+    #endif
+
+    #if defined(USE_EXTENSION_FUNCTIONS)
+    String reminder(int hour, int min, const char* text);
+    String ask(const char* text);
     #endif  //USE_EXTENSION_FUNCTIONS
 };
 

@@ -41,7 +41,7 @@ ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   }
 
   fnCall = new FunctionCall(param, this, mcpClient);
-  fnCall->init_func_call_settings(robot->m_config);
+  //fnCall->init_func_call_settings(robot->m_config);
 
   enableMemory(param.llm_conf.enableMemory);
   if(enableMemory()){

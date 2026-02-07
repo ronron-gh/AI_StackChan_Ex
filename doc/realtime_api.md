@@ -3,30 +3,30 @@
 - [概要](#概要)
 - [設定方法](#設定方法)
   - [YAMLの設定① (Wi-Fi、APIキー)](#yamlの設定-wi-fiapiキー)
-  - [YAMLの設定② (サーボ)](#yamlの設定-サーボ)
+  - [YAMLの設定② (LLM)](#yamlの設定-llm)
+  - [YAMLの設定③ (サーボ)](#yamlの設定-サーボ)
   - [ビルド＆書き込み](#ビルド書き込み)
 - [使い方](#使い方)
   - [リアルタイム会話](#リアルタイム会話)
   - [サーボ動作の停止、再開](#サーボ動作の停止再開)
 - [Function Calling及びMCP](#function-calling及びmcp)
-- [TTSとの組み合わせ](#ttsとの組み合わせ)
+- [TTSとの組み合わせ (OpenAI Realtimeのみ)](#ttsとの組み合わせ-openai-realtimeのみ)
   - [設定方法](#設定方法-1)
 
 ## 概要
-OpenAIのRealtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。  
-M5Core2及びCoreS3(SE)に対応しています。
+Realtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。OpenAI Realtime API 及び Gemini Live APIに対応しています。  
 
 ## 設定方法
 Realtime APIを有効にするために次の設定を行います。
 
-・YAMLファイル（2種類）を作成しSDカードに保存  
+・YAMLファイル（3種類）を作成しSDカードに保存  
 ・ビルド＆書き込み
 
 ### YAMLの設定① (Wi-Fi、APIキー)
 SDカードフォルダ：/yaml  
 ファイル名：SC_SecConfig.yaml
 
-Wi-FiパスワードとOpen AIのAPIキー(aiservice)を設定します。STTとTTSは使用しないため設定不要です。
+Wi-FiパスワードとAPIキー(aiservice)を設定します。STTとTTSは使用しないため設定不要です。
 
 ```
 wifi:
@@ -35,11 +35,25 @@ wifi:
 
 apikey:
   stt: "********"       # ApiKey of SpeechToText Service (OpenAI Whisper/ Google Cloud STT 何れかのキー)
-  aiservice: "********" # ApiKey of AIService (OpenAI ChatGPT)
-  tts: "********"       # ApiKey of TextToSpeech Service (VoiceVox / ElevenLabs/ OpenAI 何れかのキー)
+  aiservice: "********" # ApiKey of AIService (OpenAI ChatGPT / Gemini)
+  tts: "********"       # ApiKey of TextToSpeech Service (VoiceVox / ElevenLabs / OpenAI 何れかのキー)
 ```
 
-### YAMLの設定② (サーボ)
+### YAMLの設定② (LLM)
+SDカードフォルダ：/app/AiStackChanEx  
+ファイル名：SC_ExConfig.yaml
+
+LLMとして「0:ChatGPT」または「3:Gemini」を選択します。  
+enableMemory=true にすると長期記憶（SPIFFSに要約を記録）が有効になります。  
+長期記憶に関する詳細は[基本的な使用方法](basic_usage.md)の 3.パーソナライズ を参照ください。
+
+```
+llm:
+  type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
+  enableMemory: true    # true で長期記憶を有効化
+```
+
+### YAMLの設定③ (サーボ)
 SDカードフォルダ：/yaml  
 ファイル名：SC_BasicConfig.yaml
 
@@ -81,7 +95,7 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 ### リアルタイム会話
 ① M5Coreを起動してアバターが表示されたあと、吹き出しの文字が"Connecting..."から"Please touch"に変わります。
 
-② M5Core画面の上部（アバターの額のあたり）をタッチすると吹き出しが"Listening..."に変わり、リアルタイム会話を開始します。
+② M5Core画面の上部（アバターの額のあたり）をタッチすると吹き出しが"Listening..."に変わり、リアルタイム会話を開始します（もう一度タッチするとリアルタイム会話を停止します）。
 
 ③ 30秒以上会話が無い状態が続くとリアルタイム会話を終了し、吹き出しが"Please touch"に戻ります。
 
@@ -91,7 +105,7 @@ M5Core画面の中央付近をタッチするとサーボによる動作の停�
 ## Function Calling及びMCP
 Function Callingと、Function Callingを応用して実装したMCPも使用可能です。Function Callingはデフォルトで時計、アラーム機能が有効になっており、「今何時？」や「3分のアラームをセットして」という要求に応えることができます。MCPはLinux PCでMCPサーバを起動し、YAMLで接続先MCPサーバの設定をする必要があります。詳細は[こちら](mcp.md)を参照ください。
 
-## TTSとの組み合わせ
+## TTSとの組み合わせ (OpenAI Realtimeのみ)
 VOICEVOX等（※）のTTSを組み合わせることで、お好みの声に変更することができます（ただし、応答の遅延は若干増えます）。
 
 > ※動作確認はVOICEVOXとAquesTalkで行っています。Core2はメモリ不足によりVOICEVOXとRealtime APIの組み合わせは上手く動作しませんでした（AquesTalkは問題なく動作しました）。 

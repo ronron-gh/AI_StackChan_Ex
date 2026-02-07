@@ -78,11 +78,7 @@ void StatusMonitorMod::update(int page_no)
       }
     }
   }
-  else if(page_no == 2){
-    str += "===== Function call info  =====\n";
-    str += "Memo:\n";
-    str += note;
-  }
+
 
   //M5.Display.print(str);
   avatar.updateSubWindowTxt(str);

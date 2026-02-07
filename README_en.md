@@ -2,11 +2,9 @@
 
 # AI Stack-chan Ex
 Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), we have added the following functions.  
-- Added new AI services (new services in bold)
-  - LLM: OpenAI ChatGPT / **ModuleLLM**
-  - STT: OpenAI Whisper / Google Cloud STT / **ModuleLLM ASR**
-  - TTS: **OpenAI TTS** / WEB VOICEVOX / **ElevenLabs** / **AquesTalk** / **ModuleLLM TTS**
-  - Wake Word: SimpleVox / **ModuleLLM KWS**
+- Expanding AI capabilities
+  - Full localization of AI conversation functions using Module LLM (an expansion module for M5Stack)
+  - Latency-free conversations with Realtime API
 - Compatible with [stackchan-arduino library](https://github.com/mongonta0716/stackchan-arduino)
   - This makes it possible to use YAML for initial configuration and support for serial servos.
 - Class design that makes it easy to create additional user applications
@@ -24,7 +22,7 @@ Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), 
 - [Development environment](#development-environment)
 - [Basic Usage](#basic-usage)
 - [How to Use Module LLM](#how-to-use-module-llm)
-- [How to Use OpenAI Realtime API](#how-to-use-openai-realtime-api)
+- [How to Use Realtime API](#how-to-use-realtime-api)
 - [Other features](#other-features)
   - [About creating a user application](#about-creating-a-user-application)
   - [Supports SD Updater (Core2 only)](#supports-sd-updater-core2-only)
@@ -48,7 +46,7 @@ To use the basic AI conversation features (LLM, STT, TTS via Web APIs) inherited
 By replacing LLM, STT, and TTS with Module LLM APIs, you can run all AI conversation features completely locally.  
 After reviewing the [Basic Usage](doc/basic_usage_en.md), please refer to the [How to Configure Module LLM](doc/module_llm_en.md) page for setup instructions.
 
-## How to Use OpenAI Realtime API
+## How to Use Realtime API
 With the conventional AI conversation flow, each API (STT → LLM → TTS) introduced latency, often resulting in responses taking over 10 seconds. By using the OpenAI Realtime API, you can input audio data directly to the LLM and receive audio responses, minimizing latency for near real-time conversations.  
 To use the Realtime API, please follow the instructions in the [Realtime API](doc/realtime_api_en.md) page.
 

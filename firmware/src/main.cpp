@@ -414,8 +414,11 @@ void setup()
   avatar.addTask(battery_check, "battery_check", 2048);
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-  //robot->spk_volume = 120;
+#if defined(ARDUINO_M5STACK_CORES3)
+  robot->spk_volume = 120;
+#else
   robot->spk_volume = 200;
+#endif
   M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)
