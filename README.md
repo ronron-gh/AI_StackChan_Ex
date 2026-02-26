@@ -32,7 +32,10 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 
 ## 開発環境
-- ターゲットデバイス：M5Stack Core2 / CoreS3
+- ターゲットデバイス：
+  - M5Stack Core2
+  - M5Stack CoreS3
+  - 🆕AtomS3R + Atomic Echo Base
 - 開発PC：
   - OS: Windows11 
   - IDE：VSCode + PlatformIO
@@ -48,6 +51,7 @@ LLM、STT、TTSをModule LLMのAPIに置き換えることで、AI会話機能�
 ## Realtime APIの利用方法
 上記の従来のAI会話機能は、STTで音声をテキストに変換→テキストをLLMに入力→LLMのテキスト出力をTTSで音声に変換というステップが必要なため各APIにおける遅延が重なり応答に10秒以上かかっていました。Realtime APIを利用すると、音声データを直接LLMに入力でき、応答も音声データで返ってくるため、遅延を最小限に抑えられます。  
 Realtime APIを利用する際は、[こちら](doc/realtime_api.md)のページに従って設定してください。
+
 
 ## その他の機能
 ### ユーザアプリケーションの作成について

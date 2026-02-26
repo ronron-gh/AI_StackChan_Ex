@@ -7,6 +7,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
   - [1.2. Speech to Text (STT)](#12-speech-to-text-stt)
   - [1.3. Text to Speech (TTS)](#13-text-to-speech-tts)
   - [1.4. Wake Word](#14-wake-word)
+  - [1.5. デバイス毎の対応状況](#15-デバイス毎の対応状況)
 - [2. 設定、ビルド手順](#2-設定ビルド手順)
   - [2.1. YAMLによる初期設定](#21-yamlによる初期設定)
   - [2.2. ビルド＆書き込み](#22-ビルド書き込み)
@@ -50,6 +51,23 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |SimpleVox|×|〇|〇|[詳細ページ](wakeword_simple_vox.md) |
 |ModuleLLM KWS|〇|×|〇| ・[ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください<br> ・"Hi Stack"等、日本語環境でも使いやすいワードにすることは可|
 
+### 1.5. デバイス毎の対応状況
+
+|   |AI Service      |Core2|CoreS3|AtomS3R|
+|---|----------------|-----|------|-------|
+|LLM|OpenAI ChatGPT  |〇   |〇    |〇     |
+|   |ModuleLLM       |〇   |〇    |×     |
+|STT|Google Cloud STT|〇   |〇    |〇     |
+|   |OpenAI Whisper  |〇   |〇    |〇     |
+|   |ModuleLLM       |〇   |〇    |×     |
+|TTS|Web版VoiceVox   |〇   |〇    |〇     |
+|   |ElevenLabs      |〇   |〇    |〇     |
+|   |OpenAI TTS      |〇   |〇    |〇     |
+|   |AquesTalk       |〇   |〇    |×     |
+|   |ModuleLLM       |〇   |〇    |×     |
+|Wake Word|SimpleVox |〇   |〇    |×     |
+|   |ModuleLLM       |〇   |〇    |×     |
+
 
 ## 2. 設定、ビルド手順
 ### 2.1. YAMLによる初期設定
@@ -62,6 +80,8 @@ YAMLファイルは次の3種類があります。
   サーボに関する設定。
 - SC_ExConfig.yaml  
   その他、アプリ固有の設定。
+
+> AtomS3RはSDカード非対応のため、SPIFFSにこれらのファイルを書き込みます。書き込み方法は[こちら](./atoms3r.md)を参照ください。
 
 #### 2.1. SC_SecConfig.yaml
 SDカードフォルダ：/yaml  
@@ -182,7 +202,7 @@ git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
 
 ⑤下図に示す手順でビルド環境(env)を選択し、ビルド＆書き込みを実行します。
 
->envは、基本はm5stack-core2(s3)ですが、例えばOpenAI Realtime APIを使用するときはm5stack-core2(s3)-realtimeを選択します（各機能の解説に従ってください）。envを選択したときに手順③のときと同じようにライブラリのインストールが始まる場合があるので、その場合は完了まで待ってからビルド＆書き込みしてください。
+>envは、基本はm5stack-xxx (xxxはデバイス名)ですが、例えばOpenAI Realtime APIを使用するときはm5stack-xxx-realtimeを選択します（各機能の解説に従ってください）。envを選択したときに手順③のときと同じようにライブラリのインストールが始まる場合があるので、その場合は完了まで待ってからビルド＆書き込みしてください。
 
 ![](../images/build_and_flash.png)
 
@@ -190,7 +210,7 @@ git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
 ## 3. パーソナライズ
 カスタム指示（いわゆるロール）、及びメモリー（長期記憶）により、AI会話機能をユーザーの属性に合わせてカスタマイズすることができます。
 
-PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝのIPアドレス) にアクセスすると次のような設定画面が開きます。（CボタンまたはLCD右端をタッチするとアクセス用のQRコードが表示されます。）
+PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝのIPアドレス) にアクセスすると次のような設定画面が開きます。（IPアドレスは起動時の画面に表示されます。また、Core2/CoreS3はCボタンまたはLCD右端をタッチするとアクセス用のQRコードが表示されます。）
 
 ![](../images/Personalize.png)
 

@@ -1,3 +1,5 @@
+#if defined(ENABLE_WAKEWORD)
+
 #ifndef _WAKEWORD_H
 #define _WAKEWORD_H
 
@@ -15,3 +17,5 @@ extern int mode;   // 0: none, <0: REGIST, >0: COMPARE
 #define DIST_THRESHOLD  (250)
 
 #endif //_WAKEWORD_H
+
+#endif //ENABLE_WAKEWORD

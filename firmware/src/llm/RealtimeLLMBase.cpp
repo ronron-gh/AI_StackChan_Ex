@@ -150,8 +150,6 @@ portTickType RealtimeLLMBase::checkRealtimeRecordTimeout()
         }
         recTestLenCnt = 0;
 #endif
-        // 今までの会話を要約してSPIFFSに保存
-        //
     }
 
     return elapsedTime;

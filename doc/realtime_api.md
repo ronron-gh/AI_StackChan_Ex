@@ -19,8 +19,10 @@ Realtime APIを利用することで、従来よりもリアルタイムに近�
 ## 設定方法
 Realtime APIを有効にするために次の設定を行います。
 
-・YAMLファイル（3種類）を作成しSDカードに保存  
+・YAMLファイル（3種類）を作成しSDカードに保存(※)  
 ・ビルド＆書き込み
+
+> ※ AtomS3RはSDカード非対応のため、SPIFFSにYAMLファイルを書き込みます。書き込み方法は[こちら](./atoms3r.md)を参照ください。
 
 ### YAMLの設定① (Wi-Fi、APIキー)
 SDカードフォルダ：/yaml  
@@ -86,7 +88,7 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 
 
 ### ビルド＆書き込み
-下図のように、VSCode(Platformio)のGUIで"env:m5stack-core2(s3)-realtime"を選択してビルド＆書き込みを実行します。  
+下図のように、VSCode(Platformio)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  
 
 ![](../images/realtime_api_select_env.png)
 
@@ -96,6 +98,8 @@ servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
 ① M5Coreを起動してアバターが表示されたあと、吹き出しの文字が"Connecting..."から"Please touch"に変わります。
 
 ② M5Core画面の上部（アバターの額のあたり）をタッチすると吹き出しが"Listening..."に変わり、リアルタイム会話を開始します（もう一度タッチするとリアルタイム会話を停止します）。
+
+> AtomS3Rは画面自体が物理ボタンになっているため、画面中央を少し強めに押し込んでください。
 
 ③ 30秒以上会話が無い状態が続くとリアルタイム会話を終了し、吹き出しが"Please touch"に戻ります。
 
@@ -108,8 +112,14 @@ Function Callingと、Function Callingを応用して実装したMCPも使用可
 ## TTSとの組み合わせ (OpenAI Realtimeのみ)
 VOICEVOX等（※）のTTSを組み合わせることで、お好みの声に変更することができます（ただし、応答の遅延は若干増えます）。
 
-> ※動作確認はVOICEVOXとAquesTalkで行っています。Core2はメモリ不足によりVOICEVOXとRealtime APIの組み合わせは上手く動作しませんでした（AquesTalkは問題なく動作しました）。 
+> ※動作確認はVOICEVOXとAquesTalkで行っています。デバイス毎の対応状況は次の通りです（SRAM容量などによる制約）
+> |デバイス|VOICEVOX|AquesTalk|
+> |---|---|---|
+> |Core2|×|〇|
+> |CoreS3|〇|〇|
+> |AtomS3R|×|×| 
 
+> Note:  
 > 技術的には、Realtime APIの出力をストリーミングのテキストのみに設定し、「。」、「？」、「！」の区切り文字を受信したタイミングでTTSに渡しています。TTSで発話しながら次の区切り文字までのテキストを受信することで、次のテキストの発話までの遅延を抑えています。
 
 ### 設定方法

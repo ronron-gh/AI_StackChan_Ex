@@ -1,3 +1,4 @@
+#if defined(ENABLE_WAKEWORD)
 #include <M5Unified.h>
 
 #include <memory>
@@ -320,3 +321,5 @@ void delete_mfcc(int idx)
   delete mfcc[idx];
   mfcc[idx] = nullptr;
 }
+
+#endif //ENABLE_WAKEWORD

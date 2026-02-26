@@ -18,6 +18,9 @@
 #elif defined( ARDUINO_M5STACK_CORES3 )
   #define DEFAULT_SERVO_PIN_X 18  //CoreS3 PORT C
   #define DEFAULT_SERVO_PIN_Y 17
+#elif defined( ARDUINO_M5STACK_ATOMS3R )
+  #define DEFAULT_SERVO_PIN_X 0   //非対応
+  #define DEFAULT_SERVO_PIN_Y 0
 #endif
 
 
