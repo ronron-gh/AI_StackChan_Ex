@@ -72,7 +72,6 @@ void StackchanExConfig::secretConfigNotFoundCallback(void)
         read_line_from_buf(nullptr, data);
         _secret_config.api_key.stt = String(data);
         Serial.printf("stt: %s\n",data);
-
     }
 }
 

@@ -163,6 +163,11 @@ void AiStackChanMod::update(int page_no)
 
 void AiStackChanMod::btnA_pressed(void)
 {
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  sw_tone();
+  STT_ChatGPT();
+#else
+
 #if defined(ENABLE_WAKEWORD)
   if(mode >= 0){
     sw_tone();
@@ -178,7 +183,9 @@ void AiStackChanMod::btnA_pressed(void)
     delay(1000);
     avatar.setSpeechText("");
   }
-#endif
+#endif  //ENABLE_WAKEWORD
+
+#endif  //ARDUINO_M5STACK_ATOMS3R
 }
 
 

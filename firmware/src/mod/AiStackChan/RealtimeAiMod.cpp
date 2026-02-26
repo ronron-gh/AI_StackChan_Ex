@@ -66,9 +66,16 @@ void RealtimeAiMod::update(int page_no)
 
 void RealtimeAiMod::btnA_pressed(void)
 {
-
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  Serial.println("Btn A pressed");
+  sw_tone();
+  if(pRtLLM->isRealtimeRecording()){
+    pRtLLM->stopRealtimeRecord();
+  }else{
+    pRtLLM->startRealtimeRecord();
+  }
+#endif
 }
-
 
 void RealtimeAiMod::btnB_longPressed(void)
 {

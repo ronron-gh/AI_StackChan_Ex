@@ -6,6 +6,7 @@
 #include <M5Unified.h>
 #include <nvs.h>
 #include <Avatar.h>
+#include <faces/CatFace.h>
 #include "StackchanExConfig.h" 
 #include "Robot.h"
 #include "mod/ModManager.h"
@@ -58,6 +59,7 @@ bool servo_home = true;
 
 using namespace m5avatar;
 Avatar avatar;
+Face* customFace;
 const Expression expressions_table[] = {
   Expression::Neutral,
   Expression::Happy,
@@ -68,6 +70,7 @@ const Expression expressions_table[] = {
 };
 
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
+
 
 // Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
 void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
@@ -109,8 +112,7 @@ void lipSync(void *args)
 #ifdef REALTIME_API_WITH_TTS
     level = robot->tts->getLevel();
 #else
-    //level = ((RealtimeChatGPT*)(robot->llm))->getAudioLevel();
-    level = ((GeminiLive*)(robot->llm))->getAudioLevel();
+    level = ((RealtimeLLMBase*)(robot->llm))->getAudioLevel();
 #endif
 #else
     level = robot->tts->getLevel();
@@ -302,10 +304,11 @@ void setup()
 {
   auto cfg = M5.config();
 
-  cfg.external_spk = true;    /// use external speaker (SPK HAT / ATOMIC SPK)
-//cfg.external_spk_detail.omit_atomic_spk = true; // exclude ATOMIC SPK
-//cfg.external_spk_detail.omit_spk_hat    = true; // exclude SPK HAT
-//  cfg.output_power = true;
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  cfg.internal_spk = false;
+  cfg.internal_mic = false;
+  cfg.external_speaker.atomic_echo = true;
+#endif
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
 
@@ -334,8 +337,6 @@ void setup()
     /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
     spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
     spk_cfg.task_pinned_core = APP_CPU_NUM;
-    //spk_cfg.dma_buf_count = 8;
-    //spk_cfg.dma_buf_len = 128;
     M5.Speaker.config(spk_cfg);
   }
   //M5.Speaker.begin();
@@ -343,10 +344,17 @@ void setup()
   M5.Lcd.setTextSize(2);
 
   /// settings
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  if (SPIFFS.begin()) {
+    // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
+    system_config.loadConfig(SPIFFS, "/SC_ExConfig.yaml", 2048,
+                                     "/SC_SecConfig.yaml", 2048,
+                                     "/SC_BasicConfig.yaml", 2048);
+#else
   if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
     // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
     system_config.loadConfig(SD, "/app/AiStackChanEx/SC_ExConfig.yaml");
-
+#endif
     // Wifi設定読み込み
     wifi_s* wifi_info = system_config.getWiFiSetting();
     Serial.printf("\nSSID: %s\n",wifi_info->ssid.c_str());
@@ -386,9 +394,8 @@ void setup()
       else{
         M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
         isOffline = true;
-        delay(3000);
       }
-  
+      delay(3000);
     }
 
     robot = new Robot(system_config);
@@ -406,8 +413,18 @@ void setup()
   //mod設定
   init_mod();
 
-//  avatar.init();
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+#if defined(CAT_FACE)
+  customFace = new CatFace();
+  avatar.setFace(customFace);
+#endif
+  avatar.setScale(0.5);
+  avatar.setPosition(-56, -96);
+  avatar.init();
+#else
+  //avatar.init();
   avatar.init(16);
+#endif
 
   avatar.addTask(lipSync, "lipSync", 2048);
   avatar.addTask(servo, "servo", 2048, 2);
@@ -415,6 +432,8 @@ void setup()
   avatar.setSpeechFont(&fonts::efontJA_16);
 
 #if defined(ARDUINO_M5STACK_CORES3)
+  robot->spk_volume = 120;
+#elif defined(ARDUINO_M5STACK_ATOMS3R)
   robot->spk_volume = 120;
 #else
   robot->spk_volume = 200;
@@ -438,7 +457,6 @@ void setup()
 
 void loop()
 {
-
   M5.update();
   ModBase* mod = get_current_mod();
   
@@ -447,6 +465,11 @@ void loop()
   if (M5.BtnA.wasPressed())
   {
     mod->btnA_pressed();
+  }
+
+  if (M5.BtnA.pressedFor(2000))
+  {
+    mod->btnA_longPressed();
   }
 
   if (M5.BtnB.wasPressed())
@@ -501,7 +524,6 @@ void loop()
   }
   
   //reset_watchdog();
-  
 }
 
 

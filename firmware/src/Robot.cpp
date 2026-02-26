@@ -47,12 +47,14 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
   // Servo setting
   //
+#ifdef USE_SERVO
   servo = new ServoCustom();
   servo->begin(config.getServoInfo(AXIS_X)->pin, config.getServoInfo(AXIS_X)->start_degree,
               config.getServoInfo(AXIS_X)->offset,
               config.getServoInfo(AXIS_Y)->pin, config.getServoInfo(AXIS_Y)->start_degree,
               config.getServoInfo(AXIS_Y)->offset,
               (ServoType)config.getServoType());
+#endif
 
   // AI service setting
   //
