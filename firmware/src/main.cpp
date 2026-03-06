@@ -40,6 +40,10 @@
 #include "driver/WatchDog.h"
 #include "SDUpdater.h"
 
+#if defined(USE_AUDIO_MODULE)
+#include "driver/M5AudioModule.h"
+#endif
+
 StackchanExConfig system_config;
 Robot* robot;
 bool isOffline = false;
@@ -70,34 +74,6 @@ const Expression expressions_table[] = {
 };
 
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
-
-
-// Called when a metadata event occurs (i.e. an ID3 tag, an ICY block, etc.
-void MDCallback(void *cbData, const char *type, bool isUnicode, const char *string)
-{
-  const char *ptr = reinterpret_cast<const char *>(cbData);
-  (void) isUnicode; // Punt this ball for now
-  // Note that the type and string may be in PROGMEM, so copy them to RAM for printf
-  char s1[32], s2[64];
-  strncpy_P(s1, type, sizeof(s1));
-  s1[sizeof(s1)-1]=0;
-  strncpy_P(s2, string, sizeof(s2));
-  s2[sizeof(s2)-1]=0;
-  Serial.printf("METADATA(%s) '%s' = '%s'\n", ptr, s1, s2);
-  Serial.flush();
-}
-
-// Called when there's a warning or error (like a buffer underflow or decode hiccup)
-void StatusCallback(void *cbData, int code, const char *string)
-{
-  const char *ptr = reinterpret_cast<const char *>(cbData);
-  // Note that the string may be in PROGMEM, so copy it to RAM for printf
-  char s1[64];
-  strncpy_P(s1, string, sizeof(s1));
-  s1[sizeof(s1)-1]=0;
-  Serial.printf("STATUS(%s) '%d' = '%s'\n", ptr, code, s1);
-  Serial.flush();
-}
 
 
 void lipSync(void *args)
@@ -299,6 +275,42 @@ void alarm_tone()
   M5.Mic.begin();
 }
 
+void init_mic_spk()
+{
+#if defined(USE_AUDIO_MODULE)
+  initAudioModule();
+#endif
+
+  {
+    auto micConfig = M5.Mic.config();
+    //micConfig.stereo = false;
+    micConfig.sample_rate = 16000;
+#if defined(USE_AUDIO_MODULE)
+    micConfig.pin_data_in = SYS_I2S_DIN_PIN;
+    micConfig.pin_bck = SYS_I2S_SCLK_PIN;
+    micConfig.pin_mck = SYS_I2S_MCLK_PIN;
+    micConfig.pin_ws = SYS_I2S_LRCK_PIN;
+#endif
+    M5.Mic.config(micConfig);
+  }
+  M5.Mic.begin();
+
+  { /// custom setting
+    auto spk_cfg = M5.Speaker.config();
+    /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
+    spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+    spk_cfg.task_pinned_core = APP_CPU_NUM;
+
+#if defined(USE_AUDIO_MODULE)
+    spk_cfg.pin_data_out = SYS_I2S_DOUT_PIN;
+    spk_cfg.pin_bck = SYS_I2S_SCLK_PIN;
+    spk_cfg.pin_mck = SYS_I2S_MCLK_PIN;
+    spk_cfg.pin_ws = SYS_I2S_LRCK_PIN;
+#endif
+    M5.Speaker.config(spk_cfg);
+  }
+  //M5.Speaker.begin();
+}
 
 void setup()
 {
@@ -324,22 +336,7 @@ void setup()
   //auto brightness = M5.Display.getBrightness();
   //Serial.printf("Brightness: %d\n", brightness);
 
-  {
-    auto micConfig = M5.Mic.config();
-    //micConfig.stereo = false;
-    micConfig.sample_rate = 16000;
-    M5.Mic.config(micConfig);
-  }
-  M5.Mic.begin();
-
-  { /// custom setting
-    auto spk_cfg = M5.Speaker.config();
-    /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
-    spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
-    spk_cfg.task_pinned_core = APP_CPU_NUM;
-    M5.Speaker.config(spk_cfg);
-  }
-  //M5.Speaker.begin();
+  init_mic_spk();
 
   M5.Lcd.setTextSize(2);
 
