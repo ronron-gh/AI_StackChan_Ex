@@ -518,6 +518,72 @@ void loop()
   }
 #endif
 
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  // AtomS3R: 頭タップ（加速度ピーク）を検出して
+  // 画面タッチと同じ処理を呼ぶ（ダブルタップ）
+  // 注意: M5.IMU.getAccel の API は環境により差があるため、
+  // ビルドエラーが出た場合は M5.Imu.getAccel 等に置き換えてください。
+  {
+    static unsigned long last_tap_time = 0;
+    static int tap_count = 0;
+    static float last_ay = 0.0f;
+
+    float ax = 0, ay = 0, az = 0;
+    bool ok = false;
+    // try common IMU API (adjust if your M5 library uses a different name)
+    #if defined(M5_IMU)
+    ok = M5.IMU.getAccel(&ax, &ay, &az);
+    #else
+    // Fallback attempt (some versions use Imu)
+    ok = M5.Imu.getAccel(&ax, &ay, &az);
+    #endif
+
+    if (ok) {
+      unsigned long now = millis();
+      // y方向の加速度変化でタップを検出する（Atoms3Rを立てた状態でy軸が上下方向）
+      const float TAP_DELTA = 0.5f; // 閾値を上げて誤検知を減らす（調整可）
+      float day = ay - last_ay;
+
+      // 定期的に加速度値を出力（デバッグ用）
+      static unsigned long last_print = 0;
+      if (now - last_print > 500) {
+        Serial.printf("IMU ax=%.3f ay=%.3f az=%.3f day=%.3f\n", ax, ay, az, day);
+        last_print = now;
+      }
+
+      if (fabs(day) > TAP_DELTA) {
+        Serial.printf("Y-axis tap-like change detected day=%.3f\n", day);
+        if (now - last_tap_time <= 700) { // 700ms以内なら連続タップ
+          tap_count++;
+          Serial.printf("tap_count=%d\n", tap_count);
+        } else {
+          tap_count = 1;
+          Serial.printf("tap_count reset->1\n");
+        }
+        last_tap_time = now;
+      }
+      last_ay = ay;
+
+      if (tap_count >= 2) {
+        // ダブルタップ検出: 画面中央をタッチした扱いで処理を呼ぶ
+        Serial.println("Double tap detected -> dispatch display_touched");
+        tap_count = 0;
+        // 画面上部の STT ボタン領域を狙う（Y は小さめ）
+        int16_t cx = M5.Lcd.width() / 2;
+        int16_t cy = 20;
+        mod->display_touched(cx, cy);
+      }
+    } else {
+      static unsigned long last_fail_print = 0;
+      unsigned long now = millis();
+      if (now - last_fail_print > 2000) {
+        Serial.println("IMU getAccel() returned false or not available");
+        last_fail_print = now;
+      }
+    }
+  }
+#endif
+
   if(!isOffline){
     web_server_handle_client();
     ftpSrv.handleFTP();
