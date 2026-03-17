@@ -69,11 +69,7 @@ void RealtimeAiMod::btnA_pressed(void)
 #if defined(ARDUINO_M5STACK_ATOMS3R)
   Serial.println("Btn A pressed");
   sw_tone();
-  if(pRtLLM->isRealtimeRecording()){
-    pRtLLM->stopRealtimeRecord();
-  }else{
-    pRtLLM->startRealtimeRecord();
-  }
+  toggleRealtimeRecord();
 #endif
 }
 
@@ -102,11 +98,7 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   if (box_stt.contain(x, y))
   {
     sw_tone();
-    if(pRtLLM->isRealtimeRecording()){
-      pRtLLM->stopRealtimeRecord();
-    }else{
-      pRtLLM->startRealtimeRecord();
-    }
+    toggleRealtimeRecord();
   }
 #ifdef USE_SERVO
   if (box_servo.contain(x, y))
@@ -125,6 +117,16 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   }
 
 }
+
+void RealtimeAiMod::doubleTapped(float ax, float ay, float az)
+{
+  Serial.printf("Mod double tapped. ax=%.3f ay=%.3f az=%.3f\n", ax, ay, az);
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  sw_tone();
+  toggleRealtimeRecord();
+#endif
+}
+
 
 void RealtimeAiMod::idle(void)
 {
@@ -184,5 +186,22 @@ void RealtimeAiMod::alarmEventHandler()
 
 }
 
+bool RealtimeAiMod::isBusy(void)
+{
+  if(pRtLLM->isRealtimeRecording() || pRtLLM->isSpeaking()){
+    return true;
+  }else{
+    return false;
+  }
+}
+
+void RealtimeAiMod::toggleRealtimeRecord(void)
+{
+  if(pRtLLM->isRealtimeRecording()){
+    pRtLLM->stopRealtimeRecord();
+  }else{
+    pRtLLM->startRealtimeRecord();
+  }
+}
 
 #endif //REALTIME_API

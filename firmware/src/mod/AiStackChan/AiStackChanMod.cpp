@@ -281,6 +281,15 @@ void AiStackChanMod::display_touched(int16_t x, int16_t y)
 
 }
 
+void AiStackChanMod::doubleTapped(float ax, float ay, float az)
+{
+  Serial.printf("Mod double tapped. ax=%.3f ay=%.3f az=%.3f\n", ax, ay, az);
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  sw_tone();
+  STT_ChatGPT();
+#endif
+}
+
 void AiStackChanMod::idle(void)
 {
 
