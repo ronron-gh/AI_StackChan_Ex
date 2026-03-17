@@ -16,7 +16,8 @@ float firstNorm = 0.0;
 // 感度等の調整パラメータ
 // ---------------------------
 // タップを検出する加速度の閾値
-const float TAP_DELTA = 0.4f;
+const float TAP_DELTA_MIN = 0.4f;
+const float TAP_DELTA_MAX = 0.9f;
 // タップの回数(ダブルタップを検出したい場合は2とする)
 const float TAP_COUNT = 2;
 // ハイパスフィルタが安定するまでのカウント数
@@ -54,7 +55,7 @@ void doubleTapDetectTask(void *arg) {
 
     if (ok) {
       unsigned long now = millis();
-      if(now - first_tap_time > 700){
+      if(now - first_tap_time > 1000){
         tap_count = 0;
         first_tap_time = 0;
       }
@@ -89,17 +90,18 @@ void doubleTapDetectTask(void *arg) {
       }
 #endif
 
-      if (norm > TAP_DELTA) {
+      if ((TAP_DELTA_MIN < norm) && (norm < TAP_DELTA_MAX)) {
         // タップあり
-        float cos = 1.0;
+        float cos = 0.0;
 
         if(tap_count == 0){
           // 1回目のタップ
           for(int i = 0; i < ACCEL_DIM; i++){
             firstAcc[i] = accel[i];
-            firstNorm = norm;
-            first_tap_time = now;
           }
+          firstNorm = norm;
+          first_tap_time = now;
+          tap_count = 1;
         }else{
           // 2回目以降は同じ方向のタップのみカウントするためにコサイン類似度を計算
           float innPro = firstAcc[0] * accel[0] + firstAcc[1] * accel[1] + firstAcc[2] * accel[2];
@@ -107,12 +109,14 @@ void doubleTapDetectTask(void *arg) {
         }
 
         Serial.printf("Tap detected. ax=%.3f ay=%.3f az=%.3f norm=%.3f cos=%.3f\n", accel[0], accel[1], accel[2], norm, cos);
-        if(now - first_tap_time <= 700) { // 700ms以内なら連続タップ
+        if((300 < (now - first_tap_time)) && ((now - first_tap_time) < 1000)) {
+          // 最初のタップから300ms以上700ms以内なら連続タップと判定
+          //（300ms以上としたのは、振り回したときに同方向の加速度を連続検知してダブルタップと認識してしまうのを防ぐため）
           if(cos > COS_SIMILAR){  // コサイン類似度で同じ方向かを判定
             tap_count ++;
           }
-          Serial.printf("tap_count=%d\n", tap_count);
         }
+        Serial.printf("tap_count=%d\n", tap_count);
       }
 
       if (tap_count >= TAP_COUNT) {
