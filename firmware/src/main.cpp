@@ -19,6 +19,7 @@
 #include "mod/VolumeSetting/VolumeSettingMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
+#include "driver/TapDetect.h"
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -258,7 +259,7 @@ void sw_tone()
 {
   M5.Mic.end();
   M5.Speaker.begin();
-
+  delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
   M5.Speaker.tone(1000, 100);
   delay(500);
 
@@ -446,6 +447,10 @@ void setup()
   avatar.set_isSubWindowEnable(true);
 #endif
 
+#if defined(ENABLE_TAP_DETECT)
+  invokeDoubleTapDetectTask();
+#endif
+
   //init_watchdog();
 
   //ヒープメモリ残量確認(デバッグ用)
@@ -516,6 +521,21 @@ void loop()
         }
       }
     }
+  }
+#endif
+
+#if defined(ENABLE_TAP_DETECT)
+  if(doubleTapDetected){
+    Serial.println("loop(): Double tap detected");
+    mod->doubleTapped(detectedAcc[0], detectedAcc[1], detectedAcc[2]);
+    doubleTapDetected = false;
+  }
+
+  // Modで重い処理をしている場合はダブルタップ検出を停止する
+  if(mod->isBusy()){
+    stopDoubleTapDetectTask();
+  }else{
+    resumeDoubleTapDetectTask();
   }
 #endif
 

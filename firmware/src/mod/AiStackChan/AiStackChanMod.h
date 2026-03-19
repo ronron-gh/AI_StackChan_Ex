@@ -25,6 +25,7 @@ public:
     void btnB_longPressed(void);
     void btnC_pressed(void);
     void display_touched(int16_t x, int16_t y);
+    void doubleTapped(float ax, float ay, float az);   // 加速度センサによるダブルタップ検出のコールバック。platformio.iniで-DENABLE_TAP_DETECTを有効にしてください
     void idle(void);
 };
 
