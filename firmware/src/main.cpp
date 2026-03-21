@@ -169,8 +169,6 @@ void battery_check(void *args) {
   }
 }
 
-
-//void Wifi_setup() {
 bool Wifi_connection_check() {
   unsigned long start_millis = millis();
 
@@ -178,53 +176,39 @@ bool Wifi_connection_check() {
   while (WiFi.status() != WL_CONNECTED) {
     M5.Display.print(".");
     Serial.print(".");
-    delay(500);
-    // 10秒以上接続できなかったら抜ける
-    if ( 10000 < (millis() - start_millis) ) {
+    delay(1000);
+    // 5秒以上接続できなかったら抜ける
+    if ( 5000 < (millis() - start_millis) ) {
       //break;
       return false;
     }
   }
   return true;
+}
 
-#if 0
-  M5.Display.println("");
-  Serial.println("");
-  // 未接続の場合にはSmartConfig待受
-  if ( WiFi.status() != WL_CONNECTED ) {
-    WiFi.mode(WIFI_STA);
-    WiFi.beginSmartConfig();
-    M5.Display.println("Waiting for SmartConfig");
-    Serial.println("Waiting for SmartConfig");
-    while (!WiFi.smartConfigDone()) {
-      delay(500);
-      M5.Display.print("#");
-      Serial.print("#");
-      // 30秒以上接続できなかったら抜ける
-      if ( 30000 < millis() ) {
-        Serial.println("");
-        Serial.println("Reset");
-        ESP.restart();
-      }
-    }
-
-    // Wi-fi接続
-    M5.Display.println("");
-    Serial.println("");
-    M5.Display.println("Waiting for WiFi");
-    Serial.println("Waiting for WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      M5.Display.print(".");
-      Serial.print(".");
-      // 60秒以上接続できなかったら抜ける
-      if ( 60000 < millis() ) {
-        Serial.println("");
-        Serial.println("Reset");
-        ESP.restart();
-      }
+bool WifiSmartConfig() {
+#if defined(USE_LLM_MODULE)
+  // LLMモジュール使用時は普通はオフラインが前提のため、Smart Config待ちはしない
+  return false;
+#else
+  unsigned long start_millis = millis();
+  WiFi.mode(WIFI_STA);
+  WiFi.beginSmartConfig();
+  M5.Display.println("Waiting for SmartConfig");
+  Serial.println("Waiting for SmartConfig");
+  while (!WiFi.smartConfigDone()) {
+    delay(1000);
+    M5.Display.print("#");
+    Serial.print("#");
+    // 30秒以上接続できなかったら抜ける
+    if ( 30000 < millis() - start_millis) {
+      Serial.println("");
+      //Serial.println("Reset");
+      //ESP.restart();
+      return false;
     }
   }
+  return true;
 #endif
 }
 
@@ -362,42 +346,58 @@ void setup()
     Serial.printf("\nSSID: %s\n",wifi_info->ssid.c_str());
     Serial.printf("Key: %s\n",wifi_info->password.c_str());
 
-    if(wifi_info->ssid.length() == 0){
-      M5.Lcd.print("Can't get WiFi settings. Start offline mode.\n");
-      isOffline = true;
+    // 前回設定で接続
+    Serial.println("Connecting to WiFi");
+    WiFi.disconnect();
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();
+    if(Wifi_connection_check()){
+      Serial.println("Successfully connected to Wi-Fi using the previous settings.");
+    }else{
+      // 前回設定での接続に失敗。SDカード設定による接続にトライ。
+      Serial.println("The previous WiFi connection failed. Attempting to connect using the SD card settings.");
+      if(wifi_info->ssid.length() == 0){
+        // SDカード設定の取得に失敗。Smart Configをスタート。
+        Serial.println("Can't get WiFi settings. Start Smart Config.");
+        if(!WifiSmartConfig()){
+          // Smart Config失敗。オフラインモード。
+          Serial.println("Smart Config failed. Running in offline mode.");
+          isOffline = true;
+        }
+      }else{
+        WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
+        if(Wifi_connection_check()){
+          // SDカード設定による接続に成功。
+          Serial.println("Successfully established a Wi-Fi connection via the SD card settings.");
+        }else{
+          // SDカード設定による接続に失敗。Smart Configをスタート。
+          Serial.println("WiFi connection failed due to SD card settings. Start Smart Config.");
+          if(!WifiSmartConfig()){
+            // Smart Config失敗。オフラインモード。
+            Serial.println("Smart Config failed. Running in offline mode.");
+            isOffline = true;
+          }
+        }
+      }
     }
-    else{
-      //WiFi設定を読み込めた場合のみネットワーク関連の設定を行う。
 
-      Serial.println("Connecting to WiFi");
-      WiFi.disconnect();
-      WiFi.softAPdisconnect(true);
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
-      if(Wifi_connection_check()){
-        M5.Lcd.println("\nConnected");
-        Serial.printf_P(PSTR("Go to http://"));
-        M5.Lcd.print("Go to http://");
-        Serial.println(WiFi.localIP());
-        M5.Lcd.println(WiFi.localIP());
-        delay(1000);
+    if(!isOffline){
+      Serial.println(WiFi.localIP());
+      M5.Lcd.println(WiFi.localIP());
+      delay(1000);
 
-        //Webサーバ設定
-        init_web_server();
-        //FTPサーバ設定（SPIFFS用）
-        ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
-        Serial.println("FTP server started");
-        M5.Lcd.println("FTP server started");
+      //Webサーバ設定
+      init_web_server();
+      //FTPサーバ設定（SPIFFS用）
+      ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
+      Serial.println("FTP server started");
+      M5.Lcd.println("FTP server started");
 
-        //時刻同期
-        time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
-
-      }
-      else{
-        M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
-        isOffline = true;
-      }
-      delay(3000);
+      //時刻同期
+      time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+    }else{
+      M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
     }
 
     robot = new Robot(system_config);
