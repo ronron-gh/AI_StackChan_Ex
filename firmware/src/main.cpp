@@ -351,7 +351,7 @@ void setup()
     WiFi.disconnect();
     WiFi.softAPdisconnect(true);
     WiFi.mode(WIFI_STA);
-//    WiFi.begin();
+    WiFi.begin();
     if(Wifi_connection_check()){
       Serial.println("Successfully connected to Wi-Fi using the previous settings.");
     }else{
