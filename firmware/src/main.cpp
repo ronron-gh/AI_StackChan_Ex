@@ -40,6 +40,7 @@
 
 #include "driver/WatchDog.h"
 #include "SDUpdater.h"
+#include "DebugTools.h"
 
 StackchanExConfig system_config;
 Robot* robot;
@@ -50,10 +51,6 @@ bool isOffline = false;
 const char* NTPSRV      = "ntp.jst.mfeed.ad.jp";    // NTPサーバーアドレス NTP server address.
 const long  GMT_OFFSET  = 9 * 3600;                 // GMT-TOKYO(時差９時間）9 hours time difference.
 const int   DAYLIGHT_OFFSET = 0;                    // サマータイム設定なし No daylight saving time setting
-
-/// 関数プロトタイプ宣言 /// 
-void check_heap_free_size(void);
-void check_heap_largest_free_block(void);
 
 //bool servo_home = false;
 bool servo_home = true;
@@ -463,10 +460,12 @@ void setup()
 
 void loop()
 {
+  //get_elapsed_time_micro("loop() start");
   M5.update();
+  //get_elapsed_time_micro("M5.update time");
   ModBase* mod = get_current_mod();
-  
   mod->idle();
+  //get_elapsed_time_micro("Mod idle time");
 
   if (M5.BtnA.wasPressed())
   {
@@ -538,35 +537,14 @@ void loop()
     resumeDoubleTapDetectTask();
   }
 #endif
+  //get_elapsed_time_micro("Callback process time");
 
   if(!isOffline){
     web_server_handle_client();
     ftpSrv.handleFTP();
   }
+
+  //get_elapsed_time_micro("Web event process time");
   
   //reset_watchdog();
-}
-
-
-void check_heap_free_size(void){
-  Serial.printf("===============================================================\n");
-  Serial.printf("Check free heap size\n");
-  Serial.printf("===============================================================\n");
-  //Serial.printf("esp_get_free_heap_size()                              : %6d\n", esp_get_free_heap_size() );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DMA)               : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DMA) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_SPIRAM)            : %6d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_INTERNAL)          : %6d\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DEFAULT)           : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT) );
-
-}
-
-void check_heap_largest_free_block(void){
-  Serial.printf("===============================================================\n");
-  Serial.printf("Check largest free heap block\n");
-  Serial.printf("===============================================================\n");
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_DMA)      : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_DMA) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)   : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT)  : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT) );
-
 }

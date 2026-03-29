@@ -6,6 +6,7 @@
 #include "Camera.h"
 #include <SPIFFS.h>
 #include <base64.h>
+#include "DebugTools.h"
 using namespace m5avatar;
 extern Avatar avatar;
 
@@ -125,20 +126,6 @@ static void draw_face_boxes(fb_data_t *fb, std::list<dl::detect::result_t> *resu
     }
 }
 
-
-void debug_check_heap_free_size(void){
-  Serial.printf("===============================================================\n");
-  Serial.printf("Mem Test\n");
-  Serial.printf("===============================================================\n");
-  Serial.printf("esp_get_free_heap_size()                              : %6d\n", esp_get_free_heap_size() );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DMA)               : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DMA) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_SPIRAM)            : %6d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_INTERNAL)          : %6d\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DEFAULT)           : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT) );
-
-}
-
-
 bool camera_capture_and_face_detect(void){
   bool isDetected = false;
 
@@ -188,13 +175,13 @@ bool camera_capture_and_face_detect(void){
   }
 
   //Serial.println("\n<<< heap size before fb return >>>");  
-  //debug_check_heap_free_size();
+  //check_heap_free_size();
 
   //return the frame buffer back to the driver for reuse
   esp_camera_fb_return(fb);
 
   //Serial.println("<<< heap size after fb return >>>");  
-  //debug_check_heap_free_size();
+  //check_heap_free_size();
 
   return isDetected;
 }

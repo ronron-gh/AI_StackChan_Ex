@@ -56,6 +56,12 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
               (ServoType)config.getServoType());
 #endif
 
+  // TakaoBase setting 
+  //
+  // 設定ファイルのTakaoBaseがtrueの場合に、TakaoBaseのUSBからの給電でバッテリーを充電できるようにする
+  // ただし、この設定ではバッテリーからの給電／横のUSBからの給電ではサーボが動かない
+  M5.Power.setExtOutput(!config.getUseTakaoBase());
+
   // AI service setting
   //
 #if defined(REALTIME_API)

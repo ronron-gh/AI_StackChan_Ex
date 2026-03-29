@@ -90,7 +90,7 @@ SDカードフォルダ：/yaml
 
 Wi-Fiパスワード、各種AIサービスのAPIキーを設定します。
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -108,7 +108,7 @@ SDカードフォルダ：/yaml
 
 サーボに関する設定をします。
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin
@@ -131,10 +131,14 @@ servo:
     y: 0
 
 servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
+
+takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
+
 ```
 
 > SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
 
+> [Stack-chan_Takao_Base](https://ssci.to/8905)のUSBポートから給電する場合は`takao_base`をtrueにしてください。falseでも給電はできますが、バッテリーの充電ができません。なお、`takao_base`をtrueにしたままで、M5StackのUSBポートから給電したりバッテリー駆動させたりする場合はサーボが動きません。
 
 #### 2.3. SC_ExConfig.yaml
 SDカードフォルダ：/app/AiStackChanEx  
@@ -142,7 +146,7 @@ SDカードフォルダ：/app/AiStackChanEx
 
 AIサービスの選択や、サービス毎のパラメータを設定します。
 
-```
+```yaml
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM
 
@@ -230,7 +234,7 @@ PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝの
 > 現在、メモリーに対応しているLLMは、ChatGPT（Realtime API含む）、Gemini Liveです。
 
 SC_ExConfig.yaml
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # true でメモリー有効（デフォルトはfalse）
