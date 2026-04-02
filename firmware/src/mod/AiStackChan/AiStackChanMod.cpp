@@ -14,7 +14,7 @@
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
 #include "MySchedule.h"
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 #if defined( ENABLE_CAMERA )
 #include "driver/Camera.h"
 #endif

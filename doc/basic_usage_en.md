@@ -66,7 +66,7 @@ File name：SC_SecConfig.yaml
 
 Set the Wi-Fi password and API keys for various AI services.
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -84,7 +84,7 @@ File name：SC_BasicConfig.yaml
 
 Configure the servo settings.
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin
@@ -118,7 +118,7 @@ File name：SC_ExConfig.yaml
 
 Select an AI service and set parameters for each service.
 
-```
+```yaml
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM
 
@@ -198,7 +198,7 @@ To enable memory, set `enableMemory` to `true` in `/app/AiStackChanEx/SC_ExConfi
 > Currently, ChatGPT (including the Realtime API) and Gemini Live supports memory.
 
 SC_ExConfig.yaml
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # Enable memory with true (default is false)

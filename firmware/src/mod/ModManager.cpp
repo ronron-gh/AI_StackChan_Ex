@@ -17,15 +17,8 @@ std::deque<ModBase*> modList;
 
 static void avatar_fadeout(bool reverse)
 {
-  int16_t offset = 0;
-  while(offset <= 320){
-    offset += 10;
-    if(reverse){
-      avatar.setFaceOffsetX(offset);
-    }
-    else{
-      avatar.setFaceOffsetX(-offset);
-    }
+  avatar.fadeoutStart(reverse);
+  while(!avatar.isFadeoutDone()){
     delay(10);
   }
 }
