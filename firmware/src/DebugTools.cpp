@@ -25,6 +25,14 @@ void check_heap_largest_free_block(void){
 
 }
 
+#if 0 // vTaskListが使えなかった
+void check_task_status(void){
+  char msg_buffer[512];
+  vTaskList(msg_buffer);
+  Serial.printf("%s", msg_buffer);
+}
+#endif
+
 uint32_t get_elapsed_time_micro(const char* str){
   static uint32_t prev = 0;
   uint32_t now = 0;

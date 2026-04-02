@@ -2,7 +2,8 @@
 //#include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
-#include "SDUtil.h"
+#include "share/Mutex.h"
+#include "share/SDUtil.h"
 #include <M5Unified.h>
 #include <nvs.h>
 #include <Avatar.h>
@@ -124,7 +125,7 @@ void lipSync(void *args)
     avatar->setMouthOpenRatio(open);
     avatar->getGaze(&gazeY, &gazeX);
     avatar->setRotation(gazeX * 5);
-    delay(50);
+    delay(20);
   }
 }
 
@@ -254,6 +255,7 @@ ModBase* init_mod(void)
 
 void sw_tone()
 {
+  enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();
   delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
@@ -262,10 +264,12 @@ void sw_tone()
 
   M5.Speaker.end();
   M5.Mic.begin();
+  exitMutexAudio();
 }
   
 void alarm_tone()
 {
+  enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();
 
@@ -280,6 +284,7 @@ void alarm_tone()
 
   M5.Speaker.end();
   M5.Mic.begin();
+  exitMutexAudio();
 }
 
 
@@ -297,6 +302,8 @@ void setup()
 
   /// シリアル出力のログレベルを VERBOSEに設定
   //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
+
+  initMutex();
 
 #if defined(ENABLE_SD_UPDATER)
   // ***** for SD-Updater *********************
@@ -425,7 +432,7 @@ void setup()
   avatar.init(16);
 #endif
 
-  avatar.addTask(lipSync, "lipSync", 2048);
+  avatar.addTask(lipSync, "lipSync", 2048, 2);
   avatar.addTask(servo, "servo", 2048, 2);
   avatar.addTask(battery_check, "battery_check", 2048);
   avatar.setSpeechFont(&fonts::efontJA_16);

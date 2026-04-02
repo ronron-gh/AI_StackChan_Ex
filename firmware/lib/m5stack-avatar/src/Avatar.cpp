@@ -21,6 +21,7 @@ void drawLoop(void *args) {
   while (avatar->isDrawing()) {
     if (avatar->isDrawing()) {
       avatar->draw();
+      avatar->fadeoutProcess();   //motoh
     }
     vTaskDelay(10);
   }
@@ -80,6 +81,9 @@ Avatar::Avatar(Face *face)
       palette{ColorPalette()},
       speechText{""},
       colorDepth{1},
+      fadeoutDoneFlag{true},
+      fadeoutDirection{true},
+      fadeoutOffset{0},
       batteryIconStatus{BatteryIconStatus::invisible}{}
 
 void Avatar::setFace(Face *face) { this->face = face; }
@@ -132,7 +136,7 @@ void Avatar::start(int colorDepth) {
 //                          2048,         /* Stack size in words */
                           4096,         /* スプライトでJPEGを表示するとCore 0 panic’edとなるためスタックを増やした */
                           ctx,          /* Task input parameter */
-                          1,            /* Priority of the task */
+                          2,            /* Priority of the task */
                           &drawTaskHandle);        /* Task handle. */
 
   xTaskCreate(facialLoop,      /* Function to implement the task */
@@ -263,5 +267,35 @@ void Avatar::set_isSubWindowEnable(bool isEnable){
 void Avatar::setFaceOffsetX(int16_t offset_x){
   face->offset_x = offset_x;
 }
+
+//motoh
+void Avatar::fadeoutStart(bool direction){
+  fadeoutDirection = direction;
+  fadeoutDoneFlag = false;
+}
+
+//motoh
+bool Avatar::isFadeoutDone(void){
+  return fadeoutDoneFlag;
+}
+
+//motoh
+void Avatar::fadeoutProcess(void){
+  if(!fadeoutDoneFlag){
+    fadeoutOffset += 60;
+    if(fadeoutDirection){
+      setFaceOffsetX(fadeoutOffset);
+    }
+    else{
+      setFaceOffsetX(-fadeoutOffset);
+    }
+
+    if(fadeoutOffset > 320){
+      fadeoutDoneFlag = true;
+      fadeoutOffset = 0;
+    }
+  }
+}
+
 
 }  // namespace m5avatar

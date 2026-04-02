@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <Avatar.h>
+#include "share/Mutex.h"
 //#include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include "rootCA/rootCACertificate.h"
@@ -171,6 +172,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 Serial.printf("[WSc] input audio committed\n");
                 p_this->stopRealtimeRecord();
 #ifndef REALTIME_API_WITH_TTS
+                enterMutexAudio();
                 M5.Mic.end();
                 M5.Speaker.begin();
                 p_this->speaking = true;
@@ -236,6 +238,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                     while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
                     M5.Speaker.end();
                     M5.Mic.begin();
+                    exitMutexAudio();
 
                     for(int i=0; i<2; i++){
                         memset(p_this->audioBuf[i], 0, 100 * 1024);

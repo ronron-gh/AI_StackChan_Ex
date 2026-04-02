@@ -12,7 +12,7 @@
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
 #include "MySchedule.h"
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 
 using namespace m5avatar;
 
@@ -35,6 +35,7 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   box_BtnC.setupBox(280, 100, 40, 60);
 
   pRtLLM = (RealtimeLLMBase*)robot->llm;
+  pRtLLM->invokeWebSocketLoopTask();
 
   //servo_home = false;
 
@@ -51,11 +52,13 @@ void RealtimeAiMod::init(void)
 {
   //avatar.setSpeechText("Realtime AI");
   avatar.set_isSubWindowEnable(true);
+  pRtLLM->resumeWebSocketLoopTask();
 }
 
 void RealtimeAiMod::pause(void)
 {
   avatar.set_isSubWindowEnable(false);
+  pRtLLM->suspendWebSocketLoopTask();
 }
 
 
@@ -130,8 +133,6 @@ void RealtimeAiMod::doubleTapped(float ax, float ay, float az)
 
 void RealtimeAiMod::idle(void)
 {
-  pRtLLM->webSocketProcess();
-
 #ifdef REALTIME_API_WITH_TTS
 
   if(robot->asyncPlaying || (pRtLLM->getOutputTextQueueSize() != 0)){

@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <deque>
 #include <SD.h>
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 #include "mod/ModManager.h"
 #include "PhotoFrameMod.h"
 #include <Avatar.h>
