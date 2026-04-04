@@ -2,6 +2,7 @@
 //#include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
+#include "share/Version.h"
 #include "share/Mutex.h"
 #include "share/SDUtil.h"
 #include <M5Unified.h>
@@ -303,6 +304,17 @@ void setup()
   /// シリアル出力のログレベルを VERBOSEに設定
   //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
 
+
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.printf("Ver.%s\n", FW_VERSION);
+#else
+  M5.Lcd.setFont(&fonts::lgfxJapanGothic_20);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.println("AI Stack-chan Ex [・＿・]");
+  M5.Lcd.printf("Firmware Version: %s\n", FW_VERSION);
+#endif
+
   initMutex();
 
 #if defined(ENABLE_SD_UPDATER)
@@ -330,8 +342,6 @@ void setup()
     M5.Speaker.config(spk_cfg);
   }
   //M5.Speaker.begin();
-
-  M5.Lcd.setTextSize(2);
 
   /// settings
 #if defined(ARDUINO_M5STACK_ATOMS3R)
