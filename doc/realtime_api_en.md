@@ -27,7 +27,7 @@ File name：SC_SecConfig.yaml
 
 Set the Wi-Fi password and the Open AI API key (aiservice). STT and TTS are not used, so no settings are required.
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -46,7 +46,7 @@ Select "0:ChatGPT" or "3:Gemini" as the LLM.
 Set enableMemory=true to enable long-term memory (recording summaries in SPIFFS).  
 For details about long-term memory, see 3. Personalization in [Basic Usage](basic_usage_en.md).
 
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # true to enable long-term memory
@@ -58,7 +58,7 @@ File name：SC_BasicConfig.yaml
 
 Set the servo type, port, etc. If you are not using servos, you can omit this.
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin

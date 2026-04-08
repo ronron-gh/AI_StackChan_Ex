@@ -25,8 +25,6 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 - [Realtime APIの利用方法](#realtime-apiの利用方法)
 - [その他の機能](#その他の機能)
   - [ユーザアプリケーションの作成について](#ユーザアプリケーションの作成について)
-  - [SD Updaterに対応（Core2のみ）](#sd-updaterに対応core2のみ)
-  - [カメラによる顔検出（CoreS3のみ）](#カメラによる顔検出cores3のみ)
 - [コントリビューションについて](#コントリビューションについて)
   - [本リポジトリの方針](#本リポジトリの方針)
 
@@ -83,35 +81,6 @@ ModBase* init_mod(void)
 }
 ```
 
-### SD Updaterに対応（Core2のみ）
-![](images/sd_updater.jpg)
-
-SD Updaterに対応し、NoRiさんの[BinsPack-for-StackChan-Core2](https://github.com/NoRi-230401/BinsPack-for-StackChan-Core2)で公開されている他のSD Updater対応アプリとの切り替えが可能になりました。
-
-【適用方法】  
-① env:m5stack-core2-sduでビルドする。  
-② ビルド結果の.pio/build/m5stack-core2-sdu/firmware.binを適切な名前（AiStackChanEx.bin等）に変更し、SDカードのルートディレクトリにコピーする。
-
-> ・現状、Core2 V1.1ではランチャーソフトが動作しないため切り替えはできません。
-
-
-
-### カメラによる顔検出（CoreS3のみ）
-![](images/face_detect.jpg)
-
-- 顔を検出すると音声認識を起動します。
-  - LCD中央左側をタッチするとサイレントモードになり、顔検出しても起動しません。（代わりに、顔検出している間ｽﾀｯｸﾁｬﾝが笑顔になります。）
-- LCDの左上隅にカメラ画像が表示されます。画像部分をタッチすると表示ON/OFFできます。
-
-※顔検出は初期状態ではplatformio.iniで以下のようにコメントアウトし無効化しています。有効化する際はDENABLE_CAMERAとDENABLE_FACE_DETECTを有効化してください。
-```
-build_flags=
-  -DBOARD_HAS_PSRAM
-  -DARDUINO_M5STACK_CORES3
-  ;-DENABLE_CAMERA
-  ;-DENABLE_FACE_DETECT
-  -DENABLE_WAKEWORD
-```
 
 ## コントリビューションについて
 issue、プルリクエストも歓迎です。問題や改善案がありましたら、まずはissueでご連絡ください。  

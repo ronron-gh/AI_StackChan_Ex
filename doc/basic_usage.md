@@ -11,8 +11,10 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 - [2. 設定、ビルド手順](#2-設定ビルド手順)
   - [2.1. YAMLによる初期設定](#21-yamlによる初期設定)
   - [2.2. ビルド＆書き込み](#22-ビルド書き込み)
-- [3. パーソナライズ](#3-パーソナライズ)
-  - [3.1. メモリー（長期記憶）について](#31-メモリー長期記憶について)
+- [3. 使い方](#3-使い方)
+  - [3.1. 会話](#31-会話)
+  - [3.2. パーソナライズ](#32-パーソナライズ)
+  - [3.3. カメラによる顔検出（CoreS3のみ）](#33-カメラによる顔検出cores3のみ)
 
 ## 1. 利用可能なAIサービス
 会話に必要な各種AIサービスの対応状況を示します。  
@@ -89,7 +91,7 @@ SDカードフォルダ：/yaml
 
 Wi-Fiパスワード、各種AIサービスのAPIキーを設定します。
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -107,7 +109,7 @@ SDカードフォルダ：/yaml
 
 サーボに関する設定をします。
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin
@@ -130,10 +132,14 @@ servo:
     y: 0
 
 servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
+
+takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
+
 ```
 
 > SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
 
+> [Stack-chan_Takao_Base](https://ssci.to/8905)のUSBポートから給電する場合は`takao_base`をtrueにしてください。falseでも給電はできますが、バッテリーの充電ができません。なお、`takao_base`をtrueにしたままで、M5StackのUSBポートから給電したりバッテリー駆動させたりする場合はサーボが動きません。
 
 #### 2.3. SC_ExConfig.yaml
 SDカードフォルダ：/app/AiStackChanEx  
@@ -141,7 +147,7 @@ SDカードフォルダ：/app/AiStackChanEx
 
 AIサービスの選択や、サービス毎のパラメータを設定します。
 
-```
+```yaml
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM
 
@@ -207,7 +213,15 @@ git clone https://github.com/ronron-gh/AI_StackChan_Ex.git
 ![](../images/build_and_flash.png)
 
 
-## 3. パーソナライズ
+## 3. 使い方
+### 3.1. 会話
+M5Coreを起動してアバターが表示された後、アバターの額のあたりをタッチすると録音が開始するので話しかけてください。録音時間は約７秒です。
+
+> AtomS3Rは画面自体が物理ボタンになっているため、画面中央を少し強めに押し込んでください。または、次の動画のようにボディーのどこかをダブルタップすることでも録音開始できます（ダブルタップは初期状態は無効になっています。platformio.iniの[env:m5stack-atoms3r]セクション内の-DENABLE_TAP_DETECTのコメントアウトを解除してビルドすることで有効化できます）。
+> ![](../images/double_tap.gif)
+
+
+### 3.2. パーソナライズ
 カスタム指示（いわゆるロール）、及びメモリー（長期記憶）により、AI会話機能をユーザーの属性に合わせてカスタマイズすることができます。
 
 PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝのIPアドレス) にアクセスすると次のような設定画面が開きます。（IPアドレスは起動時の画面に表示されます。また、Core2/CoreS3はCボタンまたはLCD右端をタッチするとアクセス用のQRコードが表示されます。）
@@ -215,13 +229,13 @@ PCやスマートフォンのWebブラウザで http://(ｽﾀｯｸﾁｬﾝの
 ![](../images/Personalize.png)
 
 
-### 3.1. メモリー（長期記憶）について
+**〇 メモリー（長期記憶）について**  
 メモリーを有効にするには SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で enableMemory を true に設定してください。
 
 > 現在、メモリーに対応しているLLMは、ChatGPT（Realtime API含む）、Gemini Liveです。
 
 SC_ExConfig.yaml
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # true でメモリー有効（デフォルトはfalse）
@@ -230,3 +244,21 @@ llm:
 メモリーを有効にすると、会話の中でユーザーの属性（趣味や仕事など）や印象的なエピソードがあれば要約してSPIFFSに保存されます。電源をOFFにしてもSPIFFSの内容は保持され、次回起動時に記憶情報として読み出されます。
 
 > 記憶するかどうかはLLMが会話中に判断するため、ユーザーの期待通りに記憶されない場合があります（「今の会話内容をメモリーに保存して」と明示的に指示することも可能です）。また、一度記憶した情報も、要約を繰り返す過程で失われる可能性があります。
+
+
+### 3.3. カメラによる顔検出（CoreS3のみ）
+![](../images/face_detect.jpg)
+
+- 顔を検出すると音声認識を起動します。
+  - LCD中央左側をタッチするとサイレントモードになり、顔検出しても起動しません。（代わりに、顔検出している間ｽﾀｯｸﾁｬﾝが笑顔になります。）
+- LCDの左上隅にカメラ画像が表示されます。画像部分をタッチすると表示ON/OFFできます。
+
+※顔検出は初期状態ではplatformio.iniで以下のようにコメントアウトし無効化しています。有効化する際はDENABLE_CAMERAとDENABLE_FACE_DETECTを有効化してください。
+```
+build_flags=
+  -DBOARD_HAS_PSRAM
+  -DARDUINO_M5STACK_CORES3
+  ;-DENABLE_CAMERA
+  ;-DENABLE_FACE_DETECT
+  -DENABLE_WAKEWORD
+```

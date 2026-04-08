@@ -10,8 +10,10 @@ This article explains how to use the basic AI conversation function (AI conversa
 - [2. Settings and build](#2-settings-and-build)
   - [2.1. Initial setup with YAML](#21-initial-setup-with-yaml)
   - [2.2. Build \& Flash](#22-build--flash)
-- [3. Personalization](#3-personalization)
-  - [3.1. Memory (Long-term Memory)](#31-memory-long-term-memory)
+- [3. Usage](#3-usage)
+  - [3.1. Conversation](#31-conversation)
+  - [3.2. Personalization](#32-personalization)
+  - [3.3. Face detection by camera (CoreS3 only)](#33-face-detection-by-camera-cores3-only)
 
 ## 1. Available AI services
 This shows the support status of various AI services required for conversation.  
@@ -66,7 +68,7 @@ File name：SC_SecConfig.yaml
 
 Set the Wi-Fi password and API keys for various AI services.
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -84,7 +86,7 @@ File name：SC_BasicConfig.yaml
 
 Configure the servo settings.
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin
@@ -118,7 +120,7 @@ File name：SC_ExConfig.yaml
 
 Select an AI service and set parameters for each service.
 
-```
+```yaml
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM
 
@@ -185,20 +187,24 @@ The required libraries will start installing, and you will see progress at the b
 
 ![](../images/build_and_flash.png)
 
-## 3. Personalization
+## 3. Usage
+### 3.1. Conversation
+After launching M5Core and your avatar is displayed, touch the area around the avatar's forehead to start recording, then speak. The recording time is approximately 7 seconds.
+
+### 3.2. Personalization
 Custom instructions (so-called "roles") and memory (long-term memory) allow you to customize the AI conversation function according to the user's attributes.
 
 You can open the settings screen by accessing http://(Stack-chan's IP address) from a PC or smartphone web browser. (A QR code for access will be displayed by pressing the C button or touching the right edge of the LCD.)
 
 ![](../images/Personalize.png)
 
-### 3.1. Memory (Long-term Memory)
+**〇 About memory (Long-term Memory)**
 To enable memory, set `enableMemory` to `true` in `/app/AiStackChanEx/SC_ExConfig.yaml` on the SD card.
 
 > Currently, ChatGPT (including the Realtime API) and Gemini Live supports memory.
 
 SC_ExConfig.yaml
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # Enable memory with true (default is false)
@@ -207,3 +213,21 @@ llm:
 When memory is enabled, if there are user attributes (such as hobbies or work) or impressive episodes in the conversation, they will be summarized and saved to SPIFFS. The contents of SPIFFS are retained even when the power is turned off and will be read as memory information at the next startup.
 
 > Whether or not something is remembered is determined by the LLM during the conversation, so it may not always be remembered as the user expects (it is also possible to explicitly instruct "Save the current conversation content to memory"). Also, information that has been remembered may be lost in the process of repeated summarization.
+
+
+### 3.3. Face detection by camera (CoreS3 only)
+![](../images/face_detect.jpg)
+
+- When a face is detected, voice recognition is activated.
+  - Touching the left center of the LCD will put the device into silent mode, and it will not wake up even if a face is detected. (Instead, Stack-chan will smile while a face is being detected.)
+- The camera image is displayed in the upper left corner of the LCD. Touch the image area to turn the display on/off.
+
+※Face detection is disabled by default by commenting out the following in platformio.ini. To enable it, please enable DENABLE_CAMERA and DENABLE_FACE_DETECT.
+```
+build_flags=
+  -DBOARD_HAS_PSRAM
+  -DARDUINO_M5STACK_CORES3
+  ;-DENABLE_CAMERA
+  ;-DENABLE_FACE_DETECT
+  -DENABLE_WAKEWORD
+```

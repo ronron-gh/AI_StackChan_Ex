@@ -30,7 +30,7 @@ SDカードフォルダ：/yaml
 
 Wi-FiパスワードとAPIキー(aiservice)を設定します。STTとTTSは使用しないため設定不要です。
 
-```
+```yaml
 wifi:
   ssid: "********"
   password: "********"
@@ -49,7 +49,7 @@ LLMとして「0:ChatGPT」または「3:Gemini」を選択します。
 enableMemory=true にすると長期記憶（SPIFFSに要約を記録）が有効になります。  
 長期記憶に関する詳細は[基本的な使用方法](basic_usage.md)の 3.パーソナライズ を参照ください。
 
-```
+```yaml
 llm:
   type: 0               # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini
   enableMemory: true    # true で長期記憶を有効化
@@ -61,7 +61,7 @@ SDカードフォルダ：/yaml
 
 サーボの種類、ポート等を設定をします。サーボを使わない場合は省略して問題ありません。
 
-```
+```yaml
 servo: 
   pin: 
     # ServoPin
@@ -84,8 +84,13 @@ servo:
     y: 0
 
 servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
+
+takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
 ```
 
+> SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
+
+> [Stack-chan_Takao_Base](https://ssci.to/8905)のUSBポートから給電する場合は`takao_base`をtrueにしてください。falseでも給電はできますが、バッテリーの充電ができません。なお、`takao_base`をtrueにしたままで、M5StackのUSBポートから給電したりバッテリー駆動させたりする場合はサーボが動きません。
 
 ### ビルド＆書き込み
 下図のように、VSCode(Platformio)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  

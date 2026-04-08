@@ -67,6 +67,7 @@ public:
   String getOutputText();
   int getOutputTextQueueSize();
   void setSpeaking(bool _speaking){ speaking = _speaking; };
+  bool isSpeaking(void){ return speaking; };
   int search_delimiter(String& text);
 };
 

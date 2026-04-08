@@ -9,7 +9,7 @@
 #include "driver/WakeWord.h"
 #include "Scheduler.h"
 #include "StackchanExConfig.h" 
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 #include "MCPClient.h"
 #include "llm/LLMBase.h"
 using namespace m5avatar;

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include "share/Version.h"
 #include "mod/ModManager.h"
 #include "StatusMonitorMod.h"
 #include "Robot.h"
@@ -50,6 +51,8 @@ void StatusMonitorMod::update(int page_no)
     esp_efuse_mac_get_default(mac);
 
     str += "======== System status ========\n";
+    sprintf(tmp, "Firmware Version:%s\n", FW_VERSION);
+    str += tmp;
     sprintf(tmp, "Wifi:\n  IP addr:%s\n  MAC addr:%02x:%02x:%02x:%02x:%02x:%02x\n",
                     WiFi.localIP().toString().c_str(),
                     mac[0], mac[1], mac[2], mac[3], mac[4], mac[5] );
@@ -58,10 +61,12 @@ void StatusMonitorMod::update(int page_no)
                     heap_caps_get_largest_free_block(MALLOC_CAP_DMA),
                     heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) );
     str += tmp;
+#if 0
     sprintf(tmp, "Prompt buffer usage:\n  %d / %d [byte]\n",
                     robot->llm->chat_doc.memoryUsage(),
                     robot->llm->chat_doc.capacity() );
     str += tmp;
+#endif
     sprintf(tmp, "Battery level:  %d %%\n", M5.Power.getBatteryLevel());
     str += tmp;
   }  

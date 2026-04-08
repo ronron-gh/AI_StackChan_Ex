@@ -14,7 +14,7 @@
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
 #include "MySchedule.h"
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 #if defined( ENABLE_CAMERA )
 #include "driver/Camera.h"
 #endif
@@ -279,6 +279,15 @@ void AiStackChanMod::display_touched(int16_t x, int16_t y)
   }
 #endif //ENABLE_CAMERA
 
+}
+
+void AiStackChanMod::doubleTapped(float ax, float ay, float az)
+{
+  Serial.printf("Mod double tapped. ax=%.3f ay=%.3f az=%.3f\n", ax, ay, az);
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  sw_tone();
+  STT_ChatGPT();
+#endif
 }
 
 void AiStackChanMod::idle(void)

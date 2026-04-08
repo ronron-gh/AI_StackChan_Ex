@@ -59,6 +59,9 @@ public:
     virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
     virtual String& buildInputAudioJson(String& jsonBuf, String& base64) = 0;
 
+    void invokeWebSocketLoopTask(void);
+    void suspendWebSocketLoopTask(void);
+    void resumeWebSocketLoopTask(void);
     void webSocketProcess();
     int getAudioLevel();
     void startRealtimeRecord();

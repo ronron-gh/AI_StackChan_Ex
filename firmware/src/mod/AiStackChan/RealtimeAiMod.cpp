@@ -12,7 +12,7 @@
 #include <WiFiClientSecure.h>
 #include "Scheduler.h"
 #include "MySchedule.h"
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 
 using namespace m5avatar;
 
@@ -35,6 +35,7 @@ RealtimeAiMod::RealtimeAiMod(bool _isOffline)
   box_BtnC.setupBox(280, 100, 40, 60);
 
   pRtLLM = (RealtimeLLMBase*)robot->llm;
+  pRtLLM->invokeWebSocketLoopTask();
 
   //servo_home = false;
 
@@ -51,11 +52,13 @@ void RealtimeAiMod::init(void)
 {
   //avatar.setSpeechText("Realtime AI");
   avatar.set_isSubWindowEnable(true);
+  pRtLLM->resumeWebSocketLoopTask();
 }
 
 void RealtimeAiMod::pause(void)
 {
   avatar.set_isSubWindowEnable(false);
+  pRtLLM->suspendWebSocketLoopTask();
 }
 
 
@@ -69,11 +72,7 @@ void RealtimeAiMod::btnA_pressed(void)
 #if defined(ARDUINO_M5STACK_ATOMS3R)
   Serial.println("Btn A pressed");
   sw_tone();
-  if(pRtLLM->isRealtimeRecording()){
-    pRtLLM->stopRealtimeRecord();
-  }else{
-    pRtLLM->startRealtimeRecord();
-  }
+  toggleRealtimeRecord();
 #endif
 }
 
@@ -102,11 +101,7 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
   if (box_stt.contain(x, y))
   {
     sw_tone();
-    if(pRtLLM->isRealtimeRecording()){
-      pRtLLM->stopRealtimeRecord();
-    }else{
-      pRtLLM->startRealtimeRecord();
-    }
+    toggleRealtimeRecord();
   }
 #ifdef USE_SERVO
   if (box_servo.contain(x, y))
@@ -126,10 +121,18 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
 
 }
 
+void RealtimeAiMod::doubleTapped(float ax, float ay, float az)
+{
+  Serial.printf("Mod double tapped. ax=%.3f ay=%.3f az=%.3f\n", ax, ay, az);
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  sw_tone();
+  toggleRealtimeRecord();
+#endif
+}
+
+
 void RealtimeAiMod::idle(void)
 {
-  pRtLLM->webSocketProcess();
-
 #ifdef REALTIME_API_WITH_TTS
 
   if(robot->asyncPlaying || (pRtLLM->getOutputTextQueueSize() != 0)){
@@ -184,5 +187,22 @@ void RealtimeAiMod::alarmEventHandler()
 
 }
 
+bool RealtimeAiMod::isBusy(void)
+{
+  if(pRtLLM->isRealtimeRecording() || pRtLLM->isSpeaking()){
+    return true;
+  }else{
+    return false;
+  }
+}
+
+void RealtimeAiMod::toggleRealtimeRecord(void)
+{
+  if(pRtLLM->isRealtimeRecording()){
+    pRtLLM->stopRealtimeRecord();
+  }else{
+    pRtLLM->startRealtimeRecord();
+  }
+}
 
 #endif //REALTIME_API

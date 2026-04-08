@@ -1,5 +1,5 @@
 #include "StackchanExConfig.h"
-#include "SDUtil.h"
+#include "share/SDUtil.h"
 
 StackchanExConfig::StackchanExConfig() {};
 StackchanExConfig::~StackchanExConfig() {};

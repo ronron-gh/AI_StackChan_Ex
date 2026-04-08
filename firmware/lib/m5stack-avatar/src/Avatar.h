@@ -28,6 +28,10 @@ class Avatar {
   int32_t batteryLevel;
   const lgfx::IFont *speechFont;
 
+  bool fadeoutDoneFlag;
+  bool fadeoutDirection;
+  int32_t fadeoutOffset;
+
  public:
   Avatar();
   explicit Avatar(Face *face);
@@ -68,6 +72,11 @@ class Avatar {
   void updateSubWindowQrcode(String& txt);      //motoh
   void set_isSubWindowEnable(bool isEnable);  //motoh
   void setFaceOffsetX(int16_t offset_x);      //motoh
+
+  // アバターをフェードアウトする処理     motoh
+  void fadeoutStart(bool direction);
+  bool isFadeoutDone(void);
+  void fadeoutProcess(void);
 };
 
 

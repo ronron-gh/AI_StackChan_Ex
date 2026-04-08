@@ -2,7 +2,9 @@
 //#include <FS.h>
 #include <SD.h>
 #include <SPIFFS.h>
-#include "SDUtil.h"
+#include "share/Version.h"
+#include "share/Mutex.h"
+#include "share/SDUtil.h"
 #include <M5Unified.h>
 #include <nvs.h>
 #include <Avatar.h>
@@ -19,6 +21,7 @@
 #include "mod/VolumeSetting/VolumeSettingMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
+#include "driver/TapDetect.h"
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -39,6 +42,7 @@
 
 #include "driver/WatchDog.h"
 #include "SDUpdater.h"
+#include "DebugTools.h"
 
 #if defined(USE_AUDIO_MODULE)
 #include "driver/M5AudioModule.h"
@@ -53,10 +57,6 @@ bool isOffline = false;
 const char* NTPSRV      = "ntp.jst.mfeed.ad.jp";    // NTPサーバーアドレス NTP server address.
 const long  GMT_OFFSET  = 9 * 3600;                 // GMT-TOKYO(時差９時間）9 hours time difference.
 const int   DAYLIGHT_OFFSET = 0;                    // サマータイム設定なし No daylight saving time setting
-
-/// 関数プロトタイプ宣言 /// 
-void check_heap_free_size(void);
-void check_heap_largest_free_block(void);
 
 //bool servo_home = false;
 bool servo_home = true;
@@ -102,7 +102,7 @@ void lipSync(void *args)
     avatar->setMouthOpenRatio(open);
     avatar->getGaze(&gazeY, &gazeX);
     avatar->setRotation(gazeX * 5);
-    delay(50);
+    delay(20);
   }
 }
 
@@ -144,7 +144,6 @@ void battery_check(void *args) {
   }
 }
 
-//void Wifi_setup() {
 bool Wifi_connection_check() {
   unsigned long start_millis = millis();
 
@@ -152,53 +151,39 @@ bool Wifi_connection_check() {
   while (WiFi.status() != WL_CONNECTED) {
     M5.Display.print(".");
     Serial.print(".");
-    delay(500);
-    // 10秒以上接続できなかったら抜ける
-    if ( 10000 < (millis() - start_millis) ) {
+    delay(1000);
+    // 5秒以上接続できなかったら抜ける
+    if ( 5000 < (millis() - start_millis) ) {
       //break;
       return false;
     }
   }
   return true;
+}
 
-#if 0
-  M5.Display.println("");
-  Serial.println("");
-  // 未接続の場合にはSmartConfig待受
-  if ( WiFi.status() != WL_CONNECTED ) {
-    WiFi.mode(WIFI_STA);
-    WiFi.beginSmartConfig();
-    M5.Display.println("Waiting for SmartConfig");
-    Serial.println("Waiting for SmartConfig");
-    while (!WiFi.smartConfigDone()) {
-      delay(500);
-      M5.Display.print("#");
-      Serial.print("#");
-      // 30秒以上接続できなかったら抜ける
-      if ( 30000 < millis() ) {
-        Serial.println("");
-        Serial.println("Reset");
-        ESP.restart();
-      }
-    }
-
-    // Wi-fi接続
-    M5.Display.println("");
-    Serial.println("");
-    M5.Display.println("Waiting for WiFi");
-    Serial.println("Waiting for WiFi");
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      M5.Display.print(".");
-      Serial.print(".");
-      // 60秒以上接続できなかったら抜ける
-      if ( 60000 < millis() ) {
-        Serial.println("");
-        Serial.println("Reset");
-        ESP.restart();
-      }
+bool WifiSmartConfig() {
+#if defined(USE_LLM_MODULE)
+  // LLMモジュール使用時は普通はオフラインが前提のため、Smart Config待ちはしない
+  return false;
+#else
+  unsigned long start_millis = millis();
+  WiFi.mode(WIFI_STA);
+  WiFi.beginSmartConfig();
+  M5.Display.println("Waiting for SmartConfig");
+  Serial.println("Waiting for SmartConfig");
+  while (!WiFi.smartConfigDone()) {
+    delay(1000);
+    M5.Display.print("#");
+    Serial.print("#");
+    // 30秒以上接続できなかったら抜ける
+    if ( 30000 < millis() - start_millis) {
+      Serial.println("");
+      //Serial.println("Reset");
+      //ESP.restart();
+      return false;
     }
   }
+  return true;
 #endif
 }
 
@@ -247,18 +232,21 @@ ModBase* init_mod(void)
 
 void sw_tone()
 {
+  enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();
-
+  delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
   M5.Speaker.tone(1000, 100);
   delay(500);
 
   M5.Speaker.end();
   M5.Mic.begin();
+  exitMutexAudio();
 }
   
 void alarm_tone()
 {
+  enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();
 
@@ -273,6 +261,7 @@ void alarm_tone()
 
   M5.Speaker.end();
   M5.Mic.begin();
+  exitMutexAudio();
 }
 
 void init_mic_spk()
@@ -327,6 +316,19 @@ void setup()
   /// シリアル出力のログレベルを VERBOSEに設定
   //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
 
+
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  M5.Lcd.setTextSize(2);
+  M5.Lcd.printf("Ver.%s\n", FW_VERSION);
+#else
+  M5.Lcd.setFont(&fonts::lgfxJapanGothic_20);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.println("AI Stack-chan Ex [・＿・]");
+  M5.Lcd.printf("Firmware Version: %s\n", FW_VERSION);
+#endif
+
+  initMutex();
+
 #if defined(ENABLE_SD_UPDATER)
   // ***** for SD-Updater *********************
   SDU_lobby("AiStackChanEx");
@@ -337,8 +339,6 @@ void setup()
   //Serial.printf("Brightness: %d\n", brightness);
 
   init_mic_spk();
-
-  M5.Lcd.setTextSize(2);
 
   /// settings
 #if defined(ARDUINO_M5STACK_ATOMS3R)
@@ -357,42 +357,58 @@ void setup()
     Serial.printf("\nSSID: %s\n",wifi_info->ssid.c_str());
     Serial.printf("Key: %s\n",wifi_info->password.c_str());
 
-    if(wifi_info->ssid.length() == 0){
-      M5.Lcd.print("Can't get WiFi settings. Start offline mode.\n");
-      isOffline = true;
+    // 前回設定で接続
+    Serial.println("Connecting to WiFi");
+    WiFi.disconnect();
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    WiFi.begin();
+    if(Wifi_connection_check()){
+      Serial.println("Successfully connected to Wi-Fi using the previous settings.");
+    }else{
+      // 前回設定での接続に失敗。SDカード設定による接続にトライ。
+      Serial.println("The previous WiFi connection failed. Attempting to connect using the SD card settings.");
+      if(wifi_info->ssid.length() == 0){
+        // SDカード設定の取得に失敗。Smart Configをスタート。
+        Serial.println("Can't get WiFi settings. Start Smart Config.");
+        if(!WifiSmartConfig()){
+          // Smart Config失敗。オフラインモード。
+          Serial.println("Smart Config failed. Running in offline mode.");
+          isOffline = true;
+        }
+      }else{
+        WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
+        if(Wifi_connection_check()){
+          // SDカード設定による接続に成功。
+          Serial.println("Successfully established a Wi-Fi connection via the SD card settings.");
+        }else{
+          // SDカード設定による接続に失敗。Smart Configをスタート。
+          Serial.println("WiFi connection failed due to SD card settings. Start Smart Config.");
+          if(!WifiSmartConfig()){
+            // Smart Config失敗。オフラインモード。
+            Serial.println("Smart Config failed. Running in offline mode.");
+            isOffline = true;
+          }
+        }
+      }
     }
-    else{
-      //WiFi設定を読み込めた場合のみネットワーク関連の設定を行う。
 
-      Serial.println("Connecting to WiFi");
-      WiFi.disconnect();
-      WiFi.softAPdisconnect(true);
-      WiFi.mode(WIFI_STA);
-      WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
-      if(Wifi_connection_check()){
-        M5.Lcd.println("\nConnected");
-        Serial.printf_P(PSTR("Go to http://"));
-        M5.Lcd.print("Go to http://");
-        Serial.println(WiFi.localIP());
-        M5.Lcd.println(WiFi.localIP());
-        delay(1000);
+    if(!isOffline){
+      Serial.println(WiFi.localIP());
+      M5.Lcd.println(WiFi.localIP());
+      delay(1000);
 
-        //Webサーバ設定
-        init_web_server();
-        //FTPサーバ設定（SPIFFS用）
-        ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
-        Serial.println("FTP server started");
-        M5.Lcd.println("FTP server started");
+      //Webサーバ設定
+      init_web_server();
+      //FTPサーバ設定（SPIFFS用）
+      ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
+      Serial.println("FTP server started");
+      M5.Lcd.println("FTP server started");
 
-        //時刻同期
-        time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
-
-      }
-      else{
-        M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
-        isOffline = true;
-      }
-      delay(3000);
+      //時刻同期
+      time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+    }else{
+      M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
     }
 
     robot = new Robot(system_config);
@@ -423,7 +439,7 @@ void setup()
   avatar.init(16);
 #endif
 
-  avatar.addTask(lipSync, "lipSync", 2048);
+  avatar.addTask(lipSync, "lipSync", 2048, 2);
   avatar.addTask(servo, "servo", 2048, 2);
   avatar.addTask(battery_check, "battery_check", 2048);
   avatar.setSpeechFont(&fonts::efontJA_16);
@@ -442,6 +458,10 @@ void setup()
   avatar.set_isSubWindowEnable(true);
 #endif
 
+#if defined(ENABLE_TAP_DETECT)
+  invokeDoubleTapDetectTask();
+#endif
+
   //init_watchdog();
 
   //ヒープメモリ残量確認(デバッグ用)
@@ -454,10 +474,12 @@ void setup()
 
 void loop()
 {
+  //get_elapsed_time_micro("loop() start");
   M5.update();
+  //get_elapsed_time_micro("M5.update time");
   ModBase* mod = get_current_mod();
-  
   mod->idle();
+  //get_elapsed_time_micro("Mod idle time");
 
   if (M5.BtnA.wasPressed())
   {
@@ -515,34 +537,28 @@ void loop()
   }
 #endif
 
+#if defined(ENABLE_TAP_DETECT)
+  if(doubleTapDetected){
+    Serial.println("loop(): Double tap detected");
+    mod->doubleTapped(detectedAcc[0], detectedAcc[1], detectedAcc[2]);
+    doubleTapDetected = false;
+  }
+
+  // Modで重い処理をしている場合はダブルタップ検出を停止する
+  if(mod->isBusy()){
+    stopDoubleTapDetectTask();
+  }else{
+    resumeDoubleTapDetectTask();
+  }
+#endif
+  //get_elapsed_time_micro("Callback process time");
+
   if(!isOffline){
     web_server_handle_client();
     ftpSrv.handleFTP();
   }
+
+  //get_elapsed_time_micro("Web event process time");
   
   //reset_watchdog();
-}
-
-
-void check_heap_free_size(void){
-  Serial.printf("===============================================================\n");
-  Serial.printf("Check free heap size\n");
-  Serial.printf("===============================================================\n");
-  //Serial.printf("esp_get_free_heap_size()                              : %6d\n", esp_get_free_heap_size() );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DMA)               : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DMA) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_SPIRAM)            : %6d\n", heap_caps_get_free_size(MALLOC_CAP_SPIRAM) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_INTERNAL)          : %6d\n", heap_caps_get_free_size(MALLOC_CAP_INTERNAL) );
-  Serial.printf("heap_caps_get_free_size(MALLOC_CAP_DEFAULT)           : %6d\n", heap_caps_get_free_size(MALLOC_CAP_DEFAULT) );
-
-}
-
-void check_heap_largest_free_block(void){
-  Serial.printf("===============================================================\n");
-  Serial.printf("Check largest free heap block\n");
-  Serial.printf("===============================================================\n");
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_DMA)      : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_DMA) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM)   : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_SPIRAM) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL) );
-  Serial.printf("heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT)  : %6d\n", heap_caps_get_largest_free_block(MALLOC_CAP_DEFAULT) );
-
 }
