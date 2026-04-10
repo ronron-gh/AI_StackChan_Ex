@@ -6,7 +6,8 @@
 #include "es8388.hpp"
 #include "driver/i2s.h"
 
-// for Core2
+
+#if defined(ARDUINO_M5STACK_Core2)
 #define SYS_I2C_SDA_PIN  21
 #define SYS_I2C_SCL_PIN  22
 #define SYS_I2S_MCLK_PIN 0
@@ -17,7 +18,18 @@
 #define SYS_SPI_MISO_PIN 38
 #define SYS_SPI_MOSI_PIN 23
 #define SYS_SPI_CLK_PIN  18
-#define SYS_SPI_CS_PIN   4
+#elif defined(ARDUINO_M5STACK_CORES3)
+#define SYS_I2C_SDA_PIN  12
+#define SYS_I2C_SCL_PIN  11
+#define SYS_I2S_MCLK_PIN 7
+#define SYS_I2S_SCLK_PIN 0
+#define SYS_I2S_LRCK_PIN 6
+#define SYS_I2S_DOUT_PIN 13
+#define SYS_I2S_DIN_PIN  14
+#define SYS_SPI_MISO_PIN 35
+#define SYS_SPI_MOSI_PIN 37
+#define SYS_SPI_CLK_PIN  36
+#endif
 
 extern AudioI2c device;
 extern ES8388 es8388;
