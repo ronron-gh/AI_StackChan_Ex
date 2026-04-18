@@ -11,7 +11,7 @@
 #include "SpiRamJsonDocument.h"
 #include "RealtimeChatGPT.h"
 #include "FunctionCall.h"
-//#include "MCPClient.h"
+#include "MCPClient.h"
 #include "Robot.h"
 
 #include <base64.h>
@@ -115,7 +115,10 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
                 // MCP tools listをfunctionとして挿入
                 //
-                for(int s=0; s<p_this->param.llm_conf.nMcpServers; s++){
+                for(int s=0; s < p_this->param.llm_conf.nMcpServers; s++){
+                    if(true == p_this->param.llm_conf.mcpServer[s].disabled){
+                        continue;
+                    }
                     if(!p_this->mcpClient[s]->isConnected()){
                         continue;
                     }
@@ -286,16 +289,7 @@ RealtimeChatGPT::RealtimeChatGPT(llm_param_t param)
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
   msgDoc = SpiRamJsonDocument(1024*150);
   
-  M5.Lcd.println("MCP Servers:");
-  for(int i=0; i<param.llm_conf.nMcpServers; i++){
-    mcpClient[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
-                                  param.llm_conf.mcpServer[i].port);
-    
-    if(mcpClient[i]->isConnected()){
-      M5.Lcd.println(param.llm_conf.mcpServer[i].name);
-    }
-  }
-
+  initMcpClientList(mcpClient, param.llm_conf.mcpServer, param.llm_conf.nMcpServers);
   fnCall = new FunctionCall(param, this, mcpClient);
   //fnCall->init_func_call_settings(robot->m_config);
 

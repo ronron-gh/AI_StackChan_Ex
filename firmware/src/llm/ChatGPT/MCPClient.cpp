@@ -1,3 +1,5 @@
+#include <Arduino.h>
+#include <M5Unified.h>
 #include "MCPClient.h"
 
 HTTPClient http;
@@ -42,6 +44,27 @@ String toolCallJson =
 "\"jsonrpc\":\"2.0\","
 "\"id\":1"
 "}";
+
+void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp)
+{
+  M5.Lcd.printf("Connect MCP Servers (%d)\n", nMcp);
+  Serial.printf("\nConnect MCP Servers (%d)\n", nMcp);
+  for(int i=0; i<nMcp; i++){
+    if(false == mcpParam[i].disabled){
+      mcpClient[i] = new MCPClient(mcpParam[i].url, mcpParam[i].port);
+      if(mcpClient[i]->isConnected()){
+        M5.Lcd.printf("  %s: connected\n", mcpParam[i].name.c_str());
+        Serial.printf("  %s: connected\n", mcpParam[i].name.c_str());
+      }else{
+        M5.Lcd.printf("  %s: connection failed\n", mcpParam[i].name.c_str());
+        Serial.printf("  %s: connection failed\n", mcpParam[i].name.c_str());
+      }
+    }else{
+      M5.Lcd.printf("  %s: disabled\n", mcpParam[i].name.c_str());
+      Serial.printf("  %s: disabled\n", mcpParam[i].name.c_str());
+    }
+  }
+}
 
 MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
   : mcpAddr(_mcpAddr), 
