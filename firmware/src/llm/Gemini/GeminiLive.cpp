@@ -144,6 +144,10 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
                     for(int t=0; t < p_this->mcpClient[s]->nTools; t++){
                         sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"].add(p_this->mcpClient[s]->toolsListDoc["result"]["tools"][t]);
+                        if(!sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"][t]["parameters"]["additionalProperties"].isNull()){
+                            // additionalPropertiesはGeminiで非対応のため削除する
+                            sessionUpdateDoc["setup"]["tools"][0]["functionDeclarations"][t]["parameters"].remove("additionalProperties");
+                        }
                     }
                 }
 

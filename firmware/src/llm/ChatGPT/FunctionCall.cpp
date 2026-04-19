@@ -233,7 +233,10 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
   }else{
 
     //関数名がいずれかのMCPサーバに属するかを検索し、ヒットしたらリクエストを送信する
-    for(int s=0; s<_param.llm_conf.nMcpServers; s++){
+    for(int s=0; s < _param.llm_conf.nMcpServers; s++){
+      if(true == _param.llm_conf.mcpServer[s].disabled){
+          continue;
+      }
       if(_mcpClient[s]->search_tool(String(name))){
         DynamicJsonDocument tool_params(512);
         tool_params["name"] = String(name);
