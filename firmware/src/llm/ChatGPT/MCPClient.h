@@ -7,6 +7,8 @@
 
 #define TOOLS_LIST_MAX   (20)
 
+extern String g_mcpInitResult;
+
 typedef struct MCPServerConf {
     String name;
     bool disabled;

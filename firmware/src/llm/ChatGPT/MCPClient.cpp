@@ -45,6 +45,9 @@ String toolCallJson =
 "\"id\":1"
 "}";
 
+
+String g_mcpInitResult = "";
+
 void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp)
 {
   M5.Lcd.printf("Connect MCP Servers (%d)\n", nMcp);
@@ -55,15 +58,19 @@ void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp)
       if(mcpClient[i]->isConnected()){
         M5.Lcd.printf("  %s: connected\n", mcpParam[i].name.c_str());
         Serial.printf("  %s: connected\n", mcpParam[i].name.c_str());
+        g_mcpInitResult += mcpParam[i].name + ": connected\n";
       }else{
         M5.Lcd.printf("  %s: connection failed\n", mcpParam[i].name.c_str());
         Serial.printf("  %s: connection failed\n", mcpParam[i].name.c_str());
+        g_mcpInitResult += mcpParam[i].name + ": connection failed\n";
       }
     }else{
       M5.Lcd.printf("  %s: disabled\n", mcpParam[i].name.c_str());
       Serial.printf("  %s: disabled\n", mcpParam[i].name.c_str());
+      g_mcpInitResult += mcpParam[i].name + ": disabled\n";
     }
   }
+  delay(3000);
 }
 
 MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)

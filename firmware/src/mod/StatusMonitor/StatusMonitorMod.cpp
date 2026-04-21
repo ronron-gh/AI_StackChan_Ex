@@ -7,6 +7,7 @@
 #include "MySchedule.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
+#include "llm/ChatGPT/MCPClient.h"
 #include <WiFiClientSecure.h>
 #include <Avatar.h>
 
@@ -44,7 +45,7 @@ void StatusMonitorMod::update(int page_no)
   String str = "";
   char tmp[256];
 
-  str += "<- prev                 next ->\n";
+  str += "<<<prev                 next>>>\n";
 
   if(page_no == 0){
     byte mac[6];
@@ -69,8 +70,12 @@ void StatusMonitorMod::update(int page_no)
 #endif
     sprintf(tmp, "Battery level:  %d %%\n", M5.Power.getBatteryLevel());
     str += tmp;
-  }  
-  if(page_no == 1){
+  }
+  else if(page_no == 1){
+    str += "========= MCP Servers =========\n";
+    str += g_mcpInitResult;
+  }
+  else if(page_no == 2){
     str += "===== Function call info  =====\n";
     str += "Reminder:\n";
     for(int i=0; i<MAX_SCHED_NUM; i++){
