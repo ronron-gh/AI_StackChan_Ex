@@ -7,6 +7,16 @@
 
 #define TOOLS_LIST_MAX   (20)
 
+extern String g_mcpInitResult;
+
+typedef struct MCPServerConf {
+    String name;
+    bool disabled;
+    String url;
+    int port;
+} mcp_server_s;
+
+
 class MCPClient {
 private:
     String mcpAddr;
@@ -42,5 +52,6 @@ public:
 
 };
 
+void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp);
 
 #endif
