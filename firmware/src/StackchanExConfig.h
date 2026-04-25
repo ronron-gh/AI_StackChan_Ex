@@ -73,6 +73,10 @@ typedef struct WakeWordConf {
     String keyword;
 } wakeword_s;
 
+typedef struct AudioConf {
+    uint8_t speaker_volume;
+} audio_s;
+
 typedef struct ModuleLLMConf {
     int8_t rxPin;
     int8_t txPin;
@@ -83,6 +87,7 @@ typedef struct ExConfig {
     tts_s tts;
     stt_s stt;
     wakeword_s wakeword;
+    audio_s audio;
     moduleLLM_s moduleLLM;
 } ex_config_s;
 

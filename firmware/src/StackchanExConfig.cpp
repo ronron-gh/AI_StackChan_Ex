@@ -132,7 +132,9 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 
     _ex_parameters.wakeword.type    = doc["wakeword"]["type"].as<int>();
     _ex_parameters.wakeword.keyword = doc["wakeword"]["keyword"].as<String>();
-    
+
+    _ex_parameters.audio.speaker_volume = doc["audio"]["speaker_volume"].as<int>();
+
     _ex_parameters.moduleLLM.rxPin  = doc["moduleLLM"]["rxPin"].as<int>();
     _ex_parameters.moduleLLM.txPin  = doc["moduleLLM"]["txPin"].as<int>();
 
@@ -161,6 +163,8 @@ void StackchanExConfig::printExtParameters(void)
 
     M5_LOGI("wakeword type: %d", _ex_parameters.wakeword.type);
     M5_LOGI("wakeword keyword: %s", _ex_parameters.wakeword.keyword.c_str());
+
+    M5_LOGI("audio speaker volume: %d", _ex_parameters.audio.speaker_volume);
 
     M5_LOGI("module llm rxPin: %d", _ex_parameters.moduleLLM.rxPin);
     M5_LOGI("module llm txPin: %d", _ex_parameters.moduleLLM.txPin);
