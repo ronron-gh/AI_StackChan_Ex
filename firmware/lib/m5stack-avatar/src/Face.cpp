@@ -43,6 +43,7 @@ Face::Face(Drawable *mouth, BoundingRect *mouthPos,
       subWindowPos{new BoundingRect(0, 0)},   // motoh
       boundingRect{new BoundingRect(0, 0, 320, 240)},
       offset_x{0},
+      offset_y{0},
       sprite{new M5Canvas(&M5.Lcd)},
       tmpSprite{new M5Canvas(&M5.Lcd)} {}
 
@@ -135,7 +136,7 @@ void Face::draw(DrawContext *ctx) {
       tmpSprite->fillSprite(0);
     }
     //sprite->pushRotateZoom(tmpSprite, rotation, scale, scale);
-    sprite->pushRotateZoom(tmpSprite, M5.Display.width() / 2 + offset_x, M5.Display.height() / 2, rotation, scale, scale);  //motoh
+    sprite->pushRotateZoom(tmpSprite, M5.Display.width() / 2 + offset_x, M5.Display.height() / 2 + offset_y, rotation, scale, scale);  //motoh
     sprite->deleteSprite();
     
     //Rotateしないようにここでdrawする  motoh
