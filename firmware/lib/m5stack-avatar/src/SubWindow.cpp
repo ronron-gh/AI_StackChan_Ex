@@ -113,11 +113,17 @@ void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
       pushSpriteTxt(spi, rect, ctx, subWdTxtBuf);
     }
     else if(drawType == SUB_DRAW_TYPE_QRCODE){
-      BoundingRect urlTxtRect;
-      urlTxtRect.setPosition(210, 0);
-      urlTxtRect.setSize(320, 30);
-      pushSpriteTxt(spi, urlTxtRect, ctx, subWdTxtBuf);
-      spi->qrcode(subWdTxtBuf,60,10,200,5);
+      int y = rect.getTop();
+      if(y != 0){
+        int width = 240 - y;
+        spi->qrcode(subWdTxtBuf, (320 - width) / 2, y, width, 5);
+      }else{
+        BoundingRect urlTxtRect;
+        urlTxtRect.setPosition(210, 0);
+        urlTxtRect.setSize(320, 30);
+        pushSpriteTxt(spi, urlTxtRect, ctx, subWdTxtBuf);
+        spi->qrcode(subWdTxtBuf,60,10,200,5);
+      }
     }
   }
 }
