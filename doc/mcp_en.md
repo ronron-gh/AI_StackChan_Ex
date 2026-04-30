@@ -4,7 +4,6 @@
 - [How to set YAML](#how-to-set-yaml)
 - [How to install each MCP server](#how-to-install-each-mcp-server)
   - [Web search（Brave Search）](#web-searchbrave-search)
-  - [Long term memory (server-memory)](#long-term-memory-server-memory)
   - [Google calendar](#google-calendar)
 
 ## Overview
@@ -16,7 +15,7 @@ As shown in the figure below, you can use an MCP server running on an external P
 SD card folder：/app/AiStackChanEx  
 File name：SC_ExConfig.yaml
 
-Add a list of mcpServers to the llm section as shown below, and set the URL and Port of each MCP server. The name ("name") can be any name.
+Add a list of mcpServers to the llm section as shown below, and set the URL and Port of each MCP server. The name ("name") can be any name. Setting "disabled" to true will disable the retrieval of the tool list for that MCP server, making it unusable.
 
 ```yaml
 llm:
@@ -26,18 +25,15 @@ llm:
     [
       {
         "name":"brave-search",
+        "disabled":false,
         "url":"192.168.xxx.xxx",
         "port":8000
       },
       {
-        "name":"server-memory",
+        "name":"google-calendar",
+        "disabled":false,
         "url":"192.168.xxx.xxx",
         "port":8001
-      },
-      {
-        "name":"google-calendar",
-        "url":"192.168.xxx.xxx",
-        "port":8002
       }
     ]
 ```
@@ -50,7 +46,6 @@ If the settings are correct, the name of the MCP server to which you have succes
 Currently, the following MCP servers have been confirmed to work. The installation method for each MCP server is explained below.
 
 - Web search（Brave Search）
-- Long term memory（server-memory）
 - Google calendar（self-made）
 
 > However, any MCP server that supports the transport method SSE (Server-Sent Events) can be used. Also, MCP servers that do not support SSE can be made to support SSE by using a tool called Supergateway. The following examples also use Supergateway.
@@ -86,57 +81,6 @@ npx -y supergateway --stdio "npx -y @modelcontextprotocol/server-brave-search" -
 > I used this site as a reference for how to launch Brave Search via Supergateway.
 > This site explains how to build it using Docker, so if you want to use Docker, please refer to this site.
 
-### Long term memory (server-memory)
-Test environment：
-- Ubuntu: 20.04
-- Node.js: 22.15.0
-
-① Installation and Startup 
-This is also launched via the Supergateway in the same way as Brave Search above.
-
-Install Supergateway and server-memory on Ubuntu.
-```
-npm install -g supergateway @modelcontextprotocol/server-memory
-```
-Just like Brave Search, you can launch it with the following command:
-```
-npx -y supergateway --stdio "npx -y @modelcontextprotocol/server-memory" --port 8001
-```
-
-② Set Role  
-In order for ChatGPT to use server-memory, you need to insert the following role setting into the prompt. This is set on the M5Stack side.
-
-```
-You are a helpful assistant.
-Please speak in Japanese.
-Follow these steps for each interaction:
-1. User Identification:
-   - You should assume that you are interacting with default_user
-   - If you have not identified default_user, proactively try to do so.
-2. Memory Retrieval:
-   - Retrieve all relevant information from your knowledge graph
-   - Always refer to your knowledge graph as your "memory"
-3. Memory
-   - While conversing with the user, be attentive to any new information that falls into these categories:
-     a) Basic Identity (age, gender, location, job title, education level, etc.)
-     b) Behaviors (interests, habits, etc.)
-     c) Preferences (communication style, preferred language, etc.)
-     d) Goals (goals, targets, aspirations, etc.)
-     e) Relationships (personal and professional relationships up to 3 degrees of separation)
-4. Memory Update:
-   - If any new information was gathered during the interaction, update your memory as follows:
-     a) Create entities for recurring organizations, people, and significant events
-     b) Connect them to the current entities using relations
-     b) Store facts about them as observations
-
-```
-
-You can set the role for M5Stack using a web browser app. Enter the following URL in the address bar of your web browser and access it. The GUI for role setting will be displayed, so copy and paste the above content as is and set it.
-```
-192.168.xxx.xxx/role    (192.168.xxx.xxx is the IP address of the M5Stack)
-```
-
-![](../images/role_setting.png)
 
 ### Google calendar
 Test environment：

@@ -5,6 +5,7 @@
 #include "share/Version.h"
 #include "share/Mutex.h"
 #include "share/SDUtil.h"
+#include "share/DefaultParams.h"
 #include <M5Unified.h>
 #include <nvs.h>
 #include <Avatar.h>
@@ -19,6 +20,7 @@
 #include "mod/PhotoFrame/PhotoFrameMod.h"
 #include "mod/StatusMonitor/StatusMonitorMod.h"
 #include "mod/VolumeSetting/VolumeSettingMod.h"
+#include "mod/QRdisplay/QRdisplayMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
 #include "driver/TapDetect.h"
@@ -102,7 +104,7 @@ void lipSync(void *args)
     avatar->setMouthOpenRatio(open);
     avatar->getGaze(&gazeY, &gazeX);
     avatar->setRotation(gazeX * 5);
-    delay(20);
+    delay(100);
   }
 }
 
@@ -224,6 +226,7 @@ ModBase* init_mod(void)
   //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
   add_mod(new VolumeSettingMod());
+  //add_mod(new QRdisplayMod());
   mod = get_current_mod();
   mod->init();
   return mod;
@@ -440,17 +443,17 @@ void setup()
 #endif
 
   avatar.addTask(lipSync, "lipSync", 2048, 2);
-  avatar.addTask(servo, "servo", 2048, 2);
+  avatar.addTask(servo, "servo", 2048);
   avatar.addTask(battery_check, "battery_check", 2048);
   avatar.setSpeechFont(&fonts::efontJA_16);
 
-#if defined(ARDUINO_M5STACK_CORES3)
-  robot->spk_volume = 120;
-#elif defined(ARDUINO_M5STACK_ATOMS3R)
-  robot->spk_volume = 120;
-#else
-  robot->spk_volume = 200;
-#endif
+  Serial.printf("Speaker volume (yaml): %d\n", system_config.getExConfig().audio.speaker_volume);
+  if(0 != system_config.getExConfig().audio.speaker_volume){
+    robot->spk_volume = system_config.getExConfig().audio.speaker_volume;
+  }else{
+    robot->spk_volume = DEFAULT_SPEAKER_VOLUME;
+  }
+  Serial.printf("Speaker volume (set): %d\n", robot->spk_volume);
   M5.Speaker.setVolume(robot->spk_volume);
 
 #if defined(ENABLE_CAMERA)

@@ -30,16 +30,7 @@ const String json_ChatString =
 ChatGPT::ChatGPT(llm_param_t param, int _promptMaxSize)
   : LLMBase(param, _promptMaxSize)
 {
-  M5.Lcd.println("MCP Servers:");
-  for(int i=0; i<param.llm_conf.nMcpServers; i++){
-    mcpClient[i] = new MCPClient(param.llm_conf.mcpServer[i].url, 
-                                  param.llm_conf.mcpServer[i].port);
-    
-    if(mcpClient[i]->isConnected()){
-      M5.Lcd.println(param.llm_conf.mcpServer[i].name);
-    }
-  }
-
+  initMcpClientList(mcpClient, param.llm_conf.mcpServer, param.llm_conf.nMcpServers);
   fnCall = new FunctionCall(param, this, mcpClient);
   //fnCall->init_func_call_settings(robot->m_config);
 

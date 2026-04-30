@@ -34,7 +34,7 @@ void webSocketLoopTask(void *arg) {
 
     while(1){
         pThis->webSocketProcess();
-        delay(1);
+        //delay(1);     //webSocketProcess()内で状態によってスリープ時間を変更
     }
 }
 
@@ -109,15 +109,18 @@ void RealtimeLLMBase::webSocketProcess()
 #else
         avatar.setSpeechText("Listening...");
 #endif
+        delay(1);
     }
     else{
         if(speaking){
             //発話中もしくはテキスト生成中
             avatar.setSpeechText("");
             resetRealtimeRecordStartTime(); //長いテキストを発話中にタイムアウトしてしまうのを防ぐ
+            delay(1);
         }
         else{
             avatar.setSpeechText("Please touch");
+            delay(10);
         }
     }
 }

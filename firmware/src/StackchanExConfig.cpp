@@ -117,6 +117,7 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         _ex_parameters.llm.mcpServer[i].name = doc["llm"]["mcpServers"][i]["name"].as<String>();
+        _ex_parameters.llm.mcpServer[i].disabled = doc["llm"]["mcpServers"][i]["disabled"].as<bool>();
         _ex_parameters.llm.mcpServer[i].url = doc["llm"]["mcpServers"][i]["url"].as<String>();
         _ex_parameters.llm.mcpServer[i].port = doc["llm"]["mcpServers"][i]["port"].as<int>();
     }
@@ -131,7 +132,9 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 
     _ex_parameters.wakeword.type    = doc["wakeword"]["type"].as<int>();
     _ex_parameters.wakeword.keyword = doc["wakeword"]["keyword"].as<String>();
-    
+
+    _ex_parameters.audio.speaker_volume = doc["audio"]["speaker_volume"].as<int>();
+
     _ex_parameters.moduleLLM.rxPin  = doc["moduleLLM"]["rxPin"].as<int>();
     _ex_parameters.moduleLLM.txPin  = doc["moduleLLM"]["txPin"].as<int>();
 
@@ -144,6 +147,7 @@ void StackchanExConfig::printExtParameters(void)
     M5_LOGI("llm nMcpServers: %d", _ex_parameters.llm.nMcpServers);
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         M5_LOGI("llm mcpServer[%d] name: %s", i, _ex_parameters.llm.mcpServer[i].name.c_str());
+        M5_LOGI("llm mcpServer[%d] disabled: %s", i, _ex_parameters.llm.mcpServer[i].disabled ? "true":"false");
         M5_LOGI("llm mcpServer[%d] url: %s", i, _ex_parameters.llm.mcpServer[i].url.c_str());
         M5_LOGI("llm mcpServer[%d] port: %d", i, _ex_parameters.llm.mcpServer[i].port);
     }
@@ -159,6 +163,8 @@ void StackchanExConfig::printExtParameters(void)
 
     M5_LOGI("wakeword type: %d", _ex_parameters.wakeword.type);
     M5_LOGI("wakeword keyword: %s", _ex_parameters.wakeword.keyword.c_str());
+
+    M5_LOGI("audio speaker volume: %d", _ex_parameters.audio.speaker_volume);
 
     M5_LOGI("module llm rxPin: %d", _ex_parameters.moduleLLM.rxPin);
     M5_LOGI("module llm txPin: %d", _ex_parameters.moduleLLM.txPin);

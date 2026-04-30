@@ -1,0 +1,13 @@
+#ifndef _DEFAULT_PARAMS_H
+#define _DEFAULT_PARAMS_H
+
+
+#if defined(ARDUINO_M5STACK_CORES3)
+  #define DEFAULT_SPEAKER_VOLUME  (120)
+#elif defined(ARDUINO_M5STACK_ATOMS3R)
+  #define DEFAULT_SPEAKER_VOLUME  (120)
+#else  //Core2
+  #define DEFAULT_SPEAKER_VOLUME  (200)
+#endif
+
+#endif

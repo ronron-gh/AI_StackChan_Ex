@@ -23,7 +23,7 @@ void drawLoop(void *args) {
       avatar->draw();
       avatar->fadeoutProcess();   //motoh
     }
-    vTaskDelay(10);
+    vTaskDelay(66);
   }
   vTaskDelete(NULL);
 }
@@ -61,7 +61,7 @@ void facialLoop(void *args) {
     c = c + 1 % 100;
     float f = sin(c * 2 * PI / 100.0);
     avatar->setBreath(f);
-    vTaskDelay(33);
+    vTaskDelay(66);
   }
 }
 
@@ -252,9 +252,9 @@ void Avatar::updateSubWindowTxt(String txt, int top, int left, int width, int he
 }
 
 //motoh
-void Avatar::updateSubWindowQrcode(String& txt) {
+void Avatar::updateSubWindowQrcode(String& txt, int top) {
   face->subWindow->updateDrawContentQrcode(txt);
-  face->subWindowPos->setPosition(0, 0);
+  face->subWindowPos->setPosition(top, 0);
   face->subWindowPos->setSize(0, 0);
 }  
 
@@ -266,6 +266,11 @@ void Avatar::set_isSubWindowEnable(bool isEnable){
 //motoh
 void Avatar::setFaceOffsetX(int16_t offset_x){
   face->offset_x = offset_x;
+}
+
+//motoh
+void Avatar::setFaceOffsetY(int16_t offset_y){
+  face->offset_y = offset_y;
 }
 
 //motoh

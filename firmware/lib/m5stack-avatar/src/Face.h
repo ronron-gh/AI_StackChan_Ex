@@ -37,6 +37,7 @@ class Face {
   SubWindow *subWindow;        // motoh
   BoundingRect *subWindowPos;  // motoh
   int16_t offset_x;            // motoh
+  int16_t offset_y;            // motoh
 
   // constructor
   Face();
