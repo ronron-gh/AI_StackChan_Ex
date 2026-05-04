@@ -97,11 +97,11 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       // Gemini Liveは応答の音声が長くなると途中でDisconnectすることがあるため、ストリーミング再生の終了処理を行う。
       // ※Disconnectの原因究明までの暫定処置
       if(p_this->speaking == true){
-        p_this->startRealtimeRecord();
-        while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+        while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
         M5.Speaker.end();
         M5.Mic.begin();
         exitMutexAudio();
+        p_this->startRealtimeRecord();
 
         for(int i=0; i<2; i++){
             memset(p_this->audioBuf[i], 0, 100 * 1024);
@@ -261,11 +261,11 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 Serial.printf("[WSc] turnComplete: %s\n", payload);
 
 #ifndef REALTIME_API_WITH_TTS
-                p_this->startRealtimeRecord();
-                while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+                while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
                 M5.Speaker.end();
                 M5.Mic.begin();
                 exitMutexAudio();
+                p_this->startRealtimeRecord();
 
                 for(int i=0; i<2; i++){
                     memset(p_this->audioBuf[i], 0, 100 * 1024);

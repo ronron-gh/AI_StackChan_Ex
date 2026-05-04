@@ -223,7 +223,7 @@ void RealtimeLLMBase::streamAudioDelta(String& delta)
     int len = base64_decode(delta.c_str(), base64Size, (char*)buf);
     Serial.printf("audio pcm16 size: %d byte\n", len);
 
-    while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+    while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
     M5.Speaker.playRaw((int16_t*)buf, len/2, 24000, false);
     nextBufIdx ^= 1;  //ダブルバッファを切り替え
 }
@@ -234,7 +234,7 @@ void RealtimeLLMBase::invokeWebSocketLoopTask(void)
             "webSocketLoopTask", /* Name of the task */
             6*1024,               /* Stack size in words */
             this,                 /* Task input parameter */
-            2,                    /* Priority of the task */
+            3,                    /* Priority of the task */
             &webSocketLoopTask_h);                /* Task handle. */
 }
 

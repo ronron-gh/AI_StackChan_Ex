@@ -3,8 +3,9 @@
 - [概要](#概要)
 - [YAMLの設定方法](#yamlの設定方法)
 - [各種MCPサーバの導入方法](#各種mcpサーバの導入方法)
-  - [Web検索（Brave Search）](#web検索brave-search)
+  - [Brave Search](#brave-search)
   - [Googleカレンダー](#googleカレンダー)
+  - [LINE Bot](#line-bot)
 
 ## 概要
 下図のように外部のPC（Linux）で起動したMCPサーバをChatGPTのFunction Callingを介して使用することができます。M5Stack側はSDカード上のYAMLファイルで各MCPサーバのURLを設定するだけで、起動時に自動的に各MCPサーバからTool listを取得してFunction Callingのプロンプトに登録されます。
@@ -46,12 +47,13 @@ llm:
 ## 各種MCPサーバの導入方法
 現在以下のMCPサーバについて動作を確認済みです。それぞれのMCPサーバの導入方法について以降で解説します。
 
-- Web検索（Brave Search）
-- Googleカレンダー（自作）
+- Brave Search（Web検索）
+- Googleカレンダー
+- LINE Bot（自分のLINEアカウントにメッセージを送信）
 
 > これらに限らず、基本的にはトランスポートの方式がSSE（Server-Sent Events）に対応したMCPサーバであれば利用することができます。また、SSEに対応していないMCPサーバも、Supergatewayというツールを利用することでSSEに対応させることができます。以降の例でもSupergatewayを利用しています。
 
-### Web検索（Brave Search）
+### Brave Search
 UbuntuをインストールしたPCでBrave Searchを動かす手順を解説します。予めNode.jsもインストールしてください。
 動作を確認したバージョンは次の通りです（最低要件ということではありません）。MCPサーバの負荷は高くないので、低スペックなPCでも問題ありません。Raspberry Pi等のSBCでも動くと思います（動作は未確認）。
 
@@ -92,3 +94,6 @@ npx -y supergateway --stdio "npx -y @modelcontextprotocol/server-brave-search" -
 ```
 git clone -b change_to_sse https://github.com/ronron-gh/google-calendar-mcp-server.git
 ```
+
+### LINE Bot
+LINE Botから自分のLINEアカウントにメッセージを送信できるMCPです。MCPサーバの作り方は[Qiita記事](https://qiita.com/motoh_qiita/items/1d308dc27f03560dd307)として投稿しましたのでご参照ください。

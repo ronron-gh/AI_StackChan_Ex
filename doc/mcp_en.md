@@ -3,8 +3,9 @@
 - [Overview](#overview)
 - [How to set YAML](#how-to-set-yaml)
 - [How to install each MCP server](#how-to-install-each-mcp-server)
-  - [Web search（Brave Search）](#web-searchbrave-search)
+  - [Brave Search](#brave-search)
   - [Google calendar](#google-calendar)
+  - [LINE Bot](#line-bot)
 
 ## Overview
 As shown in the figure below, you can use an MCP server running on an external PC (Linux) via ChatGPT's Function Calling. On the M5Stack side, you just need to set the URL of each MCP server in the YAML file on the SD card, and the tool list will be automatically obtained from each MCP server at startup and registered in the Function Calling prompt.
@@ -45,12 +46,13 @@ If the settings are correct, the name of the MCP server to which you have succes
 ## How to install each MCP server
 Currently, the following MCP servers have been confirmed to work. The installation method for each MCP server is explained below.
 
-- Web search（Brave Search）
-- Google calendar（self-made）
+- Brave Search (Web search)
+- Google calendar
+- LINE Bot (Send a message to your LINE account)
 
 > However, any MCP server that supports the transport method SSE (Server-Sent Events) can be used. Also, MCP servers that do not support SSE can be made to support SSE by using a tool called Supergateway. The following examples also use Supergateway.
 
-### Web search（Brave Search）
+### Brave Search
 This section explains how to run Brave Search on a PC with Ubuntu installed. Please also install Node.js beforehand.
 The following versions have been confirmed to work (these are not the minimum requirements). The load on the MCP server is not high, so there are no problems with low-spec PCs.
 
@@ -91,3 +93,6 @@ I forked the "Google Calendar MCP Server" from [this repository](https://github.
 ```
 git clone -b change_to_sse https://github.com/ronron-gh/google-calendar-mcp-server.git
 ```
+
+### LINE Bot
+This is an MCP that allows you to send messages to your own LINE account from a LINE Bot. Instructions on how to create an MCP server are posted as a [Qiita article](https://qiita.com/motoh_qiita/items/1d308dc27f03560dd307), so please refer to it.
