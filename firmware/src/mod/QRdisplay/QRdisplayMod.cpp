@@ -33,16 +33,18 @@ QRdisplayMod::QRdisplayMod(void)
 void QRdisplayMod::init(void)
 {
   avatar.setSpeechText("QR Code Display");
+  setCpuFrequencyMhz(80);                         // 動作周波数を落とす
   delay(1000);
   avatar.setSpeechText("");
   //update();
   servo_home = true;
-
+  btnB_pressed();
 }
 
 
 void QRdisplayMod::pause(void)
 {
+  setCpuFrequencyMhz(240);                         // 動作周波数を元に戻す
   isFaceDetected = false;
   displayQR(false);
   avatar.set_isSubWindowEnable(false);
@@ -120,10 +122,12 @@ bool QRdisplayMod::displayQR(bool isDisplay)
     avatar.updateSubWindowQrcode(url, 78);
     avatar.setSpeechText("");
     avatar.set_isSubWindowEnable(true);
+    avatar.setScale(0.7);
     avatar.setFaceOffsetY(-80);
   }
   else{
     avatar.set_isSubWindowEnable(false);
+    avatar.setScale(1.0);
     avatar.setFaceOffsetY(0);
   }
 

@@ -125,7 +125,7 @@ void servo(void *args)
       robot->servo->moveToOrigin();
     }
 #endif
-    delay(50);
+    delay(5000);
   }
 }
 
@@ -222,10 +222,10 @@ ModBase* init_mod(void)
     add_mod(new AiStackChanMod(isOffline));
 #endif
   }
-  //add_mod(new PomodoroMod(isOffline));
-  //add_mod(new PhotoFrameMod(isOffline));
   add_mod(new StatusMonitorMod());
   add_mod(new VolumeSettingMod());
+  //add_mod(new PomodoroMod(isOffline));
+  //add_mod(new PhotoFrameMod(isOffline));
   //add_mod(new QRdisplayMod());
   mod = get_current_mod();
   mod->init();

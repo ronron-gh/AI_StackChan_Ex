@@ -237,11 +237,11 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
                 if(!isFuncCall){
 #ifndef REALTIME_API_WITH_TTS
-                    p_this->startRealtimeRecord();
-                    while (M5.Speaker.isPlaying()) { /*vTaskDelay(1);*/ }
+                    while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
                     M5.Speaker.end();
                     M5.Mic.begin();
                     exitMutexAudio();
+                    p_this->startRealtimeRecord();
 
                     for(int i=0; i<2; i++){
                         memset(p_this->audioBuf[i], 0, 100 * 1024);
