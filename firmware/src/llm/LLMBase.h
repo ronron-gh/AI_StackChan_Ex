@@ -13,6 +13,7 @@ extern ChatHistory chatHistory;
 extern const String defaultRole;
 extern const String systemRole_memory;
 extern const String systemRole_noMemory;
+extern const String systemRole_realtimeAvatarExpression;
 
 #define SYSTEM_PROMPT_INDEX_USER_ROLE     (0)
 #define SYSTEM_PROMPT_INDEX_SYSTEM_ROLE   (1)

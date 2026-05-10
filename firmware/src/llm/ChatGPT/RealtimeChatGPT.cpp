@@ -325,6 +325,7 @@ void RealtimeChatGPT::load_role(){
   }else{
     systemRole = systemRole_noMemory;
   }
+  systemRole += " " + systemRole_realtimeAvatarExpression;
 
   if(load_system_prompt_from_spiffs()){
     role = String((const char*)systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"]);
