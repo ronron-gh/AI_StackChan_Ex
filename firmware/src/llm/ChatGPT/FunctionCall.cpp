@@ -49,6 +49,23 @@ const String json_Functions =
       "\"required\": [\"memory\"]"
     "}"
   "},"
+#if defined(REALTIME_API)
+  "{"
+    "\"name\": \"set_avatar_expression\","
+    "\"description\": \"Change Stack-chan's facial expression to match the current emotion.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"expression\":{"
+          "\"type\": \"string\","
+          "\"description\": \"Facial expression to set.\","
+          "\"enum\": [\"neutral\", \"happy\", \"angry\", \"sad\", \"doubt\", \"sleepy\"]"
+        "}"
+      "},"
+      "\"required\": [\"expression\"]"
+    "}"
+  "},"
+#endif
   "{"
     "\"name\": \"timer\","
     "\"description\": \"指定した時間が経過したら、指定した動作を実行する。指定できる動作はalarmとshutdown。\","
@@ -251,6 +268,12 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
       Serial.println(memory);
       response = fn_update_memory(_llm, memory);
     }
+#if defined(REALTIME_API)
+    else if(strcmp(name, "set_avatar_expression") == 0){
+      const char* expression = argsDoc["expression"];
+      response = set_avatar_expression(expression);
+    }
+#endif
     else if(strcmp(name, "timer") == 0){
       const int time = argsDoc["time"];
       const char* action = argsDoc["action"];
@@ -323,6 +346,43 @@ String FunctionCall::fn_update_memory(LLMBase* llm, const char* memory){
   Serial.println(response);
   return response;
 }
+
+#if defined(REALTIME_API)
+String FunctionCall::set_avatar_expression(const char* expression){
+  if(expression == NULL){
+    return "Avatar expression is missing.";
+  }
+
+  String expressionName = String(expression);
+  expressionName.toLowerCase();
+
+  Expression avatarExpression = Expression::Neutral;
+  if(expressionName.equals("neutral")){
+    avatarExpression = Expression::Neutral;
+  }
+  else if(expressionName.equals("happy")){
+    avatarExpression = Expression::Happy;
+  }
+  else if(expressionName.equals("angry")){
+    avatarExpression = Expression::Angry;
+  }
+  else if(expressionName.equals("sad")){
+    avatarExpression = Expression::Sad;
+  }
+  else if(expressionName.equals("doubt")){
+    avatarExpression = Expression::Doubt;
+  }
+  else if(expressionName.equals("sleepy")){
+    avatarExpression = Expression::Sleepy;
+  }
+  else{
+    return "Unknown avatar expression: " + expressionName;
+  }
+
+  avatar.setExpression(avatarExpression);
+  return "Avatar expression set to " + expressionName + ".";
+}
+#endif
 
 
 String FunctionCall::timer(int32_t time, const char* action){
