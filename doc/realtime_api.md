@@ -59,38 +59,7 @@ llm:
 SDカードフォルダ：/yaml  
 ファイル名：SC_BasicConfig.yaml
 
-サーボの種類、ポート等を設定をします。サーボを使わない場合は省略して問題ありません。
-
-```yaml
-servo: 
-  pin: 
-    # ServoPin
-    # Core1 PortA X:22,Y:21 PortC X:16,Y:17
-    # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
-    # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
-    # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
-    x: 33
-    y: 32
-  center:
-    # SG90 X:90, Y:90
-    # SCS0009 X:150, Y:150
-    # Dynamixel X:180, Y:270
-    x: 90
-    y: 90
-  offset: 
-    # Specified by +- from 90 degree during servo initialization
-    x: 0
-    y: 0
-
-servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
-
-takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
-```
-
-> SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
-
-> [Stack-chan_Takao_Base](https://ssci.to/8905)のUSBポートから給電する場合は`takao_base`をtrueにしてください。falseでも給電はできますが、バッテリーの充電ができません。なお、`takao_base`をtrueにしたままで、M5StackのUSBポートから給電したりバッテリー駆動させたりする場合はサーボが動きません。
+サーボの種類、ポート等を[基本的な利用方法 2.1.YAMLによる初期設定](./basic_usage.md#sc_basicconfigyaml)に従い設定します。サーボを使わない場合は省略して問題ありません。
 
 ### ビルド＆書き込み
 下図のように、VSCode(Platformio)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  

@@ -90,28 +90,55 @@ Configure the servo settings.
 servo: 
   pin: 
     # ServoPin
-    # Core1 PortA X:22,Y:21 PortC X:16,Y:17
     # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
-    # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
-    # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
-    x: 33
-    y: 32
-  center:
-    # SG90 X:90, Y:90
-    # SCS0009 X:150, Y:150
-    # Dynamixel X:180, Y:270
-    x: 90
-    y: 90
+    # CoreS3 PortA X:2, Y:1 PortB X:9, Y:8 PortC X:17, Y:18
+    # When using SCS0009 or Dynamixel XL330, x:RX, y:TX (not used)
+    #   RT Version (Dynamixel): x:6 y:7
+    #   M5StackChan (SCS0009) : x:7 y:6
+    x: 7
+    y: 6
   offset: 
     # Specified by +- from 90 degree during servo initialization
     x: 0
     y: 0
+  center:
+    # サーボの初期位置
+    # SG90: x:90 y:90
+    # SCS0009: x:150, y:150
+    # Dynamixel XL330: x:180, y:270
+    # RT Version X:180 Y:5
+    # M5StackChan: x:150, y:90
+    x: 150
+    y: 90
+  lower_limit:
+    # 可動範囲の下限（下限と言っても取り付け方により逆の場合あり, 値の小さい方を指定。）
+    # SG90: x:0, y:60
+    # SCS0009: x:0, y:120
+    # Dynamixel XL330: x:0, y:220
+    # RT Version X:90 Y:-5
+    # M5StackChan: x:0 y:0
+    x: 0
+    y: 0
+  upper_limit:
+    # 可動範囲の上限（上限と言っても取り付け方により逆の場合もあり, 値の大きい方を指定。）
+    # SG90: x:180, y:90
+    # SCS0009: x:300, y:150
+    # Dynamixel XL330: x:360, y:270
+    # Dynamixel RTVersion X:270 Y:15
+    # M5StackChan: X:300 y:90
+    x: 300 
+    y: 90
 
-servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
+servo_type: "M5_SCS" # "PWM": SG90PWMServo
+                     # "SCS": Feetech SCS0009
+                     # "DYN_XL330": Dynamixel XL330
+                     # "RT_DYN_XL330": RTVersion 
+                     # "M5_SCS": M5StackChan Servo
+
+takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
 ```
 
-> SC_BasicConfig.yaml contains various other basic settings, but currently this software only supports the settings listed above.
+> If you are using M5StackChan (StackChan, a product officially released by M5Stack), please ensure that the version of the stackchan-arduino library is v0.0.7 or higher.
 
 
 #### SC_ExConfig.yaml

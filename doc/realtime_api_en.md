@@ -56,32 +56,7 @@ llm:
 SD card folder：/yaml  
 File name：SC_BasicConfig.yaml
 
-Set the servo type, port, etc. If you are not using servos, you can omit this.
-
-```yaml
-servo: 
-  pin: 
-    # ServoPin
-    # Core1 PortA X:22,Y:21 PortC X:16,Y:17
-    # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
-    # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
-    # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
-    x: 33
-    y: 32
-  center:
-    # SG90 X:90, Y:90
-    # SCS0009 X:150, Y:150
-    # Dynamixel X:180, Y:270
-    x: 90
-    y: 90
-  offset: 
-    # Specified by +- from 90 degree during servo initialization
-    x: 0
-    y: 0
-
-servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
-```
+Configure the servo type, port, etc. according to [Basic Usage  2.1.Initial Setup with YAML](./basic_usage_en.md#sc_basicconfigyaml). If you are not using servos, you can omit this.
 
 
 ### Build and write

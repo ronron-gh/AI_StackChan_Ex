@@ -85,7 +85,7 @@ YAMLファイルは次の3種類があります。
 
 > AtomS3RはSDカード非対応のため、SPIFFSにこれらのファイルを書き込みます。書き込み方法は[こちら](./atoms3r.md)を参照ください。
 
-#### 2.1. SC_SecConfig.yaml
+#### SC_SecConfig.yaml
 SDカードフォルダ：/yaml  
 ファイル名：SC_SecConfig.yaml
 
@@ -103,7 +103,7 @@ apikey:
 ```
 
 
-#### 2.2. SC_BasicConfig.yaml
+#### SC_BasicConfig.yaml
 SDカードフォルダ：/yaml  
 ファイル名：SC_BasicConfig.yaml
 
@@ -113,35 +113,60 @@ SDカードフォルダ：/yaml
 servo: 
   pin: 
     # ServoPin
-    # Core1 PortA X:22,Y:21 PortC X:16,Y:17
     # Core2 PortA X:33,Y:32 PortC X:13,Y:14
-    # CoreS3 PortA X:1,Y:2 PortB X:8,Y:9 PortC X:18,Y:17
-    # Stack-chanPCB Core1 X:5,Y:2 Core2 X:19,Y27
-    # When using SCS0009, x:RX, y:TX (not used).(StackchanRT Version:Core1 x16,y17, Core2: x13,y14)
-    x: 33
-    y: 32
-  center:
-    # SG90 X:90, Y:90
-    # SCS0009 X:150, Y:150
-    # Dynamixel X:180, Y:270
-    x: 90
-    y: 90
+    # CoreS3 PortA X:2, Y:1 PortB X:9, Y:8 PortC X:17, Y:18
+    # When using SCS0009 or Dynamixel XL330, x:RX, y:TX (not used)
+    #   RT Version (Dynamixel): x:6 y:7
+    #   M5StackChan (SCS0009) : x:7 y:6
+    x: 7
+    y: 6
   offset: 
     # Specified by +- from 90 degree during servo initialization
     x: 0
     y: 0
+  center:
+    # サーボの初期位置
+    # SG90: x:90 y:90
+    # SCS0009: x:150, y:150
+    # Dynamixel XL330: x:180, y:270
+    # RT Version X:180 Y:5
+    # M5StackChan: x:150, y:90
+    x: 150
+    y: 90
+  lower_limit:
+    # 可動範囲の下限（下限と言っても取り付け方により逆の場合あり, 値の小さい方を指定。）
+    # SG90: x:0, y:60
+    # SCS0009: x:0, y:120
+    # Dynamixel XL330: x:0, y:220
+    # RT Version X:90 Y:-5
+    # M5StackChan: x:0 y:0
+    x: 0
+    y: 0
+  upper_limit:
+    # 可動範囲の上限（上限と言っても取り付け方により逆の場合もあり, 値の大きい方を指定。）
+    # SG90: x:180, y:90
+    # SCS0009: x:300, y:150
+    # Dynamixel XL330: x:360, y:270
+    # Dynamixel RTVersion X:270 Y:15
+    # M5StackChan: X:300 y:90
+    x: 300 
+    y: 90
 
-servo_type: "PWM" # "PWM": SG90PWMServo, "SCS": Feetech SCS0009
+servo_type: "M5_SCS" # "PWM": SG90PWMServo
+                     # "SCS": Feetech SCS0009
+                     # "DYN_XL330": Dynamixel XL330
+                     # "RT_DYN_XL330": RTVersion 
+                     # "M5_SCS": M5StackChan Servo
 
 takao_base: false # Whether to use takaobase to feed power from the rear connector.(Stack-chan_Takao_Base  https://ssci.to/8905)
 
 ```
 
-> SC_BasicConfig.yamlには他にも様々な基本設定が記述されていますが、現状、本ソフトが対応しているのは上記の設定のみです。
+> M5StackChan (M5Stack公式が製品化したｽﾀｯｸﾁｬﾝ)の設定で利用する場合は、stackchan-arduinoライブラリのバージョンがv0.0.7以上であることを確認してください。
 
 > [Stack-chan_Takao_Base](https://ssci.to/8905)のUSBポートから給電する場合は`takao_base`をtrueにしてください。falseでも給電はできますが、バッテリーの充電ができません。なお、`takao_base`をtrueにしたままで、M5StackのUSBポートから給電したりバッテリー駆動させたりする場合はサーボが動きません。
 
-#### 2.3. SC_ExConfig.yaml
+#### SC_ExConfig.yaml
 SDカードフォルダ：/app/AiStackChanEx  
 ファイル名：SC_ExConfig.yaml
 
