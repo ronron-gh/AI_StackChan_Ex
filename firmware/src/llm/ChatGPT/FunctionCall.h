@@ -43,6 +43,10 @@ public:
     //
     String fn_update_memory(LLMBase* llm, const char* memory);
 
+    #if defined(REALTIME_API)
+    String set_avatar_expression(const char* expression);
+    #endif
+
     String timer(int32_t time, const char* action);
     String timer_change(int32_t time);
 

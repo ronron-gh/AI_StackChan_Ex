@@ -14,6 +14,26 @@ Notes on FW design, etc.
 | asyncTtsStreamTask | TTS streaming play | 5 * 1024 | 2 |
 | webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 2 |
 
+## Realtime API Function Calling
+
+### Avatar Expression
+
+Realtime API ビルドでは、Function Calling により AI が会話中の感情に合わせて Avatar の表情を変更できる。
+
+- 対象ビルド
+  - `REALTIME_API` が定義される PlatformIO 環境。
+- 関数名
+  - `set_avatar_expression`
+- 引数
+  - `expression`: `neutral`, `happy`, `angry`, `sad`, `doubt`, `sleepy`
+- 実装
+  - `src/llm/ChatGPT/FunctionCall.cpp`
+  - `m5avatar::Expression` に変換して `Avatar::setExpression()` を呼び出す。
+  - `LLMBase.cpp` の `systemRole_realtimeAvatarExpression` で Realtime API の system instructions に利用方針を明示する。
+- スコープ
+  - `json_Functions` は通常 ChatGPT や Gemini Live からも参照されるため、この関数の schema と実行処理は `#if defined(REALTIME_API)` で限定する。
+  - `systemRole_realtimeAvatarExpression` は Realtime 系 LLM の `load_role()` で `systemRole_memory` または `systemRole_noMemory` に追加する。
+
 ## Web App
 WebAPI.cpp のインラインアセンブラ(マクロ：IMPORT_FILE)で incbinフォルダ内のhtmlファイルやjsファイルをプログラム領域に埋め込む。
 

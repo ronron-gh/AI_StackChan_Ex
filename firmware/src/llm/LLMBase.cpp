@@ -28,6 +28,7 @@ const String defaultRole = "You are an AI robot named Stack-chan. Please speak i
 // システム用のロール（Function Callingの利用方針など）
 const String systemRole_memory = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
 const String systemRole_noMemory = "Memory function disabled. Do not use update_memory tool.";
+const String systemRole_realtimeAvatarExpression = "Use the set_avatar_expression tool proactively to match Stack-chan's facial expression to the emotional tone of the conversation. Call it when your emotion changes or when the user's emotion suggests a suitable reaction. Use neutral, happy, angry, sad, doubt, or sleepy.";
 
 
 
