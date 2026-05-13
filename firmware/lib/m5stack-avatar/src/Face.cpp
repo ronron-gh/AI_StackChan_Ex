@@ -76,9 +76,12 @@ Drawable *Face::getRightEye() { return eyeR; }
 
 BoundingRect *Face::getBoundingRect() { return boundingRect; }
 
-void Face::draw(DrawContext *ctx) {
+void Face::initSprites(int colorDepth) {
+  sprite->setColorDepth(colorDepth);
   sprite->createSprite(boundingRect->getWidth(), boundingRect->getHeight());
-  sprite->setColorDepth(ctx->getColorDepth());
+}
+
+void Face::draw(DrawContext *ctx) {
   // NOTE: setting below for 1-bit color depth
   sprite->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
     ctx->getColorPalette()->get(COLOR_BACKGROUND));
@@ -153,7 +156,6 @@ void Face::draw(DrawContext *ctx) {
     tmpSprite->deleteSprite();
   } else {
     sprite->pushSprite(&M5.Display, boundingRect->getLeft(), boundingRect->getTop());
-    sprite->deleteSprite();
   }
   //sprite->deleteSprite();
 }
