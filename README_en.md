@@ -1,5 +1,7 @@
 [日本語](README.md)
-
+Baloo - StackChan CoreS3
+Turning StackChan into "Baloo", - A warm, playful, AI companion and teacher for M5Stack CoreS3 / StackChan
+----------------------
 # AI Stack-chan Ex
 Based on robo8080's [AI Stack-chan](https://github.com/robo8080/AI_StackChan2), we have added the following functions.  
 - Expanding AI capabilities
