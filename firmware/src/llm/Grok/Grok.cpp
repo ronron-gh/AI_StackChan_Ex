@@ -3,10 +3,10 @@
 #include <Arduino.h>
 
 Grok::Grok(llm_param_t param)
-  : LLMBase(param, 8192)   // 8192 is a reasonable default prompt size
+  : LLMBase(param, 8192)
 {
   apiKey = param.api_key;
-  model  = "grok-3-mini";  // Change to "grok-3" for the larger model if desired
+  model  = "grok-3-mini";
   client.setInsecure();
 }
 
@@ -26,7 +26,7 @@ String Grok::buildPayload(const String& userMessage) {
 
 bool Grok::sendRequest(const String& payload) {
   if (!client.connect("api.x.ai", 443)) {
-    Serial.println("[Grok] Connection to api.x.ai failed");
+    Serial.println("[Grok] Connection failed");
     return false;
   }
 
@@ -40,7 +40,6 @@ bool Grok::sendRequest(const String& payload) {
 
   client.print(request);
 
-  // Read response
   String response = "";
   unsigned long timeout = millis();
   while (client.connected() && (millis() - timeout < 15000)) {
@@ -51,37 +50,26 @@ bool Grok::sendRequest(const String& payload) {
   }
   client.stop();
 
-  Serial.println("=== Grok Response ===");
-  Serial.println(response);
-
-  // Basic content extraction (we'll improve this later)
-  int contentStart = response.indexOf("\"content\":\"");
-  if (contentStart != -1) {
-    contentStart += 11;
-    int contentEnd = response.indexOf("\"", contentStart);
-    if (contentEnd != -1) {
-      String reply = response.substring(contentStart, contentEnd);
+  int start = response.indexOf("\"content\":\"");
+  if (start != -1) {
+    start += 11;
+    int end = response.indexOf("\"", start);
+    if (end != -1) {
+      String reply = response.substring(start, end);
       reply.replace("\\n", "\n");
       reply.replace("\\\"", "\"");
       robot->speech(reply);
       return true;
     }
   }
-
-  Serial.println("[Grok] Failed to parse response content");
   return false;
 }
 
-bool Grok::chat(const char* text, const char* image) {
-  if (image != NULL) {
-    Serial.println("[Grok] Image input not yet supported in this driver");
-  }
-
-  String payload = buildPayload(String(text));
-  return sendRequest(payload);
+void Grok::chat(String text, const char* base64_buf) {
+  String payload = buildPayload(text);
+  sendRequest(payload);
 }
 
 String Grok::listen() {
-  // Placeholder for future Grok STT integration
   return "";
 }

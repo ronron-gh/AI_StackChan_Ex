@@ -15,7 +15,7 @@
 #include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
-#include "llm/Grok/Grok.h"                    // <-- Added for Grok
+#include "llm/Grok/Grok.h"
 #include "Avatar.h"
 
 using namespace m5avatar;
@@ -23,16 +23,11 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern bool servo_home;
 
-//#if defined(REALTIME_API_WITH_TTS)
-// TTS非同期実行用のタスク
-//
 void asyncTtsStreamTask(void *arg) {
   Serial.println("TTS stream task created");
   Robot* pRt = (Robot*)arg;
-
   while(1){
     if(pRt->llm->getOutputTextQueueSize() != 0){
-      Serial.println("TTS stream task: get text form queue");
       pRt->asyncPlaying = true;
       String ttsText = pRt->llm->getOutputText();
       pRt->tts->stream(ttsText);
@@ -42,12 +37,8 @@ void asyncTtsStreamTask(void *arg) {
   }
 }
 
-//#endif
-
 Robot::Robot(StackchanExConfig& config) : m_config(config)
 {
-  // Servo setting
-  //
 #ifdef USE_SERVO
   servo = new ServoCustom();
   servo->begin(config.getServoInfo(AXIS_X)->pin, config.getServoInfo(AXIS_X)->start_degree,
@@ -57,52 +48,19 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
               (ServoType)config.getServoType());
 #endif
 
-  // TakaoBase setting 
-  //
   M5.Power.setExtOutput(!config.getUseTakaoBase());
 
-  // AI service setting
-  //
 #if defined(REALTIME_API)
   initRtLLM(config);
-
   #if defined(REALTIME_API_WITH_TTS)
     initTTS(config);
     invokeAsyncTtsStreamTask();
   #endif
-
-#else //REALTIME_API
-
-#if defined(USE_LLM_MODULE)
-  module_llm_param = module_llm_param_t();
-#endif
-  
+#else
   initLLM(config);
   initTTS(config);
   initSTT(config);
-
-#if defined(USE_LLM_MODULE)
-  module_llm_param.rxPin = config.getExConfig().moduleLLM.rxPin;
-  module_llm_param.txPin = config.getExConfig().moduleLLM.txPin;
-  int wakeword_type = config.getExConfig().wakeword.type;
-  if(wakeword_type == WAKEWORD_TYPE_MODULE_LLM_KWS){
-    module_llm_param.enableKWS = true;
-    module_llm_param.wake_up_keyword = config.getExConfig().wakeword.keyword;
-  }
-  module_llm_setup(module_llm_param);
-
-  if(!module_llm_param.enableTTS){
-    invokeAsyncTtsStreamTask();
-  }
 #endif
-
-#endif  //REALTIME_API
-
-}
-
-bool Robot::isAllOfflineService()
-{
-  return llm->isOfflineService && stt->isOfflineService && tts->isOfflineService;
 }
 
 void Robot::initLLM(StackchanExConfig& config){
@@ -118,24 +76,15 @@ void Robot::initLLM(StackchanExConfig& config){
     llm = new ChatGPT(llm_param);
     break;
 
-  case LLM_TYPE_GROK:                              // <-- Added
+  case LLM_TYPE_GROK:
     llm = new Grok(llm_param);
     break;
 
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLM(llm_param);
-    module_llm_param.enableLLM = true;
-    module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t();
-    if((llm_param.llm_conf.model.c_str() != nullptr)
-      && (llm_param.llm_conf.model != "null")
-      && (llm_param.llm_conf.model != ""))
-    {
-      module_llm_param.m5llm_config.model = llm_param.llm_conf.model;
-    }
-    module_llm_param.m5llm_config.max_token_len = 511;
 #else
-    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
+    Serial.println("ModuleLLM is not enabled.");
     llm = nullptr;
 #endif
     break;
@@ -143,18 +92,14 @@ void Robot::initLLM(StackchanExConfig& config){
   case LLM_TYPE_MODULE_LLM_FNCL:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLMFncl(llm_param);
-    module_llm_param.enableLLM = true;
-    module_llm_param.m5llm_config.model = "SmolLM-360M-Instruct-fncl";
-    module_llm_param.m5llm_config.max_token_len = 511;
 #else
-    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
+    Serial.println("ModuleLLM is not enabled.");
     llm = nullptr;
 #endif
     break;
 
   default:
-    // Make Grok the default for now
-    Serial.println("No LLM type set or unknown type. Defaulting to Grok.");
+    Serial.println("Unknown LLM type. Defaulting to Grok.");
     llm = new Grok(llm_param);
     break;
   }
@@ -164,7 +109,6 @@ void Robot::initRtLLM(StackchanExConfig& config){
 #if defined(REALTIME_API)
   int llm_type = config.getExConfig().llm.type;
   api_keys_s* api_key = config.getAPISetting();
-
   llm_param_t llm_param;
   llm_param.api_key = api_key->ai_service;
   llm_param.llm_conf = config.getExConfig().llm;
@@ -177,7 +121,6 @@ void Robot::initRtLLM(StackchanExConfig& config){
     llm = new GeminiLive(llm_param);
     break;
   default:
-    Serial.printf("Error: undefined LLM type %d\n", llm_type);
     llm = nullptr;
   }
 #endif
@@ -186,11 +129,10 @@ void Robot::initRtLLM(StackchanExConfig& config){
 void Robot::initSTT(StackchanExConfig& config){
   int stt_type = config.getExConfig().stt.type;
   api_keys_s* api_key = config.getAPISetting();
-
   stt_param_t stt_param;
   stt_param.api_key = api_key->stt;
   stt_param.stt_conf = config.getExConfig().stt;
-  
+
   switch(stt_type){
   case STT_TYPE_GOOGLE:
     stt = new CloudSpeechClient(stt_param);
@@ -198,32 +140,7 @@ void Robot::initSTT(StackchanExConfig& config){
   case STT_TYPE_OPENAI_WHISPER:
     stt = new Whisper(stt_param);
     break;
-  case STT_TYPE_MODULE_LLM_ASR:
-#if defined(USE_LLM_MODULE)
-    stt = new ModuleLLMASR();
-    module_llm_param.enableASR = true;
-#else
-    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
-    stt = nullptr;
-#endif
-    break;
-  case STT_TYPE_MODULE_LLM_WHISPER:
-#if defined(USE_LLM_MODULE)
-    stt = new ModuleLLMWhisper();
-    module_llm_param.enableWhisper = true;
-    if((stt_param.stt_conf.model.c_str() != nullptr)
-      && (stt_param.stt_conf.model != "null")
-      && (stt_param.stt_conf.model != ""))
-    {
-      module_llm_param.whisper_model = stt_param.stt_conf.model;
-    }
-#else
-    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
-    stt = nullptr;
-#endif
-    break;
   default:
-    Serial.printf("Error: undefined STT type %d\n", stt_type);
     stt = nullptr;
   }
 }
@@ -231,11 +148,11 @@ void Robot::initSTT(StackchanExConfig& config){
 void Robot::initTTS(StackchanExConfig& config){
   int tts_type = config.getExConfig().tts.type;
   api_keys_s* api_key = config.getAPISetting();
-
   tts_param_t tts_param;
   tts_param.api_key = api_key->tts;
   tts_param.model = config.getExConfig().tts.model;
   tts_param.voice = config.getExConfig().tts.voice;
+
   switch(tts_type){
   case TTS_TYPE_WEB_VOICEVOX:
     tts = new WebVoiceVoxTTS(tts_param);
@@ -247,26 +164,7 @@ void Robot::initTTS(StackchanExConfig& config){
     tts_param.api_key = api_key->ai_service;
     tts = new OpenAITTS(tts_param);
     break;
-  case TTS_TYPE_AQUESTALK:
-#if defined(USE_AQUESTALK)
-    tts = new UAquesTalkTTS();
-#else
-    Serial.println("AquesTalk is not enabled. Please define USE_AQUESTALK.");
-    tts = nullptr;
-#endif
-    break;
-  case TTS_TYPE_MODULE_LLM:
-#if defined(USE_LLM_MODULE)
-    tts = new ModuleLLMTTS();
-    module_llm_param.enableTTS = true;
-    module_llm_param.model = tts_param.model;
-#else
-    Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
-    tts = nullptr;
-#endif
-    break;
   default:
-    Serial.printf("Error: undefined TTS type %d\n", tts_type);
     tts = nullptr;
   }
 }
@@ -276,25 +174,21 @@ void Robot::speech(String text)
   if(text != ""){
     servo_home = false;
     avatar.setExpression(Expression::Happy);
-
     tts->stream(text);
-
     avatar.setExpression(Expression::Neutral);
     servo_home = true;
   }
 }
 
-void Robot::invokeAsyncTtsStreamTask(void)
+void Robot::invokeAsyncTtsStreamTask()
 {
   asyncPlaying = false;
-
   xTaskCreate(asyncTtsStreamTask, "asyncTtsStreamTask", 5*1024, this, 2, NULL);
 }
 
 String Robot::listen()
 {
-  String ret = stt->speech_to_text();
-  return ret;
+  return stt->speech_to_text();
 }
 
 void Robot::chat(String text, const char *base64_buf)

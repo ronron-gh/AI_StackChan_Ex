@@ -20,18 +20,19 @@
   #define DEFAULT_SERVO_PIN_X 18  //CoreS3 PORT C
   #define DEFAULT_SERVO_PIN_Y 17
 #elif defined( ARDUINO_M5STACK_ATOMS3R )
-  #define DEFAULT_SERVO_PIN_X 0   //非対応
+  #define DEFAULT_SERVO_PIN_X 0   //Not supported
   #define DEFAULT_SERVO_PIN_Y 0
 #endif
 
 
 //
-// AI機能設定 
+// AI Service Settings
 //
 #define LLM_TYPE_CHATGPT                0
 #define LLM_TYPE_MODULE_LLM             1
 #define LLM_TYPE_MODULE_LLM_FNCL        2
 #define LLM_TYPE_GEMINI                 3
+#define LLM_TYPE_GROK                   4
 #define LLM_N_MCP_SERVERS_MAX           10
 
 #define TTS_TYPE_WEB_VOICEVOX           0
@@ -92,11 +93,11 @@ typedef struct ExConfig {
 } ex_config_s;
 
 
-// StackchanSystemConfigを継承します。
+// Inherits from StackchanSystemConfig.
 class StackchanExConfig : public StackchanSystemConfig
 {
     protected:
-        bool USE_SERVO_ST;      //servo.txtの1行目のパラメータの格納先（このソフトでは未使用）。
+        bool USE_SERVO_ST;      // Storage location for the first parameter in servo.txt (not used by this software).
         ex_config_s _ex_parameters;
 
 
