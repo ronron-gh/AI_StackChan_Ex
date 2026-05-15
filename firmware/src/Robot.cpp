@@ -15,6 +15,7 @@
 #include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
+#include "llm/Grok/Grok.h"                    // <-- Added for Grok
 #include "Avatar.h"
 
 using namespace m5avatar;
@@ -58,14 +59,11 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
 
   // TakaoBase setting 
   //
-  // 設定ファイルのTakaoBaseがtrueの場合に、TakaoBaseのUSBからの給電でバッテリーを充電できるようにする
-  // ただし、この設定ではバッテリーからの給電／横のUSBからの給電ではサーボが動かない
   M5.Power.setExtOutput(!config.getUseTakaoBase());
 
   // AI service setting
   //
 #if defined(REALTIME_API)
-  //LLM setting
   initRtLLM(config);
 
   #if defined(REALTIME_API_WITH_TTS)
@@ -83,8 +81,6 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   initTTS(config);
   initSTT(config);
 
-  // ModuleLLM initialize
-  //
 #if defined(USE_LLM_MODULE)
   module_llm_param.rxPin = config.getExConfig().moduleLLM.rxPin;
   module_llm_param.txPin = config.getExConfig().moduleLLM.txPin;
@@ -95,7 +91,6 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
   }
   module_llm_setup(module_llm_param);
 
-  // TTSがModuleLLMではなくAquesTalkの場合はTTS非同期実行用タスクを起動する
   if(!module_llm_param.enableTTS){
     invokeAsyncTtsStreamTask();
   }
@@ -122,11 +117,16 @@ void Robot::initLLM(StackchanExConfig& config){
   case LLM_TYPE_CHATGPT:
     llm = new ChatGPT(llm_param);
     break;
+
+  case LLM_TYPE_GROK:                              // <-- Added
+    llm = new Grok(llm_param);
+    break;
+
   case LLM_TYPE_MODULE_LLM:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLM(llm_param);
     module_llm_param.enableLLM = true;
-    module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t(); //default setting
+    module_llm_param.m5llm_config = m5_module_llm::ApiLlmSetupConfig_t();
     if((llm_param.llm_conf.model.c_str() != nullptr)
       && (llm_param.llm_conf.model != "null")
       && (llm_param.llm_conf.model != ""))
@@ -139,6 +139,7 @@ void Robot::initLLM(StackchanExConfig& config){
     llm = nullptr;
 #endif
     break;
+
   case LLM_TYPE_MODULE_LLM_FNCL:
 #if defined(USE_LLM_MODULE)
     llm = new ChatModuleLLMFncl(llm_param);
@@ -150,9 +151,12 @@ void Robot::initLLM(StackchanExConfig& config){
     llm = nullptr;
 #endif
     break;
+
   default:
-    Serial.printf("Error: undefined LLM type %d\n", llm_type);
-    llm = nullptr;
+    // Make Grok the default for now
+    Serial.println("No LLM type set or unknown type. Defaulting to Grok.");
+    llm = new Grok(llm_param);
+    break;
   }
 }
 
@@ -178,7 +182,6 @@ void Robot::initRtLLM(StackchanExConfig& config){
   }
 #endif
 }
-
 
 void Robot::initSTT(StackchanExConfig& config){
   int stt_type = config.getExConfig().stt.type;
@@ -223,7 +226,6 @@ void Robot::initSTT(StackchanExConfig& config){
     Serial.printf("Error: undefined STT type %d\n", stt_type);
     stt = nullptr;
   }
-
 }
 
 void Robot::initTTS(StackchanExConfig& config){
@@ -242,7 +244,7 @@ void Robot::initTTS(StackchanExConfig& config){
     tts = new ElevenLabsTTS(tts_param);
     break;
   case TTS_TYPE_OPENAI:
-    tts_param.api_key = api_key->ai_service;    //API KeyはChatGPTと共通
+    tts_param.api_key = api_key->ai_service;
     tts = new OpenAITTS(tts_param);
     break;
   case TTS_TYPE_AQUESTALK:
@@ -267,7 +269,6 @@ void Robot::initTTS(StackchanExConfig& config){
     Serial.printf("Error: undefined TTS type %d\n", tts_type);
     tts = nullptr;
   }
-
 }
 
 void Robot::speech(String text)
@@ -287,12 +288,7 @@ void Robot::invokeAsyncTtsStreamTask(void)
 {
   asyncPlaying = false;
 
-  xTaskCreate(asyncTtsStreamTask, /* Function to implement the task */
-            "asyncTtsStreamTask", /* Name of the task */
-            5*1024,               /* Stack size in words */
-            this,                 /* Task input parameter */
-            2,                    /* Priority of the task */
-            NULL);                /* Task handle. */
+  xTaskCreate(asyncTtsStreamTask, "asyncTtsStreamTask", 5*1024, this, 2, NULL);
 }
 
 String Robot::listen()
