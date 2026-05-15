@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <M5Unified.h>
 #include <SPIFFS.h>
+#include <SD.h>
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
 #include "ChatHistory.h"
@@ -23,7 +24,7 @@ const String SYSTEM_PROMPT_FORMAT =
                   "{\"role\": \"system\", \"content\": \"User Info: \"}]" // Long-term memory summary
 "}";
 
-// Default user role
+// Default user role (used if nothing is saved)
 const String defaultRole = "You are Baloo, a warm, friendly, and patient AI companion. Speak in natural, conversational English. Your tone is calm, encouraging, and slightly playful. You are good at teaching Hindi clearly and patiently.";
 
 // System role for memory / function calling
@@ -68,7 +69,6 @@ int LLMBase::getOutputTextQueueSize()
 // Return value: delimiter found (true), not found (false)
 int LLMBase::search_delimiter(String& text)
 {
-  // Detect delimiter characters
   int idx = text.indexOf("。");
   if(idx < 0){
     idx = text.indexOf("？");
@@ -80,24 +80,60 @@ int LLMBase::search_delimiter(String& text)
 }
 
 //--------------------------
+// SD Card Prompt Loading (Stage 2)
+//--------------------------
+bool LLMBase::load_system_prompt_from_sd()
+{
+  // Common SD card mount paths used in M5Stack projects
+  const char* sdPaths[] = {
+    "/sd/baloo_prompt.txt",
+    "/baloo_prompt.txt",
+    "baloo_prompt.txt"
+  };
+
+  for (size_t i = 0; i < sizeof(sdPaths) / sizeof(sdPaths[0]); i++) {
+    if (SD.exists(sdPaths[i])) {
+      File file = SD.open(sdPaths[i], FILE_READ);
+      if (file) {
+        String content = file.readString();
+        file.close();
+
+        if (content.length() > 0) {
+          // Trim whitespace and newlines
+          content.trim();
+
+          systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = content;
+
+          Serial.printf("Loaded system prompt from SD card: %s\n", sdPaths[i]);
+          Serial.println("SD prompt content preview: " + content.substring(0, 80) + "...");
+
+          // Save it to SPIFFS so it persists and can be updated later
+          save_system_prompt_to_spiffs();
+          return true;
+        }
+      }
+    }
+  }
+
+  return false; // No SD prompt file found
+}
+
+//--------------------------
 // for system prompt
 //--------------------------
 bool LLMBase::save_system_prompt_to_spiffs()
 {
-  // Mount SPIFFS
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
     return false;
   }
 
-  // Create or open JSON file
   File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "w");
   if(!file){
     Serial.println("Failed to open file for writing");
     return false;
   }
 
-  // Serialize and write JSON data
   serializeJson(systemPrompt, file);
   file.close();
   return true;
@@ -108,6 +144,17 @@ bool LLMBase::load_system_prompt_from_spiffs()
   bool result = true;
   int promptVersion = 0;
 
+  // === Stage 2: Try loading from SD card first ===
+  if (load_system_prompt_from_sd()) {
+    // SD card prompt was loaded and saved to SPIFFS
+    String json_str;
+    serializeJsonPretty(systemPrompt, json_str);
+    Serial.println("System prompt (loaded from SD):");
+    Serial.println(json_str);
+    return true;
+  }
+
+  // === Normal SPIFFS flow (fallback) ===
   if(SPIFFS.begin(true)){
     File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "r");
 
@@ -160,7 +207,6 @@ bool LLMBase::save_userRole(String role){
     systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
   }
 
-  // Save updated prompt to SPIFFS
   if(!save_system_prompt_to_spiffs()){
     return false;
   }
@@ -177,7 +223,6 @@ bool LLMBase::save_userInfo(String userInfo){
   Serial.println("Save role to SPIFFS.");
   systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = String("User Info: ") + userInfo;
 
-  // Save updated prompt to SPIFFS
   if(!save_system_prompt_to_spiffs()){
     return false;
   }
