@@ -1,5 +1,4 @@
-[日本語](README.md)
-Baloo - StackChan CoreS3
+# Baloo - StackChan CoreS3
 Turning StackChan into "Baloo", - A warm, playful, AI companion and teacher for M5Stack CoreS3 / StackChan
 ----------------------
 # AI Stack-chan Ex
