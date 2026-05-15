@@ -3,6 +3,11 @@
 // license information.
 
 #include "Avatar.h"
+
+#define AVATAR_LOOP_DELAY_MS 50
+#define AVATAR_BREATH_PERIOD_MULTIPLIER 100
+#define AVATAR_BREATH_PERIOD_MS (AVATAR_LOOP_DELAY_MS * AVATAR_BREATH_PERIOD_MULTIPLIER)
+
 namespace m5avatar {
 //const uint32_t DEFAULT_STACK_SIZE = 2048;
 
@@ -23,7 +28,7 @@ void drawLoop(void *args) {
       avatar->draw();
       avatar->fadeoutProcess();   //motoh
     }
-    vTaskDelay(66);
+    vTaskDelay(AVATAR_LOOP_DELAY_MS);
   }
   vTaskDelete(NULL);
 }
@@ -58,10 +63,11 @@ void facialLoop(void *args) {
       last_blink_millis = millis();
     }
 
-    // 呼吸周期 6600ms を millis() 基準で計算（ループ速度に依存しない）
-    float f = sin((millis() % 6600) * 2.0 * PI / 6600.0);
+    // 呼吸周期を millis() 基準で計算（ループ速度に依存しない）
+    float f = sin((millis() % AVATAR_BREATH_PERIOD_MS) * 2.0 * PI /
+                  AVATAR_BREATH_PERIOD_MS);
     avatar->setBreath(f);
-    vTaskDelay(66);
+    vTaskDelay(AVATAR_LOOP_DELAY_MS);
   }
 }
 
