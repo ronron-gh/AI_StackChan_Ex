@@ -80,6 +80,7 @@ FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp ver
 
 void lipSync(void *args)
 {
+  float gazeX, gazeY;
   int level = 0;
   DriveContext *ctx = (DriveContext *)args;
   Avatar *avatar = ctx->getAvatar();
@@ -101,7 +102,9 @@ void lipSync(void *args)
     }
     float open = (float)level/15000.0;
     avatar->setMouthOpenRatio(open);
-    delay(33);
+    avatar->getGaze(&gazeY, &gazeX);
+    avatar->setRotation(gazeX * 5);
+    delay(100);
   }
 }
 

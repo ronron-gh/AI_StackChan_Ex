@@ -23,7 +23,7 @@ void drawLoop(void *args) {
       avatar->draw();
       avatar->fadeoutProcess();   //motoh
     }
-    vTaskDelay(5);
+    vTaskDelay(66);
   }
   vTaskDelete(NULL);
 }
@@ -61,7 +61,7 @@ void facialLoop(void *args) {
     // 呼吸周期 6600ms を millis() 基準で計算（ループ速度に依存しない）
     float f = sin((millis() % 6600) * 2.0 * PI / 6600.0);
     avatar->setBreath(f);
-    vTaskDelay(33);
+    vTaskDelay(66);
   }
 }
 

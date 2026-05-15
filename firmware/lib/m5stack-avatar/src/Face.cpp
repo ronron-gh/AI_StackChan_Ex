@@ -79,6 +79,8 @@ BoundingRect *Face::getBoundingRect() { return boundingRect; }
 void Face::initSprites(int colorDepth) {
   sprite->setColorDepth(colorDepth);
   sprite->createSprite(boundingRect->getWidth(), boundingRect->getHeight());
+  tmpSprite->setColorDepth(colorDepth);
+  tmpSprite->createSprite(M5.Display.width(), M5.Display.height());
 }
 
 void Face::draw(DrawContext *ctx) {
@@ -129,8 +131,6 @@ void Face::draw(DrawContext *ctx) {
   float rotation = ctx->getRotation();
 
   if (scale != 1.0 || rotation != 0) {
-    tmpSprite->setColorDepth(ctx->getColorDepth());
-    tmpSprite->createSprite(M5.Display.width(), M5.Display.height());
     tmpSprite->setBitmapColor(ctx->getColorPalette()->get(COLOR_PRIMARY),
       ctx->getColorPalette()->get(COLOR_BACKGROUND));
     if (ctx->getColorDepth() != 1) {
@@ -140,8 +140,7 @@ void Face::draw(DrawContext *ctx) {
     }
     //sprite->pushRotateZoom(tmpSprite, rotation, scale, scale);
     sprite->pushRotateZoom(tmpSprite, M5.Display.width() / 2 + offset_x, M5.Display.height() / 2 + offset_y, rotation, scale, scale);  //motoh
-    sprite->deleteSprite();
-    
+
     //Rotateしないようにここでdrawする  motoh
     rect = batteryPos;
     rect.setPosition(rect.getTop(), rect.getLeft() + offset_x);
@@ -153,7 +152,6 @@ void Face::draw(DrawContext *ctx) {
     subWindow->draw(tmpSprite, rect, ctx);
 
     tmpSprite->pushSprite(&M5.Display, 0, 0);
-    tmpSprite->deleteSprite();
   } else {
     sprite->pushSprite(&M5.Display, boundingRect->getLeft(), boundingRect->getTop());
   }
