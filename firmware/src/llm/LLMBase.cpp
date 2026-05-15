@@ -7,30 +7,31 @@
 #include "Robot.h"
 #include "LLMBase.h"
 
-
-// 保存する質問と回答の最大数
+// Maximum number of questions and answers to save
 const int MAX_HISTORY = 20;
 
-// 過去の質問と回答を保存するデータ構造
-ChatHistory chatHistory(MAX_HISTORY);   // TODO: 本当はLLMBaseのメンバ変数にしたい
+// Data structure to store past questions and answers
+ChatHistory chatHistory(MAX_HISTORY); // TODO: Ideally make this a member variable of LLMBase
 
-#define SYSTEM_PROMPT_PATH  "/data.json"
-const String SYSTEM_PROMPT_FORMAT = 
+#define SYSTEM_PROMPT_PATH "/data.json"
+
+const String SYSTEM_PROMPT_FORMAT =
 "{"
   "\"version\": 1,"
-  "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
-                  "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
-                  "{\"role\": \"system\", \"content\": \"User Info: \"}]"  // 長期記憶の要約
+  "\"messages\": [{\"role\": \"system\", \"content\": \"\"}," // User-defined role
+                  "{\"role\": \"system\", \"content\": \"\"}," // System role
+                  "{\"role\": \"system\", \"content\": \"User Info: \"}]" // Long-term memory summary
 "}";
 
-// ユーザーが設定するロールのデフォルト設定用
-const String defaultRole = "You are an AI robot named Stack-chan. Please speak in Japanese.";
-// システム用のロール（Function Callingの利用方針など）
+// Default user role
+const String defaultRole = "You are Baloo, a warm, friendly, and patient AI companion. Speak in natural, conversational English. Your tone is calm, encouraging, and slightly playful. You are good at teaching Hindi clearly and patiently.";
+
+// System role for memory / function calling
 const String systemRole_memory = "If the conversation includes user attributes (such as hobbies or interests) or memorable episodes, summarize them and use the update_memory tool to update the User Info in the system prompt. The summary should also inherit the contents of the old User Info as much as possible.";
+
 const String systemRole_noMemory = "Memory function disabled. Do not use update_memory tool.";
-const String systemRole_realtimeAvatarExpression = "Use the set_avatar_expression tool proactively to match Stack-chan's facial expression to the emotional tone of the conversation. Call it when your emotion changes or when the user's emotion suggests a suitable reaction. Use neutral, happy, angry, sad, doubt, or sleepy.";
 
-
+const String systemRole_realtimeAvatarExpression = "Use the set_avatar_expression tool proactively to match Baloo's facial expression to the emotional tone of the conversation. Call it when your emotion changes or when the user's emotion suggests a suitable reaction. Use neutral, happy, angry, sad, doubt, or sleepy.";
 
 LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
   : param(param),
@@ -48,7 +49,6 @@ LLMBase::LLMBase(llm_param_t param, int _promptMaxSize)
 //--------------------------
 // for async TTS
 //--------------------------
-
 String LLMBase::getOutputText()
 {
     String text = "";
@@ -64,11 +64,11 @@ int LLMBase::getOutputTextQueueSize()
     return outputTextQueue.size();
 }
 
-// 区切り文字の有無を確認
-// 戻り値：区切り文字あり(true)、なし(false)
+// Check for delimiter characters
+// Return value: delimiter found (true), not found (false)
 int LLMBase::search_delimiter(String& text)
 {
-  // 区切り文字を検出
+  // Detect delimiter characters
   int idx = text.indexOf("。");
   if(idx < 0){
     idx = text.indexOf("？");
@@ -76,30 +76,28 @@ int LLMBase::search_delimiter(String& text)
   if(idx < 0){
     idx = text.indexOf("！");
   }
-
   return idx;
 }
 
 //--------------------------
 // for system prompt
 //--------------------------
-
 bool LLMBase::save_system_prompt_to_spiffs()
 {
-  // SPIFFSをマウントする
+  // Mount SPIFFS
   if(!SPIFFS.begin(true)){
     Serial.println("An Error has occurred while mounting SPIFFS");
     return false;
   }
 
-  // JSONファイルを作成または開く
+  // Create or open JSON file
   File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "w");
   if(!file){
     Serial.println("Failed to open file for writing");
     return false;
   }
 
-  // JSONデータをシリアル化して書き込む
+  // Serialize and write JSON data
   serializeJson(systemPrompt, file);
   file.close();
   return true;
@@ -112,7 +110,7 @@ bool LLMBase::load_system_prompt_from_spiffs()
 
   if(SPIFFS.begin(true)){
     File file = SPIFFS.open(SYSTEM_PROMPT_PATH, "r");
-    //Serial.printf("SPIFFS file size: %d\n", file.size());
+
     if(file.size() > 0){
       DeserializationError error = deserializeJson(systemPrompt, file);
       if(error){
@@ -145,13 +143,12 @@ bool LLMBase::load_system_prompt_from_spiffs()
   }
 
   String json_str;
-  serializeJsonPretty(systemPrompt, json_str);  // 文字列をシリアルポートに出力する
+  serializeJsonPretty(systemPrompt, json_str);
   Serial.println("System prompt:");
   Serial.println(json_str);
-  
+
   return result;
 }
-
 
 bool LLMBase::save_userRole(String role){
   Serial.println("Save User Role to SPIFFS.");
@@ -163,13 +160,13 @@ bool LLMBase::save_userRole(String role){
     systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = defaultRole;
   }
 
-  // 更新したプロンプトをSPIFFSに保存
+  // Save updated prompt to SPIFFS
   if(!save_system_prompt_to_spiffs()){
     return false;
   }
 
   String json_str;
-  serializeJsonPretty(systemPrompt, json_str);  // 文字列をシリアルポートに出力する
+  serializeJsonPretty(systemPrompt, json_str);
   Serial.println("New system prompt:");
   Serial.println(json_str);
 
@@ -178,22 +175,20 @@ bool LLMBase::save_userRole(String role){
 
 bool LLMBase::save_userInfo(String userInfo){
   Serial.println("Save role to SPIFFS.");
-
   systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = String("User Info: ") + userInfo;
 
-  // 更新したプロンプトをSPIFFSに保存
+  // Save updated prompt to SPIFFS
   if(!save_system_prompt_to_spiffs()){
     return false;
   }
 
   String json_str;
-  serializeJsonPretty(systemPrompt, json_str);  // 文字列をシリアルポートに出力する
+  serializeJsonPretty(systemPrompt, json_str);
   Serial.println("New system prompt:");
   Serial.println(json_str);
 
   return true;
 }
-
 
 String LLMBase::get_userRole() {
   return systemPrompt["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"];
