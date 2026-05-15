@@ -2,7 +2,7 @@
 #define __STACKCHAN_EX_CONFIG_H__
 
 #include <Stackchan_system_config.h>
-#include "llm/ChatGPT/MCPClient.h"
+#include "llm/LLMBase.h"
 
 
 #if defined(ARDUINO_M5STACK_Core2)
@@ -33,7 +33,7 @@
 #define LLM_TYPE_MODULE_LLM_FNCL        2
 #define LLM_TYPE_GEMINI                 3
 #define LLM_TYPE_GROK                   4
-#define LLM_N_MCP_SERVERS_MAX           10
+// LLM_N_MCP_SERVERS_MAX is defined in llm/LLMBase.h
 
 #define TTS_TYPE_WEB_VOICEVOX           0
 #define TTS_TYPE_ELEVENLABS             1
@@ -50,13 +50,7 @@
 #define WAKEWORD_TYPE_MODULE_LLM_KWS    1
 
 
-typedef struct LLMConf {
-    int type;
-    String model = "";
-    int nMcpServers;
-    mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
-    bool enableMemory;
-} llm_s;
+typedef llm_conf_t llm_s;
 
 typedef struct TTSConf {
     int type;

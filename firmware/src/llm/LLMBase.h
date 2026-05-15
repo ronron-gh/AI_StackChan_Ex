@@ -1,10 +1,26 @@
 #pragma once
 
-#include <Stackchan_system_config.h>   // MUST BE FIRST - defines llm_param_t
+#include <Stackchan_system_config.h>
 #include <deque>
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
+#include "ChatGPT/MCPClient.h"
+
+#define LLM_N_MCP_SERVERS_MAX   10
+
+struct llm_conf_t {
+    int type = 0;
+    String model = "";
+    int nMcpServers = 0;
+    mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
+    bool enableMemory = false;
+};
+
+struct llm_param_t {
+    String api_key;
+    llm_conf_t llm_conf;
+};
 
 class LLMBase {
 public:
@@ -27,6 +43,9 @@ public:
 
   int search_delimiter(String& text);
 
+  void enableMemory(bool val) { _enableMemory = val; }
+  bool enableMemory() { return _enableMemory; }
+
 protected:
   llm_param_t param;
   int promptMaxSize;
@@ -37,5 +56,5 @@ protected:
   SpiRamJsonDocument chat_doc;
   SpiRamJsonDocument systemPrompt;
 
-  std::deque<String> outputTextQueue;   // for async TTS
+  std::deque<String> outputTextQueue;
 };
