@@ -73,6 +73,7 @@ class Face {
   void setLeftEyeblow();
   void setRightEyeblow();
 
+  void initSprites(int colorDepth);
   void draw(DrawContext *ctx);
 
 
