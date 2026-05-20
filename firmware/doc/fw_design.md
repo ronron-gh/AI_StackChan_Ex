@@ -33,6 +33,7 @@ Notes on FW design, etc.
 - payload の speed は `ServoCustom::moveTo()` の移動時間 ms として渡す。
 - laser にはまだ反映しない。
 - ESP-NOW Mod 実行中は Wi-Fi channel 変更により Web/FTP/Realtime API と干渉する可能性がある。
+- ESP-NOW Mod 離脱時は ESP-NOW を停止し、offline mode でなければ Wi-Fi STA の再接続を最大 5 秒待つ。
 
 ## Realtime API Function Calling
 

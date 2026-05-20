@@ -14,6 +14,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern Robot* robot;
 extern volatile bool espnow_remote_servo_override;
+extern bool isOffline;
 
 #ifndef ESP_ARDUINO_VERSION_MAJOR
 #define ESP_ARDUINO_VERSION_MAJOR 2
@@ -33,6 +34,7 @@ constexpr int ESPNOW_REMOTE_SERVO_X_MIN = -45;
 constexpr int ESPNOW_REMOTE_SERVO_X_MAX = 45;
 constexpr int ESPNOW_REMOTE_SERVO_Y_MIN = -30;
 constexpr int ESPNOW_REMOTE_SERVO_Y_MAX = 0;
+constexpr uint32_t WIFI_RECONNECT_TIMEOUT_MS = 5000;
 
 portMUX_TYPE g_recv_mux = portMUX_INITIALIZER_UNLOCKED;
 uint8_t g_recv_data[ESPNOW_REMOTE_MAX_DATA_LEN];
@@ -134,6 +136,7 @@ void EspNowRemoteMod::pause(void)
   stopEspNowReceiver();
   avatar.set_isSubWindowEnable(false);
   avatar.setSpeechText("");
+  reconnectWiFi();
 }
 
 void EspNowRemoteMod::idle(void)
@@ -181,6 +184,31 @@ void EspNowRemoteMod::stopEspNowReceiver(void)
   esp_now_deinit();
   espnow_started = false;
   Serial.println("[EspNowRemote] ESP-NOW receiver stopped");
+}
+
+void EspNowRemoteMod::reconnectWiFi(void)
+{
+  if(isOffline){
+    Serial.println("[EspNowRemote] Skip Wi-Fi reconnect in offline mode");
+    return;
+  }
+
+  Serial.println("[EspNowRemote] Reconnecting Wi-Fi");
+
+  WiFi.disconnect(false, false);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin();
+
+  uint32_t start_millis = millis();
+  while(WiFi.status() != WL_CONNECTED){
+    delay(100);
+    if(millis() - start_millis >= WIFI_RECONNECT_TIMEOUT_MS){
+      Serial.println("[EspNowRemote] Wi-Fi reconnect timeout");
+      return;
+    }
+  }
+
+  Serial.printf("[EspNowRemote] Wi-Fi reconnected: %s\n", WiFi.localIP().toString().c_str());
 }
 
 void EspNowRemoteMod::handleReceivedData(void)
