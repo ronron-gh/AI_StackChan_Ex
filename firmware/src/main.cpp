@@ -21,6 +21,7 @@
 #include "mod/StatusMonitor/StatusMonitorMod.h"
 #include "mod/VolumeSetting/VolumeSettingMod.h"
 #include "mod/QRdisplay/QRdisplayMod.h"
+#include "mod/EspNowRemote/EspNowRemoteMod.h"
 
 #include "driver/PlayMP3.h"   //lipSync
 #include "driver/TapDetect.h"
@@ -62,6 +63,7 @@ const int   DAYLIGHT_OFFSET = 0;                    // サマータイム設定�
 
 //bool servo_home = false;
 bool servo_home = true;
+volatile bool espnow_remote_servo_override = false;
 
 using namespace m5avatar;
 Avatar avatar;
@@ -117,10 +119,16 @@ void servo(void *args)
   for (;;)
   {
 #ifdef USE_SERVO
+    if(espnow_remote_servo_override)
+    {
+      delay(100);
+      continue;
+    }
+
     if(!servo_home)
     {
       avatar->getGaze(&gazeY, &gazeX);
-      robot->servo->moveToGaze((int)(15.0 * gazeX), (int)(10.0 * gazeY));
+      robot->servo->moveTo((int)(15.0 * gazeX), (int)(10.0 * gazeY));
     } else {
       robot->servo->moveToOrigin();
     }
@@ -224,6 +232,7 @@ ModBase* init_mod(void)
   }
   add_mod(new StatusMonitorMod());
   add_mod(new VolumeSettingMod());
+  add_mod(new EspNowRemoteMod());
   //add_mod(new PomodoroMod(isOffline));
   //add_mod(new PhotoFrameMod(isOffline));
   //add_mod(new QRdisplayMod());
