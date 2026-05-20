@@ -62,6 +62,7 @@ You can also use these as a reference to create and add new applications.
 | 2 | Pomodoro Timer | This app alternates between a 25 minute alarm and a 5 minute alarm.<br>Button A: Start/Stop<br>Button C: Silent mode off/on | The default setting is silent mode.|
 | 3 | Digital Photo Frame | The JPEG file saved in the folder "/app/AiStackChanEx/photo" on the SD card will be displayed on the LCD.<br>Button A: Show next photo <br>Button C: Start slideshow | ・JPEG files saved to the SD card must be 320x240 in size.<br>・During development, there were some cases where the SD card could not be mounted and could not be restored unless it was reformatted. We believe this has been improved, but please back up the data on the SD card just in case.|
 | 4 | Status Monitor | Displays various system information.| |
+| 5 | ESP-NOW Remote Control | Controls the servos using pose data received from the optional joystick controller for the official M5Stack Stack-chan.<br>The receive channel is fixed to 1. | Wi-Fi is disconnected while ESP-NOW is in use. When switching to another Mod, the firmware attempts to reconnect Wi-Fi. |
 
 You can register multiple applications using the code below. You can switch between them by flicking the LCD left and right while the application is running.（[Twitter Videos](https://x.com/motoh_tw/status/1841867660746789052)）。
 

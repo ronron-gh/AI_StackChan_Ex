@@ -7,7 +7,8 @@ class ServoCustom : public StackchanSERVO {
 public:
     ServoCustom(){};
     void moveToOrigin();
-    void moveToGaze(int gazeX, int gazeY);
+    void moveTo(int degX, int degY);
+    void moveTo(int degX, int degY, uint32_t millis_for_move);
 
 };
 
