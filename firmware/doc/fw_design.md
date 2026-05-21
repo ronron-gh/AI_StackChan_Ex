@@ -2,6 +2,7 @@
 Notes on FW design, etc.
 
 - [Task](#task)
+- [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
 - [Realtime API Function Calling](#realtime-api-function-calling)
   - [Avatar Expression](#avatar-expression)
 - [Web App](#web-app)
@@ -13,13 +14,13 @@ Notes on FW design, etc.
 | Task name | function | Stack size [bytes] | Priority |
 | --- | --- | --- | --- |
 | loopTask | Arduino loop task | 8192 | 1 |
-| drawLoop | Avatar control | 4 * 1024 | 1 |
+| drawLoop | Avatar control | 4 * 1024 | 2 |
 | facialLoop | Avatar control | 1024 | 2 |
 | lipSync | Lip Sync for avatar| 2048 | 2 |
 | servo | Servo control synchronized with the avatar | 2048 | 1 |
 | battery_check | Battery level check | 2048 | 1 |
 | asyncTtsStreamTask | TTS streaming play | 5 * 1024 | 2 |
-| webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 2 |
+| webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 3 |
 
 ## ESP-NOW Remote Control Mod
 
