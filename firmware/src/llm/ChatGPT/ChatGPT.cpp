@@ -149,6 +149,14 @@ String ChatGPT::post_json(const char* url, const char* json_string, const char* 
   const bool is_https = (strncmp(url, "https://", 8) == 0);
   const char* tag = is_https ? "HTTPS" : "HTTP";
 
+  if (is_https && root_ca == nullptr) {
+    // Defense-in-depth: callers are expected to supply a CA for https://, and
+    // a null CA would fail the TLS handshake anyway. Refuse explicitly rather
+    // than attempting a connection that cannot verify the server.
+    Serial.printf("[%s] Refusing request: https:// with no root CA\n", tag);
+    return payload;
+  }
+
   WiFiClient* client = nullptr;
   if (is_https) {
     WiFiClientSecure* secure_client = new WiFiClientSecure;
@@ -179,11 +187,20 @@ String ChatGPT::post_json(const char* url, const char* json_string, const char* 
 
       if (httpCode > 0) {
         Serial.printf("[%s] POST... code: %d\n", tag, httpCode);
-        if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
+        if (httpCode >= 200 && httpCode < 300) {
           payload = http.getString();
           Serial.println("//////////////");
           Serial.println(payload);
           Serial.println("//////////////");
+        } else {
+          // Log the error body to help debug custom endpoints. Cap only to
+          // limit serial output (not heap: getString already read it all).
+          String err_body = http.getString();
+          if (err_body.length() > 512) {
+            err_body.remove(512);
+          }
+          Serial.printf("[%s] POST... non-2xx body: ", tag);
+          Serial.println(err_body);
         }
       } else {
         Serial.printf("[%s] POST... failed, error: %s\n", tag, http.errorToString(httpCode).c_str());
