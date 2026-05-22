@@ -120,6 +120,7 @@ void Robot::initLLM(StackchanExConfig& config){
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
+  case LLM_TYPE_CUSTOM_OPENAI:
     llm = new ChatGPT(llm_param);
     break;
   case LLM_TYPE_MODULE_LLM:

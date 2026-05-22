@@ -32,6 +32,7 @@
 #define LLM_TYPE_MODULE_LLM             1
 #define LLM_TYPE_MODULE_LLM_FNCL        2
 #define LLM_TYPE_GEMINI                 3
+#define LLM_TYPE_CUSTOM_OPENAI          4
 #define LLM_N_MCP_SERVERS_MAX           10
 
 #define TTS_TYPE_WEB_VOICEVOX           0
@@ -55,6 +56,8 @@ typedef struct LLMConf {
     int nMcpServers;
     mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
     bool enableMemory;
+    String customEndpoint = "";  // Optional URL for LLM_TYPE_CUSTOM_OPENAI. Empty falls back to api.openai.com. http:// works without a CA; https:// requires customRootCAFile and is refused at send time if the CA is missing.
+    String customRootCA = "";    // PEM contents of the root CA, loaded from llm.customRootCAFile (path on SD, e.g. "/customRootCA.pem"). Only needed for https:// customEndpoint. Expected format: a text file containing the -----BEGIN CERTIFICATE----- ... -----END CERTIFICATE----- block(s).
 } llm_s;
 
 typedef struct TTSConf {
@@ -98,6 +101,7 @@ class StackchanExConfig : public StackchanSystemConfig
     protected:
         bool USE_SERVO_ST;      //servo.txtの1行目のパラメータの格納先（このソフトでは未使用）。
         ex_config_s _ex_parameters;
+        fs::FS* _extend_fs = nullptr;  // filesystem in use during loadExtendConfig (SD on most boards, SPIFFS on AtomS3R)
 
 
     public:

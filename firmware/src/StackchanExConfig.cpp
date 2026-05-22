@@ -78,6 +78,7 @@ void StackchanExConfig::secretConfigNotFoundCallback(void)
 void StackchanExConfig::loadExtendConfig(fs::FS& fs, const char* yaml_filename, uint32_t yaml_size)
 {
     M5_LOGI("----- StackchanExConfig::loadExtendConfig:%s\n", yaml_filename);
+    _extend_fs = &fs;
     File file = fs.open(yaml_filename);
     if (file) {
         DynamicJsonDocument doc(yaml_size);
@@ -122,6 +123,40 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
         _ex_parameters.llm.mcpServer[i].port = doc["llm"]["mcpServers"][i]["port"].as<int>();
     }
     _ex_parameters.llm.enableMemory = doc["llm"]["enableMemory"].as<bool>();
+    _ex_parameters.llm.customRootCA = "";
+    if(_extend_fs != nullptr && doc["llm"]["customRootCAFile"].is<const char*>()){
+        String ca_path = doc["llm"]["customRootCAFile"].as<String>();
+        if(ca_path.length() > 0){
+            File ca_file = _extend_fs->open(ca_path.c_str());
+            if(ca_file){
+                size_t sz = ca_file.size();
+                _ex_parameters.llm.customRootCA.reserve(sz + 1);
+                while(ca_file.available()){
+                    char chunk[128];
+                    int n = ca_file.readBytes(chunk, sizeof(chunk) - 1);
+                    if(n <= 0) break;
+                    chunk[n] = 0;
+                    _ex_parameters.llm.customRootCA += chunk;
+                }
+                ca_file.close();
+            }
+            else{
+                M5_LOGE("llm customRootCAFile not found: %s", ca_path.c_str());
+            }
+        }
+    }
+    if(doc["llm"]["customEndpoint"].is<const char*>()){
+        _ex_parameters.llm.customEndpoint = doc["llm"]["customEndpoint"].as<String>();
+        if(_ex_parameters.llm.customEndpoint.startsWith("https://") && _ex_parameters.llm.customRootCA.length() == 0){
+            // Keep the endpoint so requests are refused at send time rather
+            // than silently retargeted to api.openai.com.
+            M5_LOGE("llm customEndpoint is https:// but no customRootCAFile was loaded; requests will be refused: %s",
+                    _ex_parameters.llm.customEndpoint.c_str());
+        }
+    }
+    else{
+        _ex_parameters.llm.customEndpoint = "";
+    }
 
     _ex_parameters.tts.type         = doc["tts"]["type"].as<int>();
     _ex_parameters.tts.model        = doc["tts"]["model"].as<String>();
@@ -152,6 +187,8 @@ void StackchanExConfig::printExtParameters(void)
         M5_LOGI("llm mcpServer[%d] port: %d", i, _ex_parameters.llm.mcpServer[i].port);
     }
     M5_LOGI("llm enableMemory: %s", _ex_parameters.llm.enableMemory ? "true":"false");
+    M5_LOGI("llm customEndpoint: %s", _ex_parameters.llm.customEndpoint.c_str());
+    M5_LOGI("llm customRootCA: %s", _ex_parameters.llm.customRootCA.length() > 0 ? "(set)" : "(none)");
 
 
     M5_LOGI("tts type: %d", _ex_parameters.tts.type);

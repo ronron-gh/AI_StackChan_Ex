@@ -27,7 +27,7 @@ public:
     ChatGPT(llm_param_t param, int _promptMaxSize = CHATGPT_PROMPT_MAX_SIZE);
     virtual void chat(String text, const char *base64_buf = NULL);
     String execChatGpt(String json_string, String& calledFunc);
-    String https_post_json(const char* url, const char* json_string, const char* root_ca);
+    String post_json(const char* url, const char* json_string, const char* root_ca);
     
     virtual bool init_chat_doc(const char *data);
     virtual void load_role();

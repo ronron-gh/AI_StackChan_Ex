@@ -1,7 +1,16 @@
 ## アプリ固有の設定ファイル
 # AI機能 (LLM, TTS, STT, Wakeword)
 llm:
-  type: 0                            # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)
+  type: 0                            # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini(Realtime)  4:OpenAI Compatible HTTP Endpoint
+  #customEndpoint: "http://192.168.X.XXX:8080/v1/chat/completions"   # http:// (平文) は customRootCAFile 不要
+  #customEndpoint: "https://my-llm.example.com/v1/chat/completions"  # https:// は下の customRootCAFile が必須 (未指定ならリクエストは拒否されます)
+  # customRootCAFile は https:// の customEndpoint を使う場合のみ必要です。
+  # SD カードに PEM 形式のルート CA をテキストファイルとして置き、そのパスを指定してください。
+  # ファイル例 (例: SD カードのルートに customRootCA.pem として保存):
+  #   -----BEGIN CERTIFICATE-----
+  #   MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqh...      (改行を保持した Base64 本文)
+  #   -----END CERTIFICATE-----
+  #customRootCAFile: "/customRootCA.pem"
 
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
