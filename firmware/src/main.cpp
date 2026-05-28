@@ -25,6 +25,10 @@
 
 #include "driver/PlayMP3.h"   //lipSync
 #include "driver/TapDetect.h"
+#include "share/Phrases.h"
+
+#define FASTLED_INTERNAL  // 起動バナーログを抑制
+#include <FastLED.h>
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
@@ -55,6 +59,86 @@ StackchanExConfig system_config;
 Robot* robot;
 bool isOffline = false;
 
+// M5StackChan サーボベース搭載 WS2812C RGB LED (PY32 IOExpander 経由で制御)
+// LED は robot->servo (= ServoCustom) の PY32 を介して操作する
+void led_init() {
+  // robot 初期化前は何もしない。led_set/off 側で robot を見て呼ぶ
+}
+
+// LED 自動消灯タイマー（TTS ハング時の保険）
+// TTS 再生は main loop をブロックするため、別 FreeRTOS タスクで監視する
+static volatile unsigned long g_led_off_at_ms = 0;
+static const uint32_t LED_AUTO_OFF_MS = 20UL * 1000UL;  // 20秒
+
+void led_set(uint32_t rgb) {
+  if (!robot || !robot->servo) return;
+  uint8_t r = (rgb >> 16) & 0xFF;
+  uint8_t g = (rgb >> 8) & 0xFF;
+  uint8_t b = rgb & 0xFF;
+  robot->servo->fillLeds(r, g, b);
+  g_led_off_at_ms = millis() + LED_AUTO_OFF_MS;
+  Serial.printf("led_set(0x%06X), auto_off_at=%lu\n", rgb, g_led_off_at_ms);
+}
+
+void led_off() {
+  if (!robot || !robot->servo) return;
+  robot->servo->clearLeds();
+  g_led_off_at_ms = 0;
+}
+
+// 別タスクで LED watchdog（main loop ブロック時でも動く）
+static void led_watchdog_task(void *param) {
+  Serial.println("LED watchdog task started");
+  uint32_t heartbeat = 0;
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    heartbeat++;
+    if (heartbeat % 10 == 0) {
+      Serial.printf("LED watchdog alive (heartbeat=%lu, off_at=%lu, now=%lu)\n",
+                    heartbeat, g_led_off_at_ms, millis());
+    }
+    unsigned long off_at = g_led_off_at_ms;
+    if (off_at != 0 && millis() > off_at) {
+      Serial.printf("LED auto-off triggered at %lu\n", millis());
+      if (robot && robot->servo) {
+        Serial.println("Calling clearLeds()...");
+        robot->servo->clearLeds();
+        Serial.println("clearLeds() returned");
+      } else {
+        Serial.println("robot/servo is NULL");
+      }
+      g_led_off_at_ms = 0;
+    }
+  }
+}
+
+void led_auto_off_tick() {
+  // 互換性のためのスタブ（実体は led_watchdog_task）
+}
+
+// idle タイムアウト管理（5分操作なしで省エネモード）
+static const uint32_t IDLE_TIMEOUT_MS = 5UL * 60UL * 1000UL;
+static unsigned long last_activity_ms = 0;
+static bool is_idle_state = false;
+extern void sched_fn_sleep(void);
+extern void sched_fn_wake(void);
+
+void notify_activity() {
+  last_activity_ms = millis();
+  if (is_idle_state) {
+    sched_fn_wake();
+    is_idle_state = false;
+  }
+}
+
+// 頭撫でモード（画面上部から下方向フリックで検出）の状態のみここで宣言
+// 実関数は avatar 宣言後に定義（後段の lipSync 直前あたり）
+static bool head_pet_active = false;
+static unsigned long head_pet_end_ms = 0;
+static const uint32_t HEAD_PET_DURATION_MS = 3000;
+void head_pet_trigger();
+void head_pet_update();
+
 
 // NTP接続情報　NTP connection information.
 const char* NTPSRV      = "ntp.jst.mfeed.ad.jp";    // NTPサーバーアドレス NTP server address.
@@ -78,6 +162,33 @@ const Expression expressions_table[] = {
 };
 
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
+
+
+// 頭撫でモード実装本体（avatar / robot がここで参照可能）
+void head_pet_trigger() {
+  notify_activity();
+  avatar.setExpression(Expression::Happy);
+  avatar.setSpeechFont(&fonts::efontJA_16);
+  avatar.setSpeechText(phrases::head_pet());
+  if (robot && robot->servo) {
+    robot->servo->fillLeds(0xFF, 0x60, 0xA0);   // ピンク
+    robot->servo->moveTo(0, -20, 400);          // ちょっと上向き
+  }
+  head_pet_active = true;
+  head_pet_end_ms = millis() + HEAD_PET_DURATION_MS;
+}
+
+void head_pet_update() {
+  if (head_pet_active && millis() > head_pet_end_ms) {
+    avatar.setExpression(Expression::Neutral);
+    avatar.setSpeechText("");
+    if (robot && robot->servo) {
+      robot->servo->clearLeds();
+      robot->servo->moveTo(0, 0, 400);
+    }
+    head_pet_active = false;
+  }
+}
 
 
 void lipSync(void *args)
@@ -248,8 +359,11 @@ void sw_tone()
   M5.Mic.end();
   M5.Speaker.begin();
   delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
-  M5.Speaker.tone(1000, 100);
-  delay(500);
+  // ソド の上昇2音（ピロッ）
+  M5.Speaker.tone(784, 70);    // G5
+  delay(90);
+  M5.Speaker.tone(1047, 110);  // C6
+  delay(200);
 
   M5.Speaker.end();
   M5.Mic.begin();
@@ -325,6 +439,9 @@ void setup()
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
   M5.Display.setBrightness(255);  // バックライト最大（CoreS3で点灯しない問題への対処）
+  led_init();   // GoBottom LED 初期化（起動時消灯）
+  // LED watchdog（TTS等で main loop がブロックしても自動消灯する）
+  xTaskCreatePinnedToCore(led_watchdog_task, "led_wd", 4096, NULL, 1, NULL, 0);
   Serial.printf("Board: %d, Display: %dx%d\n",
     (int)M5.getBoard(), M5.Display.width(), M5.Display.height());
 
@@ -438,6 +555,9 @@ void setup()
 
     robot = new Robot(system_config);
 
+    // PY32 LED が前回状態を保持しているため、明示的に消灯
+    led_off();
+
     //SD.end();
   } else {
     M5.Lcd.print("Failed to load SD card settings. System reset after 5 seconds.");
@@ -506,8 +626,19 @@ void loop()
   mod->idle();
   //get_elapsed_time_micro("Mod idle time");
 
+  // idle タイムアウト判定
+  if (!is_idle_state && (millis() - last_activity_ms > IDLE_TIMEOUT_MS)) {
+    Serial.println("Idle timeout: entering sleep mode");
+    sched_fn_sleep();
+    is_idle_state = true;
+  }
+
+  // LED 自動消灯（TTS ハングしても 60 秒で消える保険）
+  led_auto_off_tick();
+
   if (M5.BtnA.wasPressed())
   {
+    notify_activity();
     mod->btnA_pressed();
   }
 
@@ -518,6 +649,7 @@ void loop()
 
   if (M5.BtnB.wasPressed())
   {
+    notify_activity();
     mod->btnB_pressed();
   }
 
@@ -528,6 +660,7 @@ void loop()
 
   if (M5.BtnC.wasPressed())
   {
+    notify_activity();
     mod->btnC_pressed();
   }
 
@@ -538,6 +671,7 @@ void loop()
     auto t = M5.Touch.getDetail();
     if (t.wasPressed())
     {
+      notify_activity();
       mod->display_touched(t.x, t.y);
     }
 
@@ -558,8 +692,14 @@ void loop()
           change_mod();
         }
       }
+      else if (dy > 30) {
+        // 下方向フリック → 頭撫で
+        head_pet_trigger();
+      }
     }
   }
+  // 頭撫で状態の自動解除
+  head_pet_update();
 #endif
 
 #if defined(ENABLE_TAP_DETECT)
