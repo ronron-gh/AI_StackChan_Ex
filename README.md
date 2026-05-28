@@ -9,6 +9,70 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
   - これにより、YAMLによる初期設定や、シリアルサーボへの対応が可能になりました。
 - ユーザアプリケーションを追加作成しやすいクラス設計
 
+---
+
+## 🎯 このフォーク（takish/AI_StackChan_Ex）の追加機能
+
+[ronron-gh/AI_StackChan_Ex](https://github.com/ronron-gh/AI_StackChan_Ex) からフォークし、以下の機能・改善を追加しています。
+
+### M5Stack 公式 AI デスクトップロボット（M5STACK-K151）対応強化
+
+- **PY32 IOExpander 経由の LED 制御**: M5StackChan キットに搭載されている 12 個の WS2812C LED（サーボベース部）を制御。Idle 中の呼吸アニメ、Listening 中の緑点灯、Embarrassed のピンク表示など。
+- **M5GFX バージョン固定（0.1.x）**: CoreS3 で LCD バックライトが点灯しない問題を解決（M5GFX 0.2.x の `board_M5StackChan` 自動検出と M5Unified 0.1.x の不一致回避）。
+- **SD カードマウントリトライ**: 起動直後の SD 準備失敗に対し最大 5 × 500ms リトライ。
+
+### Web UI（ブラウザ管理画面）
+
+- **Dashboard** (`/dashboard.html`): System / Power / Network / Storage / Config / Role / Memory を 7 カード表示。5 秒おきに自動更新。
+- **Settings** (`/settings.html`): SC_SecConfig.yaml / SC_BasicConfig.yaml / SC_ExConfig.yaml を YAML エディタで直接編集（API キー・パスワードは `***UNCHANGED***` でマスク・復元）。
+- **Mute Mode** トグル: 外出時に TTS / 効果音を停止。
+- **Speaker Volume** スライダー: 0–255 で即時反映、NVS で再起動後も保持。
+- **再起動 API**: `POST /api/restart`。
+
+### シリアル経由 YAML 設定（Wi-Fi 不通時の救済策）
+
+- USB シリアルから SD 上の YAML を直接読み書き可能
+- コマンド: `:CONFIG GET <ex|basic|sec>` / `:CONFIG SET <ex|basic|sec> ... :END` / `:CONFIG RESTART` / `:CONFIG WIFI_SCAN` / `:CONFIG HELP`
+- ホスト側ツール: `tools/serial_config.py`（pyserial 必要）
+- **Wi-Fi スキャン機能**: 近隣 SSID 一覧を取得（外出先で「iPhone17Pro と思ったら実は iPhone17pro だった」みたいな大文字小文字違いを発見できる）
+
+### Wi-Fi フォールバック設定
+
+`SC_ExConfig.yaml` に `wifi_fallback:` セクションを追加し、メイン Wi-Fi 接続失敗時にサブ Wi-Fi（テザリングなど）に自動切替。
+
+### ずんだもん風セリフバリエーション
+
+定型応答のセリフを「次のご用件は？」のような硬い表現から、複数候補のランダム選択へ。
+
+- `phrases::listening` 等で thinking / listening / followup / not_heard / error / greeting / head_pet をランダム化
+- 起動時挨拶は 5 秒後に自動消去
+
+### 頭撫でモード
+
+下方向フリック検出で `Embarrassed` 表情 + ピンク LED + 上向きサーボ。3 秒で復帰。
+
+### 連続会話モード（YAML 設定）
+
+`SC_ExConfig.yaml` の `conversation:` で `continuous: true` + `max_turns: N` 指定可能。BGM 定型句（「ご視聴ありがとうございました」等）の誤認識で抜ける保護付き。
+
+### アバター表情の追加
+
+- `Expression::Embarrassed`（恥ずかしがり）
+- 吹き出し改善: 角丸長方形、スクロール、改行除去、テキスト量に応じた速度自動調整
+
+### ステアリングファイル運用
+
+実装前に作業方針を `firmware/doc/codex/steering/YYYYMMDD-short-topic.md` に書いてからコードに着手する開発フロー（AGENTS.md 参照）。
+
+---
+
+## ⚠️ セキュリティ注意
+
+- Web UI は **LAN 限定**前提で設計されています。インターネットに公開しないでください。
+- API キー・Wi-Fi パスワードは絶対に git にコミットしないでください。SD カード上で直接編集するか、シリアル経由設定機能を使ってください。
+
+---
+
 
 > ｽﾀｯｸﾁｬﾝは[ししかわさん](https://x.com/stack_chan)が開発、公開している、手乗りサイズのｽｰﾊﾟｰｶﾜｲｲコミュニケーションロボットです。
 >- [Github](https://github.com/stack-chan/stack-chan)
