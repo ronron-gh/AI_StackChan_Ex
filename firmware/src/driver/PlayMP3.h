@@ -11,7 +11,7 @@
 
 extern uint8_t m5spk_virtual_channel;
 
-extern AudioOutputM5Speaker out;
+// out は AudioOutputM5Speaker.h で extern 宣言済み
 extern AudioGeneratorMP3 *mp3;
 extern AudioFileSourceBuffer *buff;
 extern AudioFileSourceHTTPSStream *file;
