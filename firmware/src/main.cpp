@@ -79,8 +79,15 @@ void led_init() {
 static volatile unsigned long g_led_off_at_ms = 0;
 static const uint32_t LED_AUTO_OFF_MS = 20UL * 1000UL;  // 20秒
 
+// 呼吸アニメ用
+static volatile bool g_led_breathing = false;
+static volatile uint32_t g_led_breath_base_rgb = 0;
+static unsigned long g_led_breath_start_ms = 0;
+static const uint32_t LED_BREATH_PERIOD_MS = 1500;  // 周期 1.5秒
+
 void led_set(uint32_t rgb) {
   if (!robot || !robot->servo) return;
+  g_led_breathing = false;   // 呼吸モード解除（固定色）
   uint8_t r = (rgb >> 16) & 0xFF;
   uint8_t g = (rgb >> 8) & 0xFF;
   uint8_t b = rgb & 0xFF;
@@ -89,34 +96,67 @@ void led_set(uint32_t rgb) {
   Serial.printf("led_set(0x%06X), auto_off_at=%lu\n", rgb, g_led_off_at_ms);
 }
 
+// 呼吸アニメ点灯（応答処理中など、「動いてる感」を出したい時用）
+// 応答処理は TTS 含めて 30 秒以上かかることがあるため auto-off は 60 秒に延長
+void led_breath(uint32_t rgb) {
+  if (!robot || !robot->servo) return;
+  g_led_breath_base_rgb = rgb;
+  g_led_breath_start_ms = millis();
+  g_led_breathing = true;
+  g_led_off_at_ms = millis() + 60UL * 1000UL;  // 呼吸時は 60 秒
+  Serial.printf("led_breath(0x%06X)\n", rgb);
+}
+
 void led_off() {
   if (!robot || !robot->servo) return;
+  g_led_breathing = false;
   robot->servo->clearLeds();
   g_led_off_at_ms = 0;
 }
 
-// 別タスクで LED watchdog（main loop ブロック時でも動く）
+// 別タスクで LED watchdog（main loop ブロック時でも動く）+ 呼吸アニメ
+// PY32 への I2C 競合を避けるため、breathing 時のみ細かく動く 2 段周期
 static void led_watchdog_task(void *param) {
   Serial.println("LED watchdog task started");
   uint32_t heartbeat = 0;
   for (;;) {
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    // breathing 中だけ細かく更新（240ms ≒ 1.5sec / 6step）
+    // 非 breathing 時は I2C を叩かないよう 1 秒待機
+    vTaskDelay(pdMS_TO_TICKS(g_led_breathing ? 240 : 1000));
     heartbeat++;
-    if (heartbeat % 10 == 0) {
-      Serial.printf("LED watchdog alive (heartbeat=%lu, off_at=%lu, now=%lu)\n",
-                    heartbeat, g_led_off_at_ms, millis());
-    }
+
+    // ハングアウトオフ
     unsigned long off_at = g_led_off_at_ms;
     if (off_at != 0 && millis() > off_at) {
       Serial.printf("LED auto-off triggered at %lu\n", millis());
+      g_led_breathing = false;
       if (robot && robot->servo) {
-        Serial.println("Calling clearLeds()...");
         robot->servo->clearLeds();
-        Serial.println("clearLeds() returned");
-      } else {
-        Serial.println("robot/servo is NULL");
       }
       g_led_off_at_ms = 0;
+      continue;
+    }
+
+    // 呼吸アニメ
+    if (g_led_breathing && robot && robot->servo) {
+      uint32_t base = g_led_breath_base_rgb;
+      uint8_t br = (base >> 16) & 0xFF;
+      uint8_t bg = (base >> 8) & 0xFF;
+      uint8_t bb = base & 0xFF;
+      // 0..1 の周期、サインで 0.5..1.0
+      float t = (float)((millis() - g_led_breath_start_ms) % LED_BREATH_PERIOD_MS)
+                / (float)LED_BREATH_PERIOD_MS;
+      float bright = 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f);
+      uint8_t r = (uint8_t)(br * bright);
+      uint8_t g = (uint8_t)(bg * bright);
+      uint8_t b = (uint8_t)(bb * bright);
+      robot->servo->fillLeds(r, g, b);
+    }
+
+    // 30秒に1回ハートビートだけログ
+    if (heartbeat % 200 == 0) {
+      Serial.printf("LED watchdog alive (breathing=%d, off_at=%lu, now=%lu)\n",
+                    g_led_breathing ? 1 : 0, g_led_off_at_ms, millis());
     }
   }
 }

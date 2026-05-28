@@ -63,6 +63,7 @@ static void report_batt_level(){
 
 extern void notify_activity();
 extern void led_set(uint32_t rgb);
+extern void led_breath(uint32_t rgb);
 extern void led_off();
 
 #include "share/Phrases.h"
@@ -82,7 +83,7 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
 
   String ret = robot->listen();
   avatar.setSpeechText("");
-  led_set(0x0080FF);   // 応答処理中：水色
+  led_breath(0x0080FF);   // 応答処理中：水色を呼吸アニメ
 
 #ifdef USE_SERVO
   //servo_home = prev_servo_home;
@@ -117,7 +118,7 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
       }
 
       Serial.printf("連続会話 turn %d: %s\n", turn + 1, more.c_str());
-      led_set(0x0080FF);   // 応答処理中：水色
+      led_breath(0x0080FF);   // 応答処理中：水色を呼吸アニメ
       robot->chat(more, base64_buf);
       avatar.setSpeechText("");
       led_off();   // 各ターン完了後に消灯（TTS失敗時のハング対策）
