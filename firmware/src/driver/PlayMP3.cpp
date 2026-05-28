@@ -11,6 +11,7 @@
 #include "AudioOutputM5Speaker.h"
 #include "PlayMP3.h"
 #include "Avatar.h"
+#include "../share/Mutex.h"
 
 using namespace m5avatar;
 
@@ -45,11 +46,39 @@ void mp3_init(void)
     audioLogger = &Serial;
 }
 
+// I2S リソース管理を強化した playMP3。連続会話モードで 2 ターン目以降に
+// "register I2S object to platform failed" が出る問題への対応 (#1)。
+//
+// 改善点:
+//   1. enterMutexAudio() で sw_tone/alarm_tone と排他制御
+//   2. Mic.end → Speaker.begin 間に短い delay（DMA 解放を待つ）
+//   3. Speaker.begin() / Mic.begin() の戻り値をチェック、失敗時はリトライ
+//   4. 失敗・成功を Serial にログ
 void playMP3(AudioFileSourceBuffer *buff){
 
-  M5.Mic.end();
-  M5.Speaker.begin();
+  enterMutexAudio();
 
+  // --- Mic → Speaker 切替 ---
+  M5.Mic.end();
+  delay(30);   // I2S DMA を解放させる
+
+  bool spk_ok = M5.Speaker.begin();
+  if (!spk_ok) {
+    Serial.println("[playMP3] Speaker.begin() failed - retry after 200ms");
+    delay(200);
+    spk_ok = M5.Speaker.begin();
+    if (!spk_ok) {
+      Serial.println("[playMP3] Speaker.begin() failed twice - abort");
+      // Mic を復帰させてから抜ける
+      delay(50);
+      M5.Mic.begin();
+      exitMutexAudio();
+      return;
+    }
+  }
+  delay(50);   // DMA がストリーミング可能になるまで待機
+
+  // --- MP3 再生 ---
   mp3->begin(buff, &out);
   Serial.println("mp3 start");
 
@@ -61,9 +90,21 @@ void playMP3(AudioFileSourceBuffer *buff){
     delay(1);
   }
 
+  // --- Speaker → Mic 切替 ---
   M5.Speaker.end();
-  M5.Mic.begin();
+  delay(30);   // I2S DMA を解放させる
 
+  bool mic_ok = M5.Mic.begin();
+  if (!mic_ok) {
+    Serial.println("[playMP3] Mic.begin() failed - retry after 200ms");
+    delay(200);
+    mic_ok = M5.Mic.begin();
+    if (!mic_ok) {
+      Serial.println("[playMP3] Mic.begin() failed twice - giving up (mic disabled)");
+    }
+  }
+
+  exitMutexAudio();
 }
 
 bool playMP3SPIFFS(const char *filename)
