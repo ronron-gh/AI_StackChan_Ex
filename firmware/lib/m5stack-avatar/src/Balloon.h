@@ -83,15 +83,24 @@ class Balloon final : public Drawable {
     spi->setClipRect(textAreaLeft, cy - textHeight / 2 - 2,
                      textAreaWidth, textHeight + 4);
 
+    // 改行は空白に置換して 1 行で扱う（長文の連続性を維持）
+    String single_line = current;
+    single_line.replace("\n", " ");
+    single_line.replace("\r", " ");
+    const char* text_one_line = single_line.c_str();
+    textWidth = M5.Lcd.textWidth(text_one_line);
+
     if (textWidth <= textAreaWidth) {
       // 収まる → 中央寄せで静止表示
       spi->setTextDatum(textdatum_t::middle_center);
-      spi->drawString(text, cx, textY);
+      spi->drawString(text_one_line, cx, textY);
     } else {
-      // 長文 → 左へスクロール
-      const int pause_ms = 800;
-      const int scroll_speed_ms_per_px = 35;
-      const int gap = 40;
+      // 長文 → 左へスクロール（テキストの長さに応じて速度を緩める）
+      const int pause_ms = 1000;
+      // 速度: 長文ほど少しゆっくり目に（25〜45ms/px、150〜500文字想定でリニアに）
+      int scroll_speed_ms_per_px = 25 + (int)(single_line.length() / 25);
+      if (scroll_speed_ms_per_px > 45) scroll_speed_ms_per_px = 45;
+      const int gap = 60;   // ループ間隔（読み終わりと先頭の間隔）
       unsigned long elapsed = millis() - scroll_start_ms_;
       int offset = 0;
       if (elapsed > (unsigned long)pause_ms) {
@@ -99,9 +108,9 @@ class Balloon final : public Drawable {
         offset = ((elapsed - pause_ms) / scroll_speed_ms_per_px) % loop_len;
       }
       spi->setTextDatum(textdatum_t::middle_left);
-      spi->drawString(text, textAreaLeft - offset, textY);
+      spi->drawString(text_one_line, textAreaLeft - offset, textY);
       // ループ表示（2周目）
-      spi->drawString(text, textAreaLeft - offset + textWidth + gap, textY);
+      spi->drawString(text_one_line, textAreaLeft - offset + textWidth + gap, textY);
     }
 
     // クリップ解除
