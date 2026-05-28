@@ -272,7 +272,10 @@ void ChatGPT::chat(String text, const char *base64_buf) {
 
     if(calledFunc == ""){   // Function Callなし ／ Function Call繰り返しの完了
       chatHistory.push_back(String("assistant"), String(""), response);   // 返答をチャット履歴に追加
+      avatar.setSpeechFont(&fonts::efontJA_16);
+      avatar.setSpeechText(response.c_str());   // 応答内容を吹き出しに表示
       robot->speech(response);
+      avatar.setSpeechText("");   // TTS再生完了後にクリア
       break;
     }
     else{   // Function Call繰り返し中。ループを継続
