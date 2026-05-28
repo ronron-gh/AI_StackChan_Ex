@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard - AI Stack-chan Ex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="dashboard.js" defer></script>
+  <style>
+    html { font-size: 16px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      margin: 0; padding: 1em;
+      background: #f3f5f8;
+      color: #222;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 920px; margin: 0 auto 1em;
+    }
+    header h1 { font-size: 1.3em; margin: 0; }
+    nav a {
+      display: inline-block; margin-left: 0.8em;
+      color: #0077cc; text-decoration: none; font-size: 0.95em;
+    }
+    nav a:hover { text-decoration: underline; }
+    .grid {
+      display: grid; gap: 0.8em;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      max-width: 920px; margin: 0 auto;
+    }
+    .card {
+      background: #fff; border-radius: 8px; padding: 0.9em 1em;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .card h2 {
+      font-size: 0.95em; margin: 0 0 0.6em; color: #555;
+      border-bottom: 1px solid #eee; padding-bottom: 0.3em;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .row {
+      display: flex; justify-content: space-between;
+      padding: 0.2em 0; font-size: 0.9em;
+    }
+    .row span:first-child { color: #777; }
+    .row span:last-child { font-weight: 600; font-family: ui-monospace, monospace; }
+    .bar {
+      height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden;
+      margin-top: 0.3em;
+    }
+    .bar > div { height: 100%; background: #0077cc; transition: width 0.3s; }
+    .preview {
+      font-size: 0.85em; color: #444; white-space: pre-wrap; word-break: break-word;
+      background: #f9f9f9; padding: 0.5em; border-radius: 4px;
+      max-height: 5em; overflow: hidden;
+    }
+    footer {
+      text-align: center; font-size: 0.75em; color: #888;
+      margin-top: 1.5em;
+    }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 0.4em; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🤖 AI Stack-chan Ex</h1>
+    <nav>
+      <a href="/dashboard.html"><span class="dot"></span>Dashboard</a>
+      <a href="/personalize.html">⚙ Personalize</a>
+    </nav>
+  </header>
+
+  <div class="grid">
+    <div class="card">
+      <h2>System</h2>
+      <div class="row"><span>Firmware</span><span id="fw_version">—</span></div>
+      <div class="row"><span>Uptime</span><span id="uptime">—</span></div>
+      <div class="row"><span>Chip</span><span id="chip">—</span></div>
+      <div class="row"><span>CPU</span><span id="cpu_mhz">—</span></div>
+      <div class="row"><span>Free Heap</span><span id="free_heap">—</span></div>
+      <div class="row"><span>Min Heap</span><span id="min_heap">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Power</h2>
+      <div class="row"><span>Battery</span><span id="battery_level">—</span></div>
+      <div class="bar"><div id="battery_bar" style="width: 0%"></div></div>
+      <div class="row"><span>Charging</span><span id="charging">—</span></div>
+      <div class="row"><span>Voltage</span><span id="voltage">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Network</h2>
+      <div class="row"><span>SSID</span><span id="ssid">—</span></div>
+      <div class="row"><span>IP</span><span id="ip">—</span></div>
+      <div class="row"><span>RSSI</span><span id="rssi">—</span></div>
+      <div class="row"><span>MAC</span><span id="mac">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Storage</h2>
+      <div class="row"><span>SPIFFS</span><span id="spiffs">—</span></div>
+      <div class="bar"><div id="spiffs_bar" style="width: 0%"></div></div>
+      <div class="row"><span>SD</span><span id="sd">—</span></div>
+      <div class="bar"><div id="sd_bar" style="width: 0%"></div></div>
+    </div>
+
+    <div class="card">
+      <h2>Config</h2>
+      <div class="row"><span>LLM</span><span id="llm_type">—</span></div>
+      <div class="row"><span>TTS</span><span id="tts_type">—</span></div>
+      <div class="row"><span>TTS Voice</span><span id="tts_voice">—</span></div>
+      <div class="row"><span>TTS Model</span><span id="tts_model">—</span></div>
+      <div class="row"><span>STT</span><span id="stt_type">—</span></div>
+      <div class="row"><span>Wakeword</span><span id="wakeword_type">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Role (Custom Instructions)</h2>
+      <div class="preview" id="role">—</div>
+    </div>
+
+    <div class="card">
+      <h2>Memory (User Info)</h2>
+      <div class="preview" id="memory">—</div>
+    </div>
+  </div>
+
+  <footer>
+    Auto-refresh every 5 seconds · <a href="/api/status">/api/status</a>
+  </footer>
+</body>
+</html>
