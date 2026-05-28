@@ -10,16 +10,19 @@
 #include "AudioFileSourceSPIFFS.h"
 #include "AudioOutputM5Speaker.h"
 #include "PlayMP3.h"
-#include "Avatar.h"
 #include "../share/Mutex.h"
 
-using namespace m5avatar;
+namespace {
+  PlayMP3::EventFn s_on_start = nullptr;
+  PlayMP3::EventFn s_on_stop  = nullptr;
+}
 
-extern Avatar avatar;
-extern bool servo_home;
+void PlayMP3::set_event_listeners(PlayMP3::EventFn on_start, PlayMP3::EventFn on_stop) {
+  s_on_start = on_start;
+  s_on_stop  = on_stop;
+}
 
 /// set M5Speaker virtual channel (0-7)
-//static constexpr uint8_t m5spk_virtual_channel = 0;
 uint8_t m5spk_virtual_channel = 0;
 
 AudioOutputM5Speaker out(&M5.Speaker, m5spk_virtual_channel);
@@ -29,12 +32,9 @@ int preallocateBufferSize = 30*1024;
 uint8_t *preallocateBuffer;
 
 
-
-
 void mp3_init(void)
 {
     mp3 = new AudioGeneratorMP3();
-    //out = new AudioOutputM5Speaker(&M5.Speaker, m5spk_virtual_channel);
 
     //TTS MP3用バッファ （PSRAMから確保される）
     preallocateBuffer = (uint8_t *)malloc(preallocateBufferSize);
@@ -69,7 +69,6 @@ void playMP3(AudioFileSourceBuffer *buff){
     spk_ok = M5.Speaker.begin();
     if (!spk_ok) {
       Serial.println("[playMP3] Speaker.begin() failed twice - abort");
-      // Mic を復帰させてから抜ける
       delay(50);
       M5.Mic.begin();
       exitMutexAudio();
@@ -92,7 +91,7 @@ void playMP3(AudioFileSourceBuffer *buff){
 
   // --- Speaker → Mic 切替 ---
   M5.Speaker.end();
-  delay(30);   // I2S DMA を解放させる
+  delay(30);
 
   bool mic_ok = M5.Mic.begin();
   if (!mic_ok) {
@@ -114,7 +113,7 @@ bool playMP3SPIFFS(const char *filename)
   if (SPIFFS.exists(filename)) {
     AudioFileSourceSPIFFS *file_mp3 = new AudioFileSourceSPIFFS(filename);
     Serial.println("Open mp3");
-    
+
     if( !file_mp3->isOpen() ){
       delete file_mp3;
       file_mp3 = nullptr;
@@ -123,13 +122,11 @@ bool playMP3SPIFFS(const char *filename)
     }
     else{
       AudioFileSourceBuffer *buff = new AudioFileSourceBuffer(file_mp3, preallocateBuffer, preallocateBufferSize);
-      avatar.setExpression(Expression::Happy);
-      servo_home = false;
+      if (s_on_start) s_on_start();
 
       playMP3(buff);
-      
-      avatar.setExpression(Expression::Neutral);
-      servo_home = true;
+
+      if (s_on_stop) s_on_stop();
 
       delete file_mp3;
       delete buff;
@@ -151,22 +148,19 @@ bool playMP3SD(const char *filename)
 
     AudioFileSourceSD *file_mp3 = new AudioFileSourceSD(filename);
     Serial.println("Open mp3");
-    
+
     if( !file_mp3->isOpen() ){
       delete file_mp3;
-      //file_mp3 = nullptr;
       Serial.println("failed to open mp3 file");
       result = false;
     }
     else{
       AudioFileSourceBuffer *buff = new AudioFileSourceBuffer(file_mp3, preallocateBuffer, preallocateBufferSize);
-      avatar.setExpression(Expression::Happy);
-      servo_home = false;
+      if (s_on_start) s_on_start();
 
       playMP3(buff);
-      
-      avatar.setExpression(Expression::Neutral);
-      servo_home = true;
+
+      if (s_on_stop) s_on_stop();
 
       delete file_mp3;
       delete buff;

@@ -30,6 +30,9 @@
 #include "driver/IdleMotion.h"
 #include "share/Phrases.h"
 #include "share/SerialConfig.h"
+#include "app/MuteMode.h"
+#include "app/AudioTone.h"
+#include "app/LedController.h"
 
 #define FASTLED_INTERNAL  // 起動バナーログを抑制
 #include <FastLED.h>
@@ -62,112 +65,6 @@
 StackchanExConfig system_config;
 Robot* robot;
 bool isOffline = false;
-
-// Mute モード（外出時等に TTS / 効果音をスキップ）
-// 揮発性: 再起動でリセット
-static volatile bool g_mute = false;
-bool is_muted() { return g_mute; }
-void set_mute(bool m) {
-  g_mute = m;
-  Serial.printf("Mute mode: %s\n", m ? "ON" : "OFF");
-}
-
-// M5StackChan サーボベース搭載 WS2812C RGB LED (PY32 IOExpander 経由で制御)
-// LED は robot->servo (= ServoCustom) の PY32 を介して操作する
-void led_init() {
-  // robot 初期化前は何もしない。led_set/off 側で robot を見て呼ぶ
-}
-
-// LED 自動消灯タイマー（TTS ハング時の保険）
-// TTS 再生は main loop をブロックするため、別 FreeRTOS タスクで監視する
-static volatile unsigned long g_led_off_at_ms = 0;
-static const uint32_t LED_AUTO_OFF_MS = 20UL * 1000UL;  // 20秒
-
-// 呼吸アニメ用
-static volatile bool g_led_breathing = false;
-static volatile uint32_t g_led_breath_base_rgb = 0;
-static unsigned long g_led_breath_start_ms = 0;
-static const uint32_t LED_BREATH_PERIOD_MS = 1500;  // 周期 1.5秒
-
-void led_set(uint32_t rgb) {
-  if (!robot || !robot->servo) return;
-  g_led_breathing = false;   // 呼吸モード解除（固定色）
-  uint8_t r = (rgb >> 16) & 0xFF;
-  uint8_t g = (rgb >> 8) & 0xFF;
-  uint8_t b = rgb & 0xFF;
-  robot->servo->fillLeds(r, g, b);
-  g_led_off_at_ms = millis() + LED_AUTO_OFF_MS;
-  Serial.printf("led_set(0x%06X), auto_off_at=%lu\n", rgb, g_led_off_at_ms);
-}
-
-// 呼吸アニメ点灯（応答処理中など、「動いてる感」を出したい時用）
-// 応答処理は TTS 含めて 30 秒以上かかることがあるため auto-off は 60 秒に延長
-void led_breath(uint32_t rgb) {
-  if (!robot || !robot->servo) return;
-  g_led_breath_base_rgb = rgb;
-  g_led_breath_start_ms = millis();
-  g_led_breathing = true;
-  g_led_off_at_ms = millis() + 60UL * 1000UL;  // 呼吸時は 60 秒
-  Serial.printf("led_breath(0x%06X)\n", rgb);
-}
-
-void led_off() {
-  if (!robot || !robot->servo) return;
-  g_led_breathing = false;
-  robot->servo->clearLeds();
-  g_led_off_at_ms = 0;
-}
-
-// 別タスクで LED watchdog（main loop ブロック時でも動く）+ 呼吸アニメ
-// PY32 への I2C 競合を避けるため、breathing 時のみ細かく動く 2 段周期
-static void led_watchdog_task(void *param) {
-  Serial.println("LED watchdog task started");
-  uint32_t heartbeat = 0;
-  for (;;) {
-    // breathing 中だけ細かく更新（240ms ≒ 1.5sec / 6step）
-    // 非 breathing 時は I2C を叩かないよう 1 秒待機
-    vTaskDelay(pdMS_TO_TICKS(g_led_breathing ? 240 : 1000));
-    heartbeat++;
-
-    // ハングアウトオフ
-    unsigned long off_at = g_led_off_at_ms;
-    if (off_at != 0 && millis() > off_at) {
-      Serial.printf("LED auto-off triggered at %lu\n", millis());
-      g_led_breathing = false;
-      if (robot && robot->servo) {
-        robot->servo->clearLeds();
-      }
-      g_led_off_at_ms = 0;
-      continue;
-    }
-
-    // 呼吸アニメ
-    if (g_led_breathing && robot && robot->servo) {
-      uint32_t base = g_led_breath_base_rgb;
-      uint8_t br = (base >> 16) & 0xFF;
-      uint8_t bg = (base >> 8) & 0xFF;
-      uint8_t bb = base & 0xFF;
-      // 0..1 の周期、サインで 0.5..1.0
-      float t = (float)((millis() - g_led_breath_start_ms) % LED_BREATH_PERIOD_MS)
-                / (float)LED_BREATH_PERIOD_MS;
-      float bright = 0.5f + 0.5f * sinf(t * 2.0f * 3.14159265f);
-      uint8_t r = (uint8_t)(br * bright);
-      uint8_t g = (uint8_t)(bg * bright);
-      uint8_t b = (uint8_t)(bb * bright);
-      robot->servo->fillLeds(r, g, b);
-    }
-
-    // 30秒に1回ハートビートだけログ
-    if (heartbeat % 200 == 0) {
-      Serial.printf("LED watchdog alive (breathing=%d, off_at=%lu, now=%lu)\n",
-                    g_led_breathing ? 1 : 0, g_led_off_at_ms, millis());
-    }
-  }
-}
-
-void led_auto_off_tick() {
-  // 互換性のためのスタブ（実体は led_watchdog_task）
-}
 
 // idle タイムアウト管理（5分操作なしで省エネモード）
 static const uint32_t IDLE_TIMEOUT_MS = 5UL * 60UL * 1000UL;
@@ -429,45 +326,6 @@ ModBase* init_mod(void)
 }
 
 
-void sw_tone()
-{
-  if (is_muted()) return;
-  enterMutexAudio();
-  M5.Mic.end();
-  M5.Speaker.begin();
-  delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
-  // ソド の上昇2音（ピロッ）
-  M5.Speaker.tone(784, 70);    // G5
-  delay(90);
-  M5.Speaker.tone(1047, 110);  // C6
-  delay(200);
-
-  M5.Speaker.end();
-  M5.Mic.begin();
-  exitMutexAudio();
-}
-  
-void alarm_tone()
-{
-  if (is_muted()) return;
-  enterMutexAudio();
-  M5.Mic.end();
-  M5.Speaker.begin();
-
-  for(int i=0; i<5; i++){
-    M5.Speaker.tone(1200, 50);
-    delay(100);
-    M5.Speaker.tone(1200, 50);
-    delay(100);
-    M5.Speaker.tone(1200, 50);
-    delay(1000);  
-  }
-
-  M5.Speaker.end();
-  M5.Mic.begin();
-  exitMutexAudio();
-}
-
 void init_mic_spk()
 {
 #if defined(USE_AUDIO_MODULE)
@@ -517,9 +375,10 @@ void setup()
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
   M5.Display.setBrightness(255);  // バックライト最大（CoreS3で点灯しない問題への対処）
-  led_init();   // GoBottom LED 初期化（起動時消灯）
-  // LED watchdog（TTS等で main loop がブロックしても自動消灯する）
-  xTaskCreatePinnedToCore(led_watchdog_task, "led_wd", 4096, NULL, 1, NULL, 0);
+  // LED watchdog（TTS等で main loop がブロックしても自動消灯する）。
+  // 実 LED ハードウェア (PY32 IOExpander) は robot 初期化後に callback で接続するため、
+  // ここでは watchdog タスクのみ起動し、init は robot 用意後に行う。
+  LedController::start_watchdog_task();
   Serial.printf("Board: %d, Display: %dx%d\n",
     (int)M5.getBoard(), M5.Display.width(), M5.Display.height());
 
@@ -648,6 +507,17 @@ void setup()
 
     robot = new Robot(system_config);
 
+    // LedController に PY32 IOExpander へのアクセスを注入。
+    // driver 層が Robot を知らないようにするため callback で渡す。
+    LedController::init(
+      [](uint8_t r, uint8_t g, uint8_t b) {
+        if (robot && robot->servo) robot->servo->fillLeds(r, g, b);
+      },
+      []() {
+        if (robot && robot->servo) robot->servo->clearLeds();
+      }
+    );
+
     // PY32 LED が前回状態を保持しているため、明示的に消灯
     led_off();
 
@@ -660,6 +530,18 @@ void setup()
   }
   
   mp3_init();
+  // MP3 再生時の表情・サーボ制御を listener として注入。
+  // driver/PlayMP3 が Avatar.h と servo_home に直接依存しないための分離。
+  PlayMP3::set_event_listeners(
+    []() {
+      avatar.setExpression(Expression::Happy);
+      servo_home = false;
+    },
+    []() {
+      avatar.setExpression(Expression::Neutral);
+      servo_home = true;
+    }
+  );
 
   //mod設定
   init_mod();
@@ -716,7 +598,13 @@ void setup()
   invokeHeadPetDetectTask();
 
   // アイドル時のランダム動作（公式 stackchan の IdleMotionModifier を参考に）
-  idle_motion_init();
+  // driver 層から Robot.h を直接 include しないよう、callback を注入する形式。
+  idle_motion_init(
+    [](int x, int y, uint32_t ms) {
+      if (robot && robot->servo) robot->servo->moveTo(x, y, ms);
+    },
+    []() { return servo_home; }
+  );
 
   //init_watchdog();
 
@@ -744,8 +632,7 @@ void loop()
     is_idle_state = true;
   }
 
-  // LED 自動消灯（TTS ハングしても 60 秒で消える保険）
-  led_auto_off_tick();
+  // LED 自動消灯は watchdog task が担当（旧 led_auto_off_tick は削除）
 
   // Serial 経由の yaml 設定コマンドを処理
   serial_config_poll();

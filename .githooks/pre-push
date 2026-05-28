@@ -1,0 +1,88 @@
+#!/bin/bash
+# git pre-push hook: push 前に C++ ファイルの cppcheck とビルドを実行
+#
+# セットアップ:
+#   tools/setup-hooks.sh  （= git config core.hooksPath .githooks）
+#
+# スキップ:
+#   git push --no-verify
+
+set -uo pipefail
+
+# 色
+red()    { printf "\033[31m%s\033[0m" "$1"; }
+green()  { printf "\033[32m%s\033[0m" "$1"; }
+yellow() { printf "\033[33m%s\033[0m" "$1"; }
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# このプッシュに含まれるコミットのファイル変更（マージコミット除外用に -m 1）
+# stdin の各行は: <local_ref> <local_sha> <remote_ref> <remote_sha>
+CHANGED_FILES=""
+while read -r local_ref local_sha remote_ref remote_sha; do
+  # 削除ブランチは無視
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    # 新規ブランチ: 直近 20 コミット分の変更
+    files=$(git diff --name-only "${local_sha}~20..${local_sha}" 2>/dev/null || git diff --name-only "${local_sha}")
+  else
+    files=$(git diff --name-only "${remote_sha}..${local_sha}")
+  fi
+  CHANGED_FILES="$CHANGED_FILES"$'\n'"$files"
+done
+
+# C++ ファイルだけ抽出
+CPP_FILES=$(echo "$CHANGED_FILES" | grep -E '^firmware/src/.*\.(cpp|h)$' | sort -u | grep -v '^$' || true)
+
+FAIL=0
+
+# --- cppcheck ---
+if command -v cppcheck >/dev/null 2>&1; then
+  if [ -n "$CPP_FILES" ]; then
+    echo "$(yellow "[pre-push]") cppcheck on $(echo "$CPP_FILES" | wc -l | tr -d ' ') changed C++ files..."
+    # 各ファイル個別に実行（include パスは PIO の compile_commands.json があれば使う）
+    LINT_OUTPUT=$(echo "$CPP_FILES" | xargs -I {} cppcheck \
+      --enable=warning,performance,portability \
+      --quiet \
+      --inline-suppr \
+      --suppress=missingIncludeSystem \
+      --suppress=missingInclude \
+      --suppress=unusedFunction \
+      --suppress=uninitMemberVar:firmware/lib/* \
+      --error-exitcode=0 \
+      {} 2>&1)
+    if [ -n "$LINT_OUTPUT" ]; then
+      echo "$LINT_OUTPUT"
+      echo "$(yellow "[pre-push]") cppcheck: warnings found (informational, push continues)"
+    else
+      echo "$(green "[pre-push]") cppcheck: clean"
+    fi
+  fi
+else
+  echo "$(yellow "[pre-push]") cppcheck not installed - skip (brew install cppcheck)"
+fi
+
+# --- build check (pio run) ---
+# 変更が firmware/ に含まれる場合のみ走らせる
+HAS_FW_CHANGES=$(echo "$CHANGED_FILES" | grep -E '^firmware/' | head -1 || true)
+PIO="$HOME/.platformio/penv/bin/pio"
+if [ -n "$HAS_FW_CHANGES" ] && [ -x "$PIO" ]; then
+  echo "$(yellow "[pre-push]") building (pio run -e m5stack-cores3)..."
+  BUILD_LOG=$(mktemp)
+  if (cd firmware && "$PIO" run -e m5stack-cores3 > "$BUILD_LOG" 2>&1); then
+    echo "$(green "[pre-push]") build: SUCCESS"
+  else
+    echo "$(red "[pre-push]") build: FAILED"
+    tail -30 "$BUILD_LOG"
+    echo ""
+    echo "$(red "[pre-push]") push aborted. Fix build or use 'git push --no-verify' to skip."
+    rm -f "$BUILD_LOG"
+    FAIL=1
+  fi
+  rm -f "$BUILD_LOG"
+elif [ -n "$HAS_FW_CHANGES" ]; then
+  echo "$(yellow "[pre-push]") pio not found at $PIO - skip build check"
+fi
+
+exit $FAIL

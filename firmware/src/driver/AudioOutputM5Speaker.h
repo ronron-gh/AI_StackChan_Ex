@@ -1,5 +1,6 @@
 #ifndef _AUDIO_OUTPUT_M5_SPEAKER_H
 #define _AUDIO_OUTPUT_M5_SPEAKER_H
+#include <M5Unified.h>
 #include <AudioOutput.h>
 
 /// set M5Speaker virtual channel (0-7)
@@ -153,5 +154,10 @@ public:
     return (index < FFT_SIZE / 2) ? (uint32_t)sqrtf(_fr[ index ] * _fr[ index ] + _fi[ index ] * _fi[ index ]) : 0u;
   }
 };
+
+// グローバルインスタンス。実体は driver/PlayMP3.cpp にある。
+// TTSBase 等が PlayMP3.h の他の重い依存（AudioGeneratorMP3 等）を
+// 引き込まず、out だけを使えるようにする。
+extern AudioOutputM5Speaker out;
 
 #endif

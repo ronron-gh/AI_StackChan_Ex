@@ -2,7 +2,9 @@
 #define _TTS_BASE_H
 
 #include <Arduino.h>
-#include "driver/PlayMP3.h"
+// getLevel() で out.getBuffer() を参照するため、out のみが宣言されている
+// 軽量ヘッダを include する（PlayMP3.h の重い依存を引き込まない）。
+#include "driver/AudioOutputM5Speaker.h"
 
 struct tts_param_t
 {

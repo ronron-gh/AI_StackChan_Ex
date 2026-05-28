@@ -2,6 +2,8 @@
 
 
 #include "TTSBase.h"
+#include <AudioFileSourceBuffer.h>
+#include <AudioFileSourceHTTPSStream.h>
 
 class WebVoiceVoxTTS: public TTSBase{
 private:

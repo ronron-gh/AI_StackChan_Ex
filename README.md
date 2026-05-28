@@ -73,6 +73,64 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 ---
 
+## 🛠 開発者セットアップ
+
+### 必要ツール
+
+```bash
+brew install cppcheck   # 静的解析（任意・推奨）
+```
+
+PlatformIO Core は VSCode の PlatformIO 拡張を入れていれば `~/.platformio/penv/bin/pio` にインストール済みです。
+
+### 推奨ワークフロー: Makefile
+
+```bash
+make upload    # check → build → upload (推奨。書き込み前に自動チェック)
+make build     # ビルドのみ
+make check     # 静的解析（変更ファイルのみ）
+make lint      # 静的解析（全体）
+make monitor   # シリアルモニター
+make flash     # 書き込みのみ（check スキップ・緊急用）
+make clean     # ビルド成果物の削除
+make envs      # 利用可能な platformio env リスト
+make           # ヘルプ表示
+```
+
+別 env への書き込み:
+```bash
+make ENV=m5stack-core2 upload
+make ENV=m5stack-cores3-llm upload
+make PORT=/dev/cu.usbmodem11401 upload
+```
+
+**設計判断**: embedded 開発では「書き込み前」が一番効く品質ゲート。`make upload` は必ず check + build を通してから書き込みます。
+
+### 補助: git pre-push hook（任意）
+
+`make upload` を経由せずに直接 `git push` しても安全にするための保険として、pre-push hook も用意してあります。初回のみ：
+
+```bash
+./tools/setup-hooks.sh
+# または
+make setup-hooks
+```
+
+これで `git push` 時に cppcheck + pio run が走り、ビルド失敗時は push がブロックされます。
+
+スキップしたい場合: `git push --no-verify`
+
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yml` で PR ごとに以下を自動実行（最後の砦）：
+
+- `cppcheck` 静的解析
+- `pio run` フルビルド
+
+ローカルで `make upload` が通っていれば CI も通る前提。
+
+---
+
 
 > ｽﾀｯｸﾁｬﾝは[ししかわさん](https://x.com/stack_chan)が開発、公開している、手乗りサイズのｽｰﾊﾟｰｶﾜｲｲコミュニケーションロボットです。
 >- [Github](https://github.com/stack-chan/stack-chan)
