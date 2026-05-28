@@ -96,10 +96,11 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
     robot->chat(ret, base64_buf);
     avatar.setSpeechText("");
 
-    // 連続会話モード: 当面無効化（I2S リソース解放問題で 2 ターン目の MP3 再生が
-    // ハングするため）。雑音を拾った場合の暴走も避けられる。
-    // 将来 PlayMP3/TTSBase の I2S 管理を整理したら 1〜2 に戻す。
-    const int MAX_CONTINUOUS_TURNS = 0;
+    // 連続会話モード: SC_ExConfig.yaml の conversation セクションで制御
+    //   continuous: true で有効、max_turns で追加ターン数（0〜5）
+    // I2S 不安定問題 (Issue #1) があるため、yaml で OFF 推奨。
+    const auto& conv = robot->m_config.getExConfig().conversation;
+    const int MAX_CONTINUOUS_TURNS = conv.continuous ? conv.max_turns : 0;
     for (int turn = 0; turn < MAX_CONTINUOUS_TURNS; turn++) {
       avatar.setExpression(Expression::Happy);
       avatar.setSpeechText(phrases::followup());

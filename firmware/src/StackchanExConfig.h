@@ -82,6 +82,11 @@ typedef struct ModuleLLMConf {
     int8_t txPin;
 } moduleLLM_s;
 
+typedef struct ConversationConf {
+    bool continuous;      // 連続会話モードを使うか
+    int  max_turns;       // 最大ターン数
+} conversation_s;
+
 typedef struct ExConfig {
     llm_s llm;
     tts_s tts;
@@ -89,6 +94,7 @@ typedef struct ExConfig {
     wakeword_s wakeword;
     audio_s audio;
     moduleLLM_s moduleLLM;
+    conversation_s conversation;
 } ex_config_s;
 
 

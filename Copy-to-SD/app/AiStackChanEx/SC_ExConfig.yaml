@@ -30,3 +30,9 @@ moduleLLM:
   rxPin: 13
   txPin: 14
 
+# 連続会話モード（応答後にウェイクワード不要で次の発話を受け付ける）
+# I2S 不安定問題 (Issue #1) があるため、当面は OFF 推奨。
+conversation:
+  continuous: false   # true で有効
+  max_turns: 1        # 追加ターン数（0〜5）
+

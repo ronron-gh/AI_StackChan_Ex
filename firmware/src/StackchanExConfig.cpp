@@ -138,6 +138,12 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     _ex_parameters.moduleLLM.rxPin  = doc["moduleLLM"]["rxPin"].as<int>();
     _ex_parameters.moduleLLM.txPin  = doc["moduleLLM"]["txPin"].as<int>();
 
+    // 連続会話モード（省略時は OFF, 0 ターン）
+    _ex_parameters.conversation.continuous = doc["conversation"]["continuous"].as<bool>();
+    _ex_parameters.conversation.max_turns  = doc["conversation"]["max_turns"].as<int>();
+    if (_ex_parameters.conversation.max_turns < 0) _ex_parameters.conversation.max_turns = 0;
+    if (_ex_parameters.conversation.max_turns > 5) _ex_parameters.conversation.max_turns = 5;
+
 }
 
 void StackchanExConfig::printExtParameters(void)
