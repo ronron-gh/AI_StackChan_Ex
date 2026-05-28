@@ -144,6 +144,10 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     if (_ex_parameters.conversation.max_turns < 0) _ex_parameters.conversation.max_turns = 0;
     if (_ex_parameters.conversation.max_turns > 5) _ex_parameters.conversation.max_turns = 5;
 
+    // Wi-Fi フォールバック（メイン Wi-Fi 接続失敗時に使う代替 SSID/パスワード）
+    _ex_parameters.wifi_fallback.ssid     = doc["wifi_fallback"]["ssid"].as<String>();
+    _ex_parameters.wifi_fallback.password = doc["wifi_fallback"]["password"].as<String>();
+
 }
 
 void StackchanExConfig::printExtParameters(void)

@@ -36,3 +36,9 @@ conversation:
   continuous: false   # true で有効
   max_turns: 1        # 追加ターン数（0〜5）
 
+# Wi-Fi フォールバック（メイン Wi-Fi に接続できない時、テザリング等を試す）
+# ssid を空にしておくとフォールバックなし → Smart Config に進む
+wifi_fallback:
+  ssid: ""
+  password: ""
+

@@ -216,7 +216,7 @@ FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp ver
 // 頭撫でモード実装本体（avatar / robot がここで参照可能）
 void head_pet_trigger() {
   notify_activity();
-  avatar.setExpression(Expression::Happy);
+  avatar.setExpression(Expression::Embarrassed);
   avatar.setSpeechFont(&fonts::efontJA_16);
   avatar.setSpeechText(phrases::head_pet());
   if (robot && robot->servo) {
@@ -575,12 +575,27 @@ void setup()
           // SDカード設定による接続に成功。
           Serial.println("Successfully established a Wi-Fi connection via the SD card settings.");
         }else{
-          // SDカード設定による接続に失敗。Smart Configをスタート。
-          Serial.println("WiFi connection failed due to SD card settings. Start Smart Config.");
-          if(!WifiSmartConfig()){
-            // Smart Config失敗。オフラインモード。
-            Serial.println("Smart Config failed. Running in offline mode.");
-            isOffline = true;
+          // メイン Wi-Fi 失敗 → フォールバック SSID を試す
+          const auto& fallback = system_config.getExConfig().wifi_fallback;
+          bool fallback_ok = false;
+          if (fallback.ssid.length() > 0) {
+            Serial.printf("Trying fallback Wi-Fi: %s\n", fallback.ssid.c_str());
+            WiFi.disconnect();
+            WiFi.begin(fallback.ssid.c_str(), fallback.password.c_str());
+            if (Wifi_connection_check()) {
+              Serial.println("Successfully connected via fallback Wi-Fi.");
+              fallback_ok = true;
+            } else {
+              Serial.println("Fallback Wi-Fi also failed.");
+            }
+          }
+          if (!fallback_ok) {
+            // フォールバックも失敗 → Smart Config
+            Serial.println("WiFi connection failed. Start Smart Config.");
+            if(!WifiSmartConfig()){
+              Serial.println("Smart Config failed. Running in offline mode.");
+              isOffline = true;
+            }
           }
         }
       }

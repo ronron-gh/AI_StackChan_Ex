@@ -87,6 +87,11 @@ typedef struct ConversationConf {
     int  max_turns;       // 最大ターン数
 } conversation_s;
 
+typedef struct WifiFallbackConf {
+    String ssid;
+    String password;
+} wifi_fallback_s;
+
 typedef struct ExConfig {
     llm_s llm;
     tts_s tts;
@@ -95,6 +100,7 @@ typedef struct ExConfig {
     audio_s audio;
     moduleLLM_s moduleLLM;
     conversation_s conversation;
+    wifi_fallback_s wifi_fallback;
 } ex_config_s;
 
 
