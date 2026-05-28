@@ -100,3 +100,60 @@ PY32 が応答しないと `stackchan-arduino` の `Stackchan_servo.cpp` で `wh
 実装前に作業方針を `firmware/doc/codex/steering/YYYYMMDD-short-topic.md` に書いてからコードに着手する（AGENTS.md の方針）。
 
 例: `firmware/doc/codex/steering/20260528-speech-bubble-improvements.md`
+
+## レイヤードアーキテクチャ（厳守）
+
+`/layered-review` で検出した依存違反を整理し、PR #12 で driver / TTS / app 層の独立性を回復した。**今後追加するコードもこの構造を守ること**。
+
+### レイヤー階層（下が低レベル、上が高レベル）
+
+```
+L6  main.cpp / WebAPI.cpp        ← composition root / presentation
+L5  mod/                          ← use case / application
+L4  Robot, ServoCustom            ← orchestration
+L3  llm/, tts/, stt/, wakeword/   ← external service integration
+L2  driver/                       ← hardware drivers
+L1  share/, app/, rootCA/         ← utilities / value objects / state
+L0  外部ライブラリ                ← M5Unified, ESP-IDF, Arduino 等
+```
+
+### 依存ルール（DO）
+
+- **下のレイヤーへの依存のみ許可**: 例 `mod/ → Robot, driver/`、`Robot → llm/, tts/, stt/`、`driver/ → share/, app/`
+- **callback / listener で依存を逆転**: 低レベル層が高レベルの動作を必要とする場合は関数オブジェクトを init で受け取る。例: `IdleMotion::init(ServoMoveFn move_fn, CanMoveFn can_move_fn)`、`PlayMP3::set_event_listeners(on_start, on_stop)`
+- **ヘッダの include は必要最小限**: 抽象基底ヘッダ（`TTSBase.h` 等）は具体実装ヘッダを引き込まない
+- **composition root は main.cpp**: 具体クラスの new と callback の注入は main.cpp で行う
+
+### 依存ルール（DON'T = 違反）
+
+- ❌ **driver/ から Robot.h / Avatar.h を include** — 逆方向依存。callback で受ける
+- ❌ **driver/ から `extern bool servo_home` などの上位 state を参照** — 状態は引数 or callback 経由
+- ❌ **mod/ A から mod/ B のヘッダを include** — Mod は独立、`ModManager` 経由でやり取り
+- ❌ **抽象基底ヘッダで具体実装ヘッダを include** — 例 `TTSBase.h` で `PlayMP3.h` を引き込まない
+- ❌ **同一レイヤー内の他コンポーネントへの依存** — service → service など
+
+### 新規ファイル配置の判断フロー
+
+1. ハードウェアに直接アクセスするか？ → `driver/`
+2. 外部 API / クラウドサービスとの通信か？ → `llm/`, `tts/`, `stt/`, `wakeword/`
+3. プロジェクト全体の小さい共有ユーティリティか？ → `share/`
+4. アプリケーション状態（mute / LED / idle 等）と中央集権的なロジックか？ → `app/`
+5. 特定のユースケース（音楽再生 / Pomodoro 等）か？ → `mod/`
+6. 上記いずれにも当てはまらず orchestration なら → `Robot.cpp` への追加
+
+### グローバル extern の扱い
+
+現状 `extern Avatar avatar;` / `extern Robot* robot;` / `extern bool servo_home;` 等のグローバルが多数存在する。新規に extern を増やさない方針：
+
+- 新機能は composition root（main.cpp）で具体オブジェクトを作り、callback / 参照を渡す
+- どうしても必要な状態は `app/` 配下に閉じた static として持ち、getter で公開
+
+### 違反検出
+
+PR レビュー時に `/layered-review` を実行することで依存違反を検出できる。`make check` (cppcheck) は文法エラーを検出するが、レイヤー違反は検出しない。
+
+### 既存コード改修時
+
+- 触らずに済むならそのまま（既存違反は別 PR で段階的に解消する）
+- 触る必要があれば、その PR の範囲でレイヤー違反を解消する（boy scout rule）
+- composition root への callback 注入が増えるのは想定内
