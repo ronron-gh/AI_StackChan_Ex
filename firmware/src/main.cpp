@@ -716,7 +716,13 @@ void setup()
   invokeHeadPetDetectTask();
 
   // アイドル時のランダム動作（公式 stackchan の IdleMotionModifier を参考に）
-  idle_motion_init();
+  // driver 層から Robot.h を直接 include しないよう、callback を注入する形式。
+  idle_motion_init(
+    [](int x, int y, uint32_t ms) {
+      if (robot && robot->servo) robot->servo->moveTo(x, y, ms);
+    },
+    []() { return servo_home; }
+  );
 
   //init_watchdog();
 
