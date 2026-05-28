@@ -22,6 +22,31 @@ void Eye::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
   uint16_t backgroundColor = ctx->getColorDepth() == 1 ? 0 : ctx->getColorPalette()->get(COLOR_BACKGROUND);
 
   if (openRatio > 0) {
+    // ハート目: 円の代わりにハートマークを描く
+    if (exp == Expression::HeartEyes) {
+      int cx = x + offsetX;
+      int cy = y + offsetY;
+      int hr = (int)(r * 0.7f);
+      int dx = (int)(r * 0.55f);
+      int dy = (int)(-r * 0.25f);
+      spi->fillCircle(cx - dx, cy + dy, hr, primaryColor);
+      spi->fillCircle(cx + dx, cy + dy, hr, primaryColor);
+      // ハート下部の三角
+      spi->fillTriangle(
+        cx - dx - hr + 2, cy + dy + hr / 4,
+        cx + dx + hr - 2, cy + dy + hr / 4,
+        cx,               cy + r + 2,
+        primaryColor);
+      return;
+    }
+    // 驚き: 大きめ目に瞳孔のような同心円
+    if (exp == Expression::Surprised) {
+      int rr = r + 3;
+      spi->fillCircle(x + offsetX, y + offsetY, rr,     primaryColor);
+      spi->fillCircle(x + offsetX, y + offsetY, rr / 2, backgroundColor);
+      spi->fillCircle(x + offsetX, y + offsetY, rr / 4, primaryColor);
+      return;
+    }
     spi->fillCircle(x + offsetX, y + offsetY, r, primaryColor);
     // TODO(meganetaaan): Refactor
     if (exp == Expression::Angry || exp == Expression::Sad) {

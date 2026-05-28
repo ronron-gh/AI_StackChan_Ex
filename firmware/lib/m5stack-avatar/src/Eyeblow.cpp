@@ -35,8 +35,10 @@ void Eyeblow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
   } else {
     int x1 = x - width / 2;
     int y1 = y - height / 2;
-    if (exp == Expression::Happy || exp == Expression::Embarrassed) {
-      y1 = y1 - 5;
+    if (exp == Expression::Happy || exp == Expression::Embarrassed || exp == Expression::HeartEyes) {
+      y1 = y1 - 5;   // 喜び系は眉が上
+    } else if (exp == Expression::Surprised) {
+      y1 = y1 - 10;  // 驚きはさらに高く
     }
     spi->fillRect(x1, y1, width, height, primaryColor);
   }

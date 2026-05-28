@@ -3,6 +3,7 @@
 // license information.
 
 #include "Mouth.h"
+#include "Expression.h"
 
 namespace m5avatar {
 
@@ -14,9 +15,20 @@ Mouth::Mouth(uint16_t minWidth, uint16_t maxWidth, uint16_t minHeight,
       maxHeight{maxHeight} {}
 
 void Mouth::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
+  Expression exp = ctx->getExpression();
   uint16_t primaryColor = ctx->getColorDepth() == 1 ? 1 : ctx->getColorPalette()->get(COLOR_PRIMARY);
   float breath = _min(1.0f, ctx->getBreath());
   float openRatio = ctx->getMouthOpenRatio();
+
+  // 驚き: 口を O 字（丸）にする
+  if (exp == Expression::Surprised) {
+    int cx = rect.getLeft();
+    int cy = rect.getTop() + (int)(breath * 2);
+    int r  = (minHeight + maxHeight) / 2 + 4;
+    spi->fillCircle(cx, cy, r, primaryColor);
+    return;
+  }
+
   int h = minHeight + (maxHeight - minHeight) * openRatio;
   int w = minWidth + (maxWidth - minWidth) * (1 - openRatio);
   int x = rect.getLeft() - w / 2;
