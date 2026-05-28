@@ -15,6 +15,8 @@ private:
     #endif
     String avatarText;
     bool isOffline;
+    unsigned long m_intro_shown_ms = 0;
+    bool m_intro_active = false;
 public:
     AiStackChanMod(bool _isOffline);
 

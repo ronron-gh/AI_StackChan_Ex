@@ -61,17 +61,28 @@ static void report_batt_level(){
 }
 
 
+extern void notify_activity();
+extern void led_set(uint32_t rgb);
+extern void led_off();
+
+#include "share/Phrases.h"
+
 static void STT_ChatGPT(const char *base64_buf = NULL) {
+  // 会話開始は idle 解除のトリガー（タッチ or ウェイクワード経由で来る）
+  notify_activity();
+
   bool prev_servo_home = servo_home;
 #ifdef USE_SERVO
   servo_home = true;
 #endif
 
   avatar.setExpression(Expression::Happy);
-  avatar.setSpeechText("御用でしょうか？");
+  avatar.setSpeechText(phrases::listening());
+  led_set(0x00FF00);   // 受付モード：緑
 
   String ret = robot->listen();
   avatar.setSpeechText("");
+  led_set(0x0080FF);   // 応答処理中：水色
 
 #ifdef USE_SERVO
   //servo_home = prev_servo_home;
@@ -83,17 +94,47 @@ static void STT_ChatGPT(const char *base64_buf = NULL) {
     Serial.println(ret);
     robot->chat(ret, base64_buf);
     avatar.setSpeechText("");
+
+    // 連続会話モード: 当面無効化（I2S リソース解放問題で 2 ターン目の MP3 再生が
+    // ハングするため）。雑音を拾った場合の暴走も避けられる。
+    // 将来 PlayMP3/TTSBase の I2S 管理を整理したら 1〜2 に戻す。
+    const int MAX_CONTINUOUS_TURNS = 0;
+    for (int turn = 0; turn < MAX_CONTINUOUS_TURNS; turn++) {
+      avatar.setExpression(Expression::Happy);
+      avatar.setSpeechText(phrases::followup());
+      led_set(0x00FF00);   // 連続受付：緑
+
+      String more = robot->listen();
+      avatar.setSpeechText("");
+
+      // 無音 or 認識失敗 / BGMの定型句 → 連続会話モード終了
+      if (more == "" || more.length() < 2
+          || more.indexOf("ご視聴") >= 0
+          || more.indexOf("ありがとうございました") >= 0) {
+        Serial.println("連続会話モード終了（無音 or 雑音定型句）");
+        led_off();   // 終了時に必ず消灯
+        break;
+      }
+
+      Serial.printf("連続会話 turn %d: %s\n", turn + 1, more.c_str());
+      led_set(0x0080FF);   // 応答処理中：水色
+      robot->chat(more, base64_buf);
+      avatar.setSpeechText("");
+      led_off();   // 各ターン完了後に消灯（TTS失敗時のハング対策）
+    }
+
     avatar.setExpression(Expression::Neutral);
     servo_home = true;
   } else {
     Serial.println("音声認識失敗");
     avatar.setExpression(Expression::Sad);
-    avatar.setSpeechText("聞き取れませんでした");
+    avatar.setSpeechText(phrases::not_heard());
     delay(2000);
     avatar.setSpeechText("");
     avatar.setExpression(Expression::Neutral);
     servo_home = true;
-  } 
+  }
+  led_off();   // 会話完了：LED 消灯
 }
 
 
@@ -138,7 +179,10 @@ AiStackChanMod::AiStackChanMod(bool _isOffline)
 
 void AiStackChanMod::init(void)
 {
-  avatar.setSpeechText("AI Stack-chan");
+  avatar.setSpeechFont(&fonts::efontJA_16);
+  avatar.setSpeechText(phrases::greeting());
+  m_intro_shown_ms = millis();
+  m_intro_active = true;
 #if defined(ENABLE_CAMERA)
   if(isSubWindowON){
     avatar.set_isSubWindowEnable(true);
@@ -292,6 +336,11 @@ void AiStackChanMod::doubleTapped(float ax, float ay, float az)
 
 void AiStackChanMod::idle(void)
 {
+  // 起動時挨拶の自動消去（5秒経過で）
+  if (m_intro_active && (millis() - m_intro_shown_ms > 5000)) {
+    avatar.setSpeechText("");
+    m_intro_active = false;
+  }
 
   /// Face detect ///
 #if defined(ENABLE_CAMERA)
