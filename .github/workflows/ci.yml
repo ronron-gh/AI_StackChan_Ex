@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  cppcheck:
+    name: Static analysis (cppcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: sudo apt-get update && sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck on firmware/src
+        run: |
+          cppcheck \
+            --enable=warning,performance,portability \
+            --quiet \
+            --inline-suppr \
+            --suppress=missingIncludeSystem \
+            --suppress=missingInclude \
+            --suppress=unusedFunction \
+            --error-exitcode=0 \
+            -I firmware/src \
+            firmware/src 2>&1 | tee cppcheck.log
+          echo ""
+          echo "=== summary ==="
+          warnings=$(grep -cE "warning|error" cppcheck.log || true)
+          echo "findings: $warnings"
+          # 警告があってもまだ落とさない（既存の指摘多数のため）。
+          # 段階的に減らしたら error-exitcode=1 にして fail させる予定。
+
+  build:
+    name: PlatformIO build (m5stack-cores3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            firmware/.pio
+          key: pio-${{ runner.os }}-${{ hashFiles('firmware/platformio.ini') }}
+          restore-keys: |
+            pio-${{ runner.os }}-
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build firmware
+        working-directory: firmware
+        run: pio run -e m5stack-cores3

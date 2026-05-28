@@ -73,6 +73,47 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 
 ---
 
+## 🛠 開発者セットアップ
+
+### 初回のみ: git pre-push hook を有効化
+
+```bash
+./tools/setup-hooks.sh
+```
+
+これで `git push` の度に以下が自動実行されます：
+
+- `cppcheck` — 変更された C++ ファイルの静的解析
+- `pio run -e m5stack-cores3` — ビルド検証
+
+**スキップしたい場合:** `git push --no-verify`
+
+### 必要ツール
+
+```bash
+brew install cppcheck   # 静的解析（任意・推奨）
+```
+
+PlatformIO Core は VSCode の PlatformIO 拡張を入れていれば `~/.platformio/penv/bin/pio` にインストール済みです。
+
+### 手動チェック
+
+```bash
+./tools/check.sh diff   # origin/main からの変更のみ cppcheck
+./tools/check.sh lint   # firmware/src 全体を cppcheck
+./tools/check.sh build  # pio run -e m5stack-cores3
+./tools/check.sh        # 上記をまとめて
+```
+
+### CI (GitHub Actions)
+
+`.github/workflows/ci.yml` で PR ごとに以下を自動実行：
+
+- `cppcheck` 静的解析（現在は情報出力のみで失敗扱いにしない）
+- `pio run` フルビルド
+
+---
+
 
 > ｽﾀｯｸﾁｬﾝは[ししかわさん](https://x.com/stack_chan)が開発、公開している、手乗りサイズのｽｰﾊﾟｰｶﾜｲｲコミュニケーションロボットです。
 >- [Github](https://github.com/stack-chan/stack-chan)
