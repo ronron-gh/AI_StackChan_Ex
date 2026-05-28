@@ -324,6 +324,9 @@ void setup()
 #endif
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
+  M5.Display.setBrightness(255);  // バックライト最大（CoreS3で点灯しない問題への対処）
+  Serial.printf("Board: %d, Display: %dx%d\n",
+    (int)M5.getBoard(), M5.Display.width(), M5.Display.height());
 
   /// シリアル出力のログレベルを VERBOSEに設定
   //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
