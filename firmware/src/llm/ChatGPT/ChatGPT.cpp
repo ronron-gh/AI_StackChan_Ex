@@ -12,6 +12,7 @@
 #include "FunctionCall.h"
 #include "MCPClient.h"
 #include "Robot.h"
+#include "share/Phrases.h"
 
 using namespace m5avatar;
 extern Avatar avatar;
@@ -292,7 +293,7 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   String response = "";
   avatar.setExpression(Expression::Doubt);
   avatar.setSpeechFont(&fonts::efontJA_16);
-  avatar.setSpeechText("考え中…");
+  avatar.setSpeechText(phrases::thinking());
   String ret = https_post_json("https://api.openai.com/v1/chat/completions", json_string.c_str(), root_ca_openai);
   avatar.setExpression(Expression::Neutral);
   avatar.setSpeechText("");
@@ -304,7 +305,7 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
       Serial.print(F("deserializeJson() failed: "));
       Serial.println(error.f_str());
       avatar.setExpression(Expression::Sad);
-      avatar.setSpeechText("エラーです");
+      avatar.setSpeechText(phrases::error());
       response = "エラーです";
       delay(1000);
       avatar.setSpeechText("");
@@ -331,7 +332,7 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   } else {
     avatar.setExpression(Expression::Sad);
     avatar.setSpeechFont(&fonts::efontJA_16);
-    avatar.setSpeechText("わかりません");
+    avatar.setSpeechText(phrases::unknown());
     response = "わかりません";
     delay(1000);
     avatar.setSpeechText("");
