@@ -11,12 +11,12 @@
 String OPENAITTS_MODEL = "tts-1";
 String OPENAITTS_VOICE = "alloy";
 
-static String dataTemplate = 
+static String dataTemplate =
 "{"
     "\"input\": \"dummy\","
     "\"model\": \"tts-1\","
     "\"voice\": \"alloy\","
-    "\"speed\": 1,"
+    "\"speed\": 0.9,"
     "\"response_format\": \"mp3\""
 "}";
 
