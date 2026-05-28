@@ -34,13 +34,13 @@ void Eye::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
       y2 = y0 + r;
       spi->fillTriangle(x0, y0, x1, y1, x2, y2, backgroundColor);
     }
-    if (exp == Expression::Happy || exp == Expression::Sleepy) {
+    if (exp == Expression::Happy || exp == Expression::Sleepy || exp == Expression::Embarrassed) {
       int x0, y0, w, h;
       x0 = x + offsetX - r;
       y0 = y + offsetY - r;
       w = r * 2 + 4;
       h = r + 2;
-      if (exp == Expression::Happy) {
+      if (exp == Expression::Happy || exp == Expression::Embarrassed) {
         y0 += r;
         spi->fillCircle(x + offsetX, y + offsetY, r / 1.5, backgroundColor);
       }
