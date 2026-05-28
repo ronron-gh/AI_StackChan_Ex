@@ -1,5 +1,6 @@
 #include <ESP32WebServer.h>
 #include <nvs.h>
+#include <Preferences.h>
 #include <M5Unified.h>
 #include <WiFi.h>
 #include <SPIFFS.h>
@@ -149,6 +150,8 @@ IMPORT_FILE(.rodata, "personalize.html", personalize_html);
 IMPORT_FILE(.rodata, "personalize.js", personalize_js);
 IMPORT_FILE(.rodata, "dashboard.html", dashboard_html);
 IMPORT_FILE(.rodata, "dashboard.js", dashboard_js);
+IMPORT_FILE(.rodata, "settings.html", settings_html);
+IMPORT_FILE(.rodata, "settings.js", settings_js);
 
 
 void handleRoot() {
@@ -175,6 +178,147 @@ void handle_dashboard_js() {
 // Mute モード（main.cpp 側で実装）
 extern bool is_muted();
 extern void set_mute(bool m);
+extern void led_set(uint32_t rgb);
+extern void led_off();
+extern void sw_tone();
+extern void alarm_tone();
+
+// YAML 設定ファイルの読み書き
+// パス検証（許可: ex / basic / sec のみ）
+static const char* path_for_config(const String& type) {
+  if (type == "ex")    return "/app/AiStackChanEx/SC_ExConfig.yaml";
+  if (type == "basic") return "/yaml/SC_BasicConfig.yaml";
+  if (type == "sec")   return "/yaml/SC_SecConfig.yaml";
+  return nullptr;
+}
+
+// 秘密値（password / apikey 系）を ***UNCHANGED*** に置換する
+// シンプルな行単位処理。"key:" + 値（引用符あり/なし）に対応。
+static String mask_secrets(const String& yaml) {
+  String out;
+  out.reserve(yaml.length() + 64);
+  int start = 0;
+  while (start <= (int)yaml.length()) {
+    int eol = yaml.indexOf('\n', start);
+    String line = (eol < 0) ? yaml.substring(start) : yaml.substring(start, eol);
+    String trimmed = line; trimmed.trim();
+    String lower = trimmed; lower.toLowerCase();
+    bool is_secret =
+      lower.startsWith("password:") || lower.startsWith("password :") ||
+      lower.startsWith("stt:") || lower.startsWith("stt :") ||
+      lower.startsWith("aiservice:") || lower.startsWith("aiservice :") ||
+      lower.startsWith("tts:") || lower.startsWith("tts :");
+    // ただし tts: は ExConfig 側にも別用途で出てくる（type/voice/model のセクション）
+    // SecConfig の "tts: \"...\"" 形式の場合だけマスクしたい → コロン直後の値が引用符ありかで判定
+    if (is_secret) {
+      int colon = line.indexOf(':');
+      if (colon >= 0) {
+        // コロン以降の値部分を取り出し、ダブルクォート文字列ならマスク
+        String value = line.substring(colon + 1);
+        String value_trimmed = value; value_trimmed.trim();
+        if (value_trimmed.startsWith("\"") && value_trimmed.length() > 2) {
+          // インデント保持してマスク
+          String indent = line.substring(0, colon);
+          out += indent + ": \"***UNCHANGED***\"";
+          if (eol >= 0) out += "\n";
+          if (eol < 0) break;
+          start = eol + 1;
+          continue;
+        }
+      }
+    }
+    out += line;
+    if (eol >= 0) out += "\n";
+    if (eol < 0) break;
+    start = eol + 1;
+  }
+  return out;
+}
+
+// ***UNCHANGED*** を元ファイルの該当行で復元
+static String unmask_secrets(const String& new_yaml, const String& old_yaml) {
+  // 単純に行単位で対応。***UNCHANGED*** を含む行は old_yaml の同名キーの行で置換
+  String out;
+  out.reserve(new_yaml.length() + 64);
+  int start = 0;
+  while (start <= (int)new_yaml.length()) {
+    int eol = new_yaml.indexOf('\n', start);
+    String line = (eol < 0) ? new_yaml.substring(start) : new_yaml.substring(start, eol);
+    if (line.indexOf("***UNCHANGED***") >= 0) {
+      // この行のキー名を取り出して old_yaml から探す
+      int colon = line.indexOf(':');
+      if (colon > 0) {
+        String key = line.substring(0, colon + 1);   // 'key:' まで（インデント含む）
+        // old_yaml の同じインデント + キー で始まる行を探す
+        int p = old_yaml.indexOf(key);
+        if (p >= 0) {
+          // 行頭である必要があるため簡易チェック
+          bool at_line_start = (p == 0) || (old_yaml.charAt(p - 1) == '\n');
+          if (at_line_start) {
+            int eol_old = old_yaml.indexOf('\n', p);
+            String old_line = (eol_old < 0) ? old_yaml.substring(p) : old_yaml.substring(p, eol_old);
+            out += old_line;
+            if (eol >= 0) out += "\n";
+            if (eol < 0) break;
+            start = eol + 1;
+            continue;
+          }
+        }
+      }
+    }
+    out += line;
+    if (eol >= 0) out += "\n";
+    if (eol < 0) break;
+    start = eol + 1;
+  }
+  return out;
+}
+
+void handle_config_get() {
+  String type = server.arg("type");
+  const char* path = path_for_config(type);
+  if (!path) { server.send(400, "text/plain", "type must be ex|basic|sec"); return; }
+  File f = SD.open(path, FILE_READ);
+  if (!f) { server.send(404, "text/plain", "file not found"); return; }
+  String body;
+  body.reserve(f.size() + 16);
+  while (f.available()) body += (char)f.read();
+  f.close();
+  // 秘密値マスク
+  body = mask_secrets(body);
+  server.send(200, "text/plain; charset=utf-8", body);
+}
+
+void handle_config_post() {
+  String type = server.arg("type");
+  const char* path = path_for_config(type);
+  if (!path) { server.send(400, "text/plain", "type must be ex|basic|sec"); return; }
+  String new_body = server.arg("plain");
+  if (new_body.length() == 0) { server.send(400, "text/plain", "empty body"); return; }
+  // 既存読み込み → UNCHANGED 復元
+  String old_body;
+  File f = SD.open(path, FILE_READ);
+  if (f) {
+    old_body.reserve(f.size() + 16);
+    while (f.available()) old_body += (char)f.read();
+    f.close();
+  }
+  String to_write = unmask_secrets(new_body, old_body);
+  // 書き込み
+  File w = SD.open(path, FILE_WRITE);
+  if (!w) { server.send(500, "text/plain", "open for write failed"); return; }
+  w.print(to_write);
+  w.close();
+  Serial.printf("Config saved: %s (%d bytes)\n", path, (int)to_write.length());
+  server.send(200, "text/plain", "saved");
+}
+
+void handle_restart() {
+  Serial.println("Restart requested via /api/restart");
+  server.send(200, "text/plain", "restarting...");
+  delay(500);
+  ESP.restart();
+}
 
 void handle_mute() {
   // デバッグ用: 受信したリクエストの情報を出力
@@ -198,6 +342,72 @@ void handle_mute() {
 
   String body = String("{\"mute\":") + (is_muted() ? "true" : "false") + "}";
   server.send(200, "application/json", body);
+}
+
+// Web から音量変更（NVS で再起動後も保持）
+void handle_volume() {
+  Serial.printf("handle_volume: method=%d args=%d\n",
+                (int)server.method(), server.args());
+
+  if (server.hasArg("value")) {
+    int v = server.arg("value").toInt();
+    if (v < 0) v = 0;
+    if (v > 255) v = 255;
+    if (robot) robot->spk_volume = (uint8_t)v;
+    M5.Speaker.setVolume((uint8_t)v);
+    // NVS 永続化（再起動後も保持）
+    Preferences prefs;
+    if (prefs.begin("aistackchan", false)) {
+      prefs.putUChar("volume", (uint8_t)v);
+      prefs.end();
+    }
+    Serial.printf("Volume set via Web: %d\n", v);
+  }
+
+  uint8_t cur = robot ? robot->spk_volume : 0;
+  String body = String("{\"volume\":") + cur + ",\"max\":255}";
+  server.send(200, "application/json", body);
+}
+
+// LED テスト: ?r=NN&g=NN&b=NN（値なしは消灯）
+void handle_led_test() {
+  int r = server.arg("r").toInt();
+  int g = server.arg("g").toInt();
+  int b = server.arg("b").toInt();
+  if (r < 0) r = 0; if (r > 255) r = 255;
+  if (g < 0) g = 0; if (g > 255) g = 255;
+  if (b < 0) b = 0; if (b > 255) b = 255;
+  uint32_t rgb = ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+  if (rgb == 0) led_off();
+  else          led_set(rgb);
+  Serial.printf("LED test via Web: r=%d g=%d b=%d\n", r, g, b);
+  String body = String("{\"r\":") + r + ",\"g\":" + g + ",\"b\":" + b + "}";
+  server.send(200, "application/json", body);
+}
+
+// サーボテスト: ?x=NN&y=NN（中立からのオフセット度）
+void handle_servo_test() {
+  int x = server.arg("x").toInt();
+  int y = server.arg("y").toInt();
+  // 安全な範囲にクランプ（±45 度）
+  if (x < -45) x = -45; if (x > 45) x = 45;
+  if (y < -45) y = -45; if (y > 45) y = 45;
+  if (robot && robot->servo) {
+    robot->servo->moveTo(x, y, 500);
+  }
+  Serial.printf("Servo test via Web: x=%d y=%d\n", x, y);
+  String body = String("{\"x\":") + x + ",\"y\":" + y + "}";
+  server.send(200, "application/json", body);
+}
+
+// 音テスト: ?type=sw|alarm（既存の関数を呼ぶ）
+void handle_sound_test() {
+  String t = server.arg("type");
+  if (t.length() == 0) t = "sw";
+  Serial.printf("Sound test via Web: type=%s\n", t.c_str());
+  if (t == "alarm") alarm_tone();
+  else              sw_tone();
+  server.send(200, "application/json", String("{\"type\":\"") + t + "\"}");
 }
 
 // JSON 文字列エスケープ（". \\ 制御文字 を最小限処理）
@@ -278,7 +488,10 @@ void handle_status_json() {
   body += "\"memory\":\""; body += json_escape(trim_to(memory, 200)); body += "\",";
 
   // Mute モード
-  body += "\"mute\":"; body += (is_muted() ? "true" : "false");
+  body += "\"mute\":"; body += (is_muted() ? "true" : "false"); body += ",";
+
+  // Volume
+  body += "\"volume\":"; body += String(robot ? (int)robot->spk_volume : 0);
 
   body += "}";
   server.send(200, "application/json", body);
@@ -435,8 +648,11 @@ void handle_face() {
     case 2: avatar.setExpression(Expression::Sleepy); break;
     case 3: avatar.setExpression(Expression::Doubt); break;
     case 4: avatar.setExpression(Expression::Sad); break;
-    case 5: avatar.setExpression(Expression::Angry); break;  
-  } 
+    case 5: avatar.setExpression(Expression::Angry); break;
+    case 6: avatar.setExpression(Expression::Embarrassed); break;
+    case 7: avatar.setExpression(Expression::HeartEyes); break;
+    case 8: avatar.setExpression(Expression::Surprised); break;
+  }
   server.send(200, "text/plain", String("OK"));
 }
 
@@ -495,6 +711,27 @@ void init_web_server(void)
   // GET/POST 両対応（value 引数有無で取得/設定を切替）
   server.on("/api/mute", HTTP_GET, handle_mute);
   server.on("/api/mute", HTTP_POST, handle_mute);
+  server.on("/api/volume", HTTP_GET, handle_volume);
+  server.on("/api/volume", HTTP_POST, handle_volume);
+  // アクション系（テスト用）
+  server.on("/api/led", HTTP_POST, handle_led_test);
+  server.on("/api/led", HTTP_GET, handle_led_test);     // ブラウザから直接叩けるよう GET も許可
+  server.on("/api/servo-test", HTTP_POST, handle_servo_test);
+  server.on("/api/servo-test", HTTP_GET, handle_servo_test);
+  server.on("/api/sound-test", HTTP_POST, handle_sound_test);
+  server.on("/api/sound-test", HTTP_GET, handle_sound_test);
+  // YAML 設定編集
+  server.on("/api/config", HTTP_GET, handle_config_get);
+  server.on("/api/config", HTTP_POST, handle_config_post);
+  // 再起動
+  server.on("/api/restart", HTTP_POST, handle_restart);
+  // Settings ページ
+  server.on("/settings.html", []() {
+    server.send_P(200, "text/html", (const char*)settings_html, (size_t)sizeof_settings_html);
+  });
+  server.on("/settings.js", []() {
+    server.send_P(200, "application/javascript", (const char*)settings_js, (size_t)sizeof_settings_js);
+  });
 
 
   // APIs

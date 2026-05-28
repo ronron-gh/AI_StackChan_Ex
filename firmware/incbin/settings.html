@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings - AI Stack-chan Ex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="settings.js" defer></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      margin: 0; padding: 1em;
+      background: #f3f5f8;
+      color: #222;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 920px; margin: 0 auto 1em;
+    }
+    header h1 { font-size: 1.3em; margin: 0; }
+    nav a {
+      display: inline-block; margin-left: 0.8em;
+      color: #0077cc; text-decoration: none; font-size: 0.95em;
+    }
+    nav a:hover { text-decoration: underline; }
+    main { max-width: 920px; margin: 0 auto; }
+    .tabs {
+      display: flex; gap: 0.5em; margin-bottom: 1em;
+    }
+    .tabs button {
+      padding: 0.5em 1em; border: none; background: #e9ecef;
+      border-radius: 6px; cursor: pointer; font-weight: 600;
+    }
+    .tabs button.active { background: #0077cc; color: #fff; }
+    .card {
+      background: #fff; border-radius: 8px; padding: 1em;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    textarea {
+      width: 100%; min-height: 24em; box-sizing: border-box;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      font-size: 0.85em; padding: 0.7em; border-radius: 6px;
+      border: 1px solid #ccc; resize: vertical;
+    }
+    .actions { margin-top: 0.8em; display: flex; gap: 0.6em; align-items: center; }
+    .actions button {
+      padding: 0.6em 1.2em; border: none; border-radius: 6px;
+      font-weight: 600; cursor: pointer; font-size: 0.95em;
+    }
+    .btn-primary { background: #0077cc; color: #fff; }
+    .btn-danger { background: #d33b3b; color: #fff; }
+    .btn-secondary { background: #e9ecef; color: #333; }
+    .status {
+      flex: 1; text-align: right; font-size: 0.85em; color: #666;
+    }
+    .note {
+      margin-top: 0.6em; font-size: 0.8em; color: #888;
+    }
+    .warn { color: #c0392b; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚙️ Settings</h1>
+    <nav>
+      <a href="/dashboard.html">📊 Dashboard</a>
+      <a href="/personalize.html">🤖 Personalize</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="tabs">
+      <button data-type="ex" class="active">ExConfig</button>
+      <button data-type="basic">BasicConfig</button>
+      <button data-type="sec">SecConfig (機密)</button>
+    </div>
+
+    <div class="card">
+      <textarea id="yaml" spellcheck="false"></textarea>
+      <div class="actions">
+        <button class="btn-primary" id="save">💾 Save</button>
+        <button class="btn-secondary" id="reload">🔄 Reload</button>
+        <button class="btn-danger" id="restart">🔁 Restart device</button>
+        <span class="status" id="status">—</span>
+      </div>
+      <div class="note">
+        パスワード等の機密値は <code>***UNCHANGED***</code> と表示されます。<br>
+        その値のまま保存すると<strong>既存値が維持</strong>されます。<br>
+        変更したい場合は <code>***UNCHANGED***</code> を消して新しい値を直接書いてください。<br>
+        <span class="warn">⚠ Saving は SD カードを書き換えます。シンタックス間違いに注意。</span>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

@@ -75,6 +75,42 @@
     .mute-card { display: flex; justify-content: space-between; align-items: center; }
     .mute-card .label { font-size: 0.9em; }
     .mute-card .label .sub { display: block; font-size: 0.75em; color: #888; font-weight: 400; margin-top: 0.2em; }
+    .vol-card .vol-head { display: flex; justify-content: space-between; align-items: baseline; }
+    .vol-card .vol-head strong { font-size: 0.9em; }
+    .vol-card .vol-head .vol-num { font-size: 1.1em; font-weight: 700; font-family: ui-monospace, monospace; color: #0077cc; }
+    .vol-card .vol-sub { font-size: 0.75em; color: #888; margin: 0.1em 0 0.6em; }
+    .vol-card input[type=range] {
+      width: 100%; -webkit-appearance: none; appearance: none;
+      height: 6px; background: #e9ecef; border-radius: 3px; outline: none;
+    }
+    .vol-card input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #0077cc; cursor: pointer; border: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .vol-card input[type=range]::-moz-range-thumb {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #0077cc; cursor: pointer; border: 0;
+    }
+    /* アクションカード */
+    .act-card .act-head { font-weight: 700; font-size: 0.95em; margin-bottom: 0.4em; }
+    .act-card .act-sub { font-size: 0.75em; color: #888; margin-bottom: 0.6em; }
+    .act-row { display: flex; gap: 0.4em; flex-wrap: wrap; margin-bottom: 0.4em; }
+    .act-row:last-child { margin-bottom: 0; }
+    .act-btn {
+      flex: 1 1 auto; padding: 0.5em 0.6em; border: 0; border-radius: 6px;
+      background: #f0f3f6; color: #333; cursor: pointer; font-size: 0.85em;
+      font-family: inherit; transition: background 0.15s;
+    }
+    .act-btn:hover { background: #e0e6ec; }
+    .act-btn.color { color: #fff; }
+    .act-btn.red    { background: #e53935; }
+    .act-btn.green  { background: #43a047; }
+    .act-btn.blue   { background: #1e88e5; }
+    .act-btn.pink   { background: #ec407a; }
+    .act-btn.yellow { background: #fbc02d; color: #222; }
+    .act-btn.warn   { background: #ff6b35; color: #fff; }
   </style>
 </head>
 <body>
@@ -82,7 +118,8 @@
     <h1>🤖 AI Stack-chan Ex</h1>
     <nav>
       <a href="/dashboard.html"><span class="dot"></span>Dashboard</a>
-      <a href="/personalize.html">⚙ Personalize</a>
+      <a href="/settings.html">⚙ Settings</a>
+      <a href="/personalize.html">🤖 Personalize</a>
     </nav>
   </header>
 
@@ -96,6 +133,55 @@
         <input type="checkbox" id="mute_toggle">
         <span class="slider"></span>
       </label>
+    </div>
+
+    <div class="card vol-card">
+      <div class="vol-head">
+        <strong>🔊 Speaker Volume</strong>
+        <span class="vol-num" id="vol_value">—</span>
+      </div>
+      <div class="vol-sub">スライダーで即時反映・再起動後も保持</div>
+      <input type="range" id="vol_slider" min="0" max="255" step="1" value="120">
+    </div>
+
+    <div class="card act-card">
+      <div class="act-head">🛠 Actions</div>
+      <div class="act-sub">LED / サーボ / 効果音のテスト</div>
+
+      <div class="act-row">
+        <button class="act-btn color red"    data-led="255,0,0">LED Red</button>
+        <button class="act-btn color green"  data-led="0,255,0">Green</button>
+        <button class="act-btn color blue"   data-led="0,0,255">Blue</button>
+        <button class="act-btn color pink"   data-led="255,80,180">Pink</button>
+        <button class="act-btn color yellow" data-led="255,200,0">Yellow</button>
+        <button class="act-btn"               data-led="0,0,0">OFF</button>
+      </div>
+
+      <div class="act-row">
+        <button class="act-btn" data-servo="-30,0">⬅ Left</button>
+        <button class="act-btn" data-servo="0,-20">⬆ Up</button>
+        <button class="act-btn" data-servo="0,0">⚪ Home</button>
+        <button class="act-btn" data-servo="0,20">⬇ Down</button>
+        <button class="act-btn" data-servo="30,0">Right ➡</button>
+      </div>
+
+      <div class="act-row">
+        <button class="act-btn" data-face="0">😐 Neutral</button>
+        <button class="act-btn" data-face="1">😄 Happy</button>
+        <button class="act-btn" data-face="2">😴 Sleepy</button>
+        <button class="act-btn" data-face="3">🤔 Doubt</button>
+        <button class="act-btn" data-face="4">😢 Sad</button>
+        <button class="act-btn" data-face="5">😡 Angry</button>
+        <button class="act-btn" data-face="6">☺️ Embarrassed</button>
+        <button class="act-btn color pink" data-face="7">😍 Heart</button>
+        <button class="act-btn" data-face="8">😲 Surprised</button>
+      </div>
+
+      <div class="act-row">
+        <button class="act-btn" data-sound="sw">🔔 Tone</button>
+        <button class="act-btn" data-sound="alarm">⏰ Alarm</button>
+        <button class="act-btn warn" id="act_restart">♻ Restart</button>
+      </div>
     </div>
 
     <div class="card">

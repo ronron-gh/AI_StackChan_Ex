@@ -34,6 +34,7 @@
   }
 
   let muteUpdating = false;
+  let volUpdating = false;
 
   async function refresh() {
     try {
@@ -45,6 +46,14 @@
       if (!muteUpdating) {
         const t = document.getElementById('mute_toggle');
         if (t) t.checked = !!d.mute;
+      }
+
+      // Volume スライダー（ユーザー操作中は上書きしない）
+      if (!volUpdating && typeof d.volume === 'number') {
+        const s = document.getElementById('vol_slider');
+        const v = document.getElementById('vol_value');
+        if (s) s.value = d.volume;
+        if (v) v.textContent = d.volume;
       }
 
       // System
@@ -111,7 +120,66 @@
     });
   }
 
+  // 音量スライダーのハンドラ（debounce で過剰送信を防ぐ）
+  function setupVolumeSlider() {
+    const s = document.getElementById('vol_slider');
+    const v = document.getElementById('vol_value');
+    if (!s) return;
+    let timer = null;
+    const send = async (val) => {
+      try {
+        await fetch('/api/volume?value=' + val);
+      } catch (e) {
+        console.error('Failed to set volume:', e);
+      } finally {
+        setTimeout(() => { volUpdating = false; }, 600);
+      }
+    };
+    s.addEventListener('input', () => {
+      volUpdating = true;
+      if (v) v.textContent = s.value;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => send(s.value), 180);
+    });
+  }
+
+  // アクションボタンのハンドラ（LED / Servo / Sound / Restart）
+  function setupActions() {
+    document.querySelectorAll('[data-led]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const [r, g, b2] = b.dataset.led.split(',').map(s => parseInt(s, 10));
+        try { await fetch(`/api/led?r=${r}&g=${g}&b=${b2}`); } catch (e) { console.error(e); }
+      });
+    });
+    document.querySelectorAll('[data-servo]').forEach(b => {
+      b.addEventListener('click', async () => {
+        const [x, y] = b.dataset.servo.split(',').map(s => parseInt(s, 10));
+        try { await fetch(`/api/servo-test?x=${x}&y=${y}`); } catch (e) { console.error(e); }
+      });
+    });
+    document.querySelectorAll('[data-sound]').forEach(b => {
+      b.addEventListener('click', async () => {
+        try { await fetch(`/api/sound-test?type=${b.dataset.sound}`); } catch (e) { console.error(e); }
+      });
+    });
+    document.querySelectorAll('[data-face]').forEach(b => {
+      b.addEventListener('click', async () => {
+        try { await fetch(`/face?expression=${b.dataset.face}`); } catch (e) { console.error(e); }
+      });
+    });
+    const restart = document.getElementById('act_restart');
+    if (restart) restart.addEventListener('click', async () => {
+      if (!confirm('再起動するッピ？\n（接続が一時的に切れるッピ）')) return;
+      try {
+        await fetch('/api/restart', { method: 'POST' });
+        alert('再起動コマンド送信したッピ。30 秒ほど待ってからリロードッピ');
+      } catch (e) { console.error(e); }
+    });
+  }
+
   setupMuteToggle();
+  setupVolumeSlider();
+  setupActions();
   refresh();
   setInterval(refresh, 5000);
 })();
