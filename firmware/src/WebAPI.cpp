@@ -1,10 +1,15 @@
 #include <ESP32WebServer.h>
 #include <nvs.h>
+#include <M5Unified.h>
+#include <WiFi.h>
+#include <SPIFFS.h>
+#include <SD.h>
 #include "WebAPI.h"
 #include "Avatar.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
 #include "Robot.h"
+#include "share/Version.h"
 
 using namespace m5avatar;
 extern Avatar avatar;
@@ -139,15 +144,16 @@ asm(\
   ".balign 4\n"\
   ".section \".text\"\n")
 
-//IMPORT_FILE(.rodata, "index.html", index_html);
+IMPORT_FILE(.rodata, "index.html", index_html);
 IMPORT_FILE(.rodata, "personalize.html", personalize_html);
 IMPORT_FILE(.rodata, "personalize.js", personalize_js);
+IMPORT_FILE(.rodata, "dashboard.html", dashboard_html);
+IMPORT_FILE(.rodata, "dashboard.js", dashboard_js);
 
 
 void handleRoot() {
-  //Serial.println("handleRoot");
-  //server.send(200, "text/plain", "hello from m5stack!");
-  server.send_P(200, "text/html", (const char*)personalize_html, (size_t)sizeof_personalize_html);
+  // トップは index.html（Dashboard/Personalize へのナビ）
+  server.send_P(200, "text/html", (const char*)index_html, (size_t)sizeof_index_html);
 }
 
 void handle_personalize_html() {
@@ -156,6 +162,95 @@ void handle_personalize_html() {
 
 void handle_personalize_js() {
   server.send_P(200, "application/javascript", (const char*)personalize_js, (size_t)sizeof_personalize_js);
+}
+
+void handle_dashboard_html() {
+  server.send_P(200, "text/html", (const char*)dashboard_html, (size_t)sizeof_dashboard_html);
+}
+
+void handle_dashboard_js() {
+  server.send_P(200, "application/javascript", (const char*)dashboard_js, (size_t)sizeof_dashboard_js);
+}
+
+// JSON 文字列エスケープ（". \\ 制御文字 を最小限処理）
+static String json_escape(const String& s) {
+  String out;
+  out.reserve(s.length() + 8);
+  for (size_t i = 0; i < s.length(); i++) {
+    char c = s[i];
+    if (c == '"') out += "\\\"";
+    else if (c == '\\') out += "\\\\";
+    else if (c == '\n') out += "\\n";
+    else if (c == '\r') out += "\\r";
+    else if (c == '\t') out += "\\t";
+    else if ((uint8_t)c < 0x20) { out += "\\u00"; char buf[4]; snprintf(buf, sizeof(buf), "%02x", (uint8_t)c); out += buf; }
+    else out += c;
+  }
+  return out;
+}
+
+static String trim_to(const String& s, size_t n) {
+  if (s.length() <= n) return s;
+  return s.substring(0, n) + String("…");
+}
+
+void handle_status_json() {
+  String body;
+  body.reserve(1024);
+  body += "{";
+
+  // System
+  body += "\"system\":{";
+  body += "\"fw_version\":\""; body += FW_VERSION; body += "\",";
+  body += "\"uptime_ms\":"; body += String((unsigned long)millis()); body += ",";
+  body += "\"chip\":\""; body += String(ESP.getChipModel()); body += "\",";
+  body += "\"cpu_mhz\":"; body += String(ESP.getCpuFreqMHz()); body += ",";
+  body += "\"free_heap\":"; body += String((unsigned long)ESP.getFreeHeap()); body += ",";
+  body += "\"min_heap\":"; body += String((unsigned long)ESP.getMinFreeHeap());
+  body += "},";
+
+  // Power
+  body += "\"power\":{";
+  body += "\"battery_level\":"; body += String(M5.Power.getBatteryLevel()); body += ",";
+  body += "\"charging\":"; body += (M5.Power.isCharging() ? "true" : "false"); body += ",";
+  body += "\"voltage_mv\":"; body += String(M5.Power.getBatteryVoltage());
+  body += "},";
+
+  // Network
+  body += "\"network\":{";
+  body += "\"ssid\":\""; body += json_escape(WiFi.SSID()); body += "\",";
+  body += "\"ip\":\""; body += WiFi.localIP().toString(); body += "\",";
+  body += "\"rssi\":"; body += String(WiFi.RSSI()); body += ",";
+  body += "\"mac\":\""; body += WiFi.macAddress(); body += "\"";
+  body += "},";
+
+  // Storage
+  body += "\"storage\":{";
+  body += "\"spiffs_total\":"; body += String((unsigned long)SPIFFS.totalBytes()); body += ",";
+  body += "\"spiffs_used\":"; body += String((unsigned long)SPIFFS.usedBytes()); body += ",";
+  body += "\"sd_total\":"; body += String((unsigned long long)SD.totalBytes()); body += ",";
+  body += "\"sd_used\":"; body += String((unsigned long long)SD.usedBytes());
+  body += "},";
+
+  // Config（API キーは含めない）
+  ex_config_s ex = robot ? robot->m_config.getExConfig() : ex_config_s{};
+  body += "\"config\":{";
+  body += "\"llm_type\":"; body += String(ex.llm.type); body += ",";
+  body += "\"tts_type\":"; body += String(ex.tts.type); body += ",";
+  body += "\"tts_voice\":\""; body += json_escape(ex.tts.voice); body += "\",";
+  body += "\"tts_model\":\""; body += json_escape(ex.tts.model); body += "\",";
+  body += "\"stt_type\":"; body += String(ex.stt.type); body += ",";
+  body += "\"wakeword_type\":"; body += String(ex.wakeword.type);
+  body += "},";
+
+  // Role / Memory（先頭 200 文字まで）
+  String role = (robot && robot->llm) ? robot->llm->get_userRole() : String("");
+  String memory = (robot && robot->llm) ? robot->llm->get_userInfo() : String("");
+  body += "\"role\":\""; body += json_escape(trim_to(role, 200)); body += "\",";
+  body += "\"memory\":\""; body += json_escape(trim_to(memory, 200)); body += "\"";
+
+  body += "}";
+  server.send(200, "application/json", body);
 }
 
 void handleNotFound(){
@@ -363,6 +458,9 @@ void init_web_server(void)
   server.on("/", handleRoot);
   server.on("/personalize.html", handle_personalize_html);
   server.on("/personalize.js", handle_personalize_js);
+  server.on("/dashboard.html", handle_dashboard_html);
+  server.on("/dashboard.js", handle_dashboard_js);
+  server.on("/api/status", handle_status_json);
 
 
   // APIs
