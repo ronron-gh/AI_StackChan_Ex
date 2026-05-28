@@ -8,6 +8,7 @@
 #include "share/DefaultParams.h"
 #include <M5Unified.h>
 #include <nvs.h>
+#include <Preferences.h>
 #include <Avatar.h>
 #include <faces/CatFace.h>
 #include "StackchanExConfig.h" 
@@ -25,7 +26,10 @@
 
 #include "driver/PlayMP3.h"   //lipSync
 #include "driver/TapDetect.h"
+#include "driver/HeadPetDetect.h"
+#include "driver/IdleMotion.h"
 #include "share/Phrases.h"
+#include "share/SerialConfig.h"
 
 #define FASTLED_INTERNAL  // 起動バナーログを抑制
 #include <FastLED.h>
@@ -223,6 +227,8 @@ void head_pet_trigger() {
     robot->servo->fillLeds(0xFF, 0x60, 0xA0);   // ピンク
     robot->servo->moveTo(0, -20, 400);          // ちょっと上向き
   }
+  // サーボ動作の振動を IMU が拾わないよう、復帰までマスク
+  headPetMaskFor(HEAD_PET_DURATION_MS + 800);
   head_pet_active = true;
   head_pet_end_ms = millis() + HEAD_PET_DURATION_MS;
 }
@@ -289,9 +295,9 @@ void servo(void *args)
     {
       avatar->getGaze(&gazeY, &gazeX);
       robot->servo->moveTo((int)(15.0 * gazeX), (int)(10.0 * gazeY));
-    } else {
-      robot->servo->moveToOrigin();
     }
+    // servo_home == true のときは IdleMotion がランダムな動きを担当するため、
+    // ここで moveToOrigin() を呼ぶと競合する。何もしない。
 #endif
     delay(5000);
   }
@@ -314,17 +320,38 @@ void battery_check(void *args) {
   }
 }
 
+// WiFi.status() の数値を読みやすい文字列に
+static const char* wifi_status_str(wl_status_t s) {
+  switch (s) {
+    case WL_NO_SHIELD:       return "NO_SHIELD";
+    case WL_IDLE_STATUS:     return "IDLE";
+    case WL_NO_SSID_AVAIL:   return "NO_SSID_AVAIL (該当SSIDが見つからない)";
+    case WL_SCAN_COMPLETED:  return "SCAN_COMPLETED";
+    case WL_CONNECTED:       return "CONNECTED";
+    case WL_CONNECT_FAILED:  return "CONNECT_FAILED (認証失敗・パスワード違い等)";
+    case WL_CONNECTION_LOST: return "CONNECTION_LOST";
+    case WL_DISCONNECTED:    return "DISCONNECTED";
+    default:                 return "UNKNOWN";
+  }
+}
+
 bool Wifi_connection_check() {
   unsigned long start_millis = millis();
+  wl_status_t last_status = (wl_status_t)255;
 
   // 前回接続時情報で接続する
   while (WiFi.status() != WL_CONNECTED) {
+    wl_status_t s = WiFi.status();
+    if (s != last_status) {
+      Serial.printf("\n  WiFi status: %d (%s)\n", (int)s, wifi_status_str(s));
+      last_status = s;
+    }
     M5.Display.print(".");
     Serial.print(".");
     delay(1000);
     // 5秒以上接続できなかったら抜ける
     if ( 5000 < (millis() - start_millis) ) {
-      //break;
+      Serial.printf("\n  Final WiFi status: %d (%s)\n", (int)WiFi.status(), wifi_status_str(WiFi.status()));
       return false;
     }
   }
@@ -661,6 +688,18 @@ void setup()
   }else{
     robot->spk_volume = DEFAULT_SPEAKER_VOLUME;
   }
+  // NVS に Web 経由で保存された値があれば優先（0 は未設定扱い）
+  {
+    Preferences prefs;
+    if (prefs.begin("aistackchan", true)) {
+      uint8_t nvs_vol = prefs.getUChar("volume", 0);
+      prefs.end();
+      if (nvs_vol > 0) {
+        robot->spk_volume = nvs_vol;
+        Serial.printf("Speaker volume (NVS override): %d\n", nvs_vol);
+      }
+    }
+  }
   Serial.printf("Speaker volume (set): %d\n", robot->spk_volume);
   M5.Speaker.setVolume(robot->spk_volume);
 
@@ -672,6 +711,12 @@ void setup()
 #if defined(ENABLE_TAP_DETECT)
   invokeDoubleTapDetectTask();
 #endif
+
+  // IMU 加速度センサ経由の頭撫で検出（M5StackChan キット時のみ有効、CoreS3-SE は IMU 非搭載でスキップ）
+  invokeHeadPetDetectTask();
+
+  // アイドル時のランダム動作（公式 stackchan の IdleMotionModifier を参考に）
+  idle_motion_init();
 
   //init_watchdog();
 
@@ -701,6 +746,9 @@ void loop()
 
   // LED 自動消灯（TTS ハングしても 60 秒で消える保険）
   led_auto_off_tick();
+
+  // Serial 経由の yaml 設定コマンドを処理
+  serial_config_poll();
 
   if (M5.BtnA.wasPressed())
   {
@@ -764,8 +812,15 @@ void loop()
       }
     }
   }
+  // IMU 加速度で頭撫で検出（複数回スパイク）
+  if (headPetDetected()) {
+    head_pet_trigger();
+  }
   // 頭撫で状態の自動解除
   head_pet_update();
+
+  // アイドル時のランダムサーボ動作（4〜8秒間隔）
+  idle_motion_tick();
 #endif
 
 #if defined(ENABLE_TAP_DETECT)
