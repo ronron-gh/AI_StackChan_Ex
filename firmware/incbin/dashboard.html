@@ -58,6 +58,23 @@
       margin-top: 1.5em;
     }
     .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 0.4em; vertical-align: middle; }
+    /* iOS 風トグルスイッチ */
+    .toggle { position: relative; display: inline-block; width: 50px; height: 28px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc; transition: 0.3s; border-radius: 28px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 22px; width: 22px;
+      left: 3px; bottom: 3px; background-color: white;
+      transition: 0.3s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    input:checked + .slider { background-color: #ff9800; }
+    input:checked + .slider:before { transform: translateX(22px); }
+    .mute-card { display: flex; justify-content: space-between; align-items: center; }
+    .mute-card .label { font-size: 0.9em; }
+    .mute-card .label .sub { display: block; font-size: 0.75em; color: #888; font-weight: 400; margin-top: 0.2em; }
   </style>
 </head>
 <body>
@@ -70,6 +87,17 @@
   </header>
 
   <div class="grid">
+    <div class="card mute-card">
+      <div class="label">
+        <strong>🔇 Mute Mode</strong>
+        <span class="sub">外出時に TTS / 効果音を停止</span>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="mute_toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
     <div class="card">
       <h2>System</h2>
       <div class="row"><span>Firmware</span><span id="fw_version">—</span></div>

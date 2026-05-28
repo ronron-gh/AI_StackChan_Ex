@@ -33,11 +33,19 @@
     if (el) el.style.width = Math.max(0, Math.min(100, percent)) + '%';
   }
 
+  let muteUpdating = false;
+
   async function refresh() {
     try {
       const res = await fetch('/api/status');
       if (!res.ok) return;
       const d = await res.json();
+
+      // Mute トグル（ユーザー操作中は上書きしない）
+      if (!muteUpdating) {
+        const t = document.getElementById('mute_toggle');
+        if (t) t.checked = !!d.mute;
+      }
 
       // System
       setText('fw_version', d.system.fw_version);
@@ -85,6 +93,25 @@
     }
   }
 
+  // Mute トグルのハンドラ
+  function setupMuteToggle() {
+    const t = document.getElementById('mute_toggle');
+    if (!t) return;
+    t.addEventListener('change', async () => {
+      muteUpdating = true;
+      try {
+        // ESP32WebServer は POST だと URL query を取らないので GET で送る
+        await fetch('/api/mute?value=' + (t.checked ? 'true' : 'false'));
+      } catch (e) {
+        console.error('Failed to set mute:', e);
+      } finally {
+        // 1 秒間は refresh による上書きを防ぐ
+        setTimeout(() => { muteUpdating = false; }, 1000);
+      }
+    });
+  }
+
+  setupMuteToggle();
   refresh();
   setInterval(refresh, 5000);
 })();

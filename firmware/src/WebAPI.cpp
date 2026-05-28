@@ -172,6 +172,34 @@ void handle_dashboard_js() {
   server.send_P(200, "application/javascript", (const char*)dashboard_js, (size_t)sizeof_dashboard_js);
 }
 
+// Mute モード（main.cpp 側で実装）
+extern bool is_muted();
+extern void set_mute(bool m);
+
+void handle_mute() {
+  // デバッグ用: 受信したリクエストの情報を出力
+  Serial.printf("handle_mute: method=%d uri=%s args=%d\n",
+                (int)server.method(), server.uri().c_str(), server.args());
+  for (uint8_t i = 0; i < server.args(); i++) {
+    Serial.printf("  arg[%d]: %s = %s\n",
+                  i, server.argName(i).c_str(), server.arg(i).c_str());
+  }
+
+  // GET/POST 両対応。value 引数があれば設定、なければ現在状態返却。
+  if (server.hasArg("value")) {
+    String v = server.arg("value");
+    v.toLowerCase();
+    bool new_value = (v == "true" || v == "1" || v == "on");
+    set_mute(new_value);
+    Serial.printf("handle_mute: value='%s' -> mute=%d\n", v.c_str(), (int)new_value);
+  } else {
+    Serial.println("handle_mute: no value arg (status only)");
+  }
+
+  String body = String("{\"mute\":") + (is_muted() ? "true" : "false") + "}";
+  server.send(200, "application/json", body);
+}
+
 // JSON 文字列エスケープ（". \\ 制御文字 を最小限処理）
 static String json_escape(const String& s) {
   String out;
@@ -247,7 +275,10 @@ void handle_status_json() {
   String role = (robot && robot->llm) ? robot->llm->get_userRole() : String("");
   String memory = (robot && robot->llm) ? robot->llm->get_userInfo() : String("");
   body += "\"role\":\""; body += json_escape(trim_to(role, 200)); body += "\",";
-  body += "\"memory\":\""; body += json_escape(trim_to(memory, 200)); body += "\"";
+  body += "\"memory\":\""; body += json_escape(trim_to(memory, 200)); body += "\",";
+
+  // Mute モード
+  body += "\"mute\":"; body += (is_muted() ? "true" : "false");
 
   body += "}";
   server.send(200, "application/json", body);
@@ -461,6 +492,9 @@ void init_web_server(void)
   server.on("/dashboard.html", handle_dashboard_html);
   server.on("/dashboard.js", handle_dashboard_js);
   server.on("/api/status", handle_status_json);
+  // GET/POST 両対応（value 引数有無で取得/設定を切替）
+  server.on("/api/mute", HTTP_GET, handle_mute);
+  server.on("/api/mute", HTTP_POST, handle_mute);
 
 
   // APIs
