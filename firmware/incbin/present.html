@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Present - AI Stack-chan Ex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="present.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    html { font-size: 16px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+      margin: 0; padding: 0;
+      background: linear-gradient(180deg, #f3f5f8 0%, #e1e8ef 100%);
+      color: #222; min-height: 100vh;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 720px; margin: 0 auto; padding: 1em;
+    }
+    header h1 { font-size: 1.2em; margin: 0; }
+    header nav a { color: #0077cc; text-decoration: none; font-size: 0.9em; }
+
+    main {
+      max-width: 720px; margin: 0 auto; padding: 0 1em 2em;
+    }
+    .card {
+      background: #fff; border-radius: 12px; padding: 1.2em;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      margin-bottom: 1em;
+    }
+
+    .input-area textarea {
+      width: 100%; min-height: 6em; padding: 0.8em;
+      font-size: 1.05em; font-family: inherit; line-height: 1.5;
+      border: 1px solid #d0d6dd; border-radius: 8px;
+      resize: vertical;
+    }
+    .input-area textarea:focus {
+      outline: none; border-color: #0077cc;
+      box-shadow: 0 0 0 3px rgba(0,119,204,0.15);
+    }
+    .controls {
+      display: flex; gap: 0.5em; margin-top: 0.8em; flex-wrap: wrap;
+    }
+    .btn {
+      padding: 0.7em 1.4em; border: 0; border-radius: 6px;
+      font-size: 1em; font-family: inherit; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-speak {
+      background: #0077cc; color: #fff; flex: 1; font-weight: 600;
+    }
+    .btn-speak:hover { background: #005c9c; }
+    .btn-speak:disabled { background: #aaa; cursor: not-allowed; }
+    .btn-clear { background: #f0f3f6; color: #555; }
+    .btn-clear:hover { background: #e0e6ec; }
+    .btn-mute { background: #ff9800; color: #fff; }
+    .btn-mute:hover { background: #f57c00; }
+    .status {
+      font-size: 0.85em; margin-top: 0.6em; min-height: 1em;
+    }
+    .status.ok  { color: #43a047; }
+    .status.err { color: #e53935; }
+
+    .presets h3, .history h3 {
+      font-size: 0.85em; color: #666; margin: 0 0 0.7em;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .preset-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.4em;
+    }
+    .preset-btn {
+      padding: 0.6em 0.5em; border: 1px solid #d0d6dd; background: #f9fafb;
+      border-radius: 6px; cursor: pointer; font-size: 0.85em;
+      font-family: inherit; transition: all 0.15s; text-align: left;
+    }
+    .preset-btn:hover { background: #eef5fb; border-color: #0077cc; }
+
+    .history-list {
+      list-style: none; padding: 0; margin: 0;
+    }
+    .history-list li {
+      padding: 0.6em 0.8em; background: #f9fafb; border-radius: 6px;
+      margin-bottom: 0.4em; font-size: 0.9em; cursor: pointer;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 0.5em;
+    }
+    .history-list li:hover { background: #eef5fb; }
+    .history-list .time { color: #999; font-size: 0.75em; flex-shrink: 0; }
+    .history-empty { color: #999; font-size: 0.85em; }
+
+    footer {
+      text-align: center; font-size: 0.75em; color: #888;
+      padding: 1em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎤 Present Mode</h1>
+    <nav>
+      <a href="/dashboard.html">← Dashboard</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="card input-area">
+      <textarea id="text" placeholder="話したい内容を入力（複数行 OK）"
+                autofocus></textarea>
+      <div class="controls">
+        <button class="btn btn-speak" id="btn_speak">🔊 話す</button>
+        <button class="btn btn-clear" id="btn_clear">✕ クリア</button>
+        <button class="btn btn-mute" id="btn_mute_toggle">🔇 Mute 切替</button>
+      </div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="card presets">
+      <h3>📋 定型文</h3>
+      <div class="preset-grid" id="preset_grid"></div>
+    </div>
+
+    <div class="card history">
+      <h3>🕐 履歴</h3>
+      <ul class="history-list" id="history">
+        <li class="history-empty">まだ発話履歴はありません</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    /speech?say=&lt;text&gt; を呼び出します
+  </footer>
+</body>
+</html>

@@ -11,6 +11,7 @@
 #include "llm/ChatGPT/FunctionCall.h"
 #include "Robot.h"
 #include "share/Version.h"
+#include "share/PersonalityPresets.h"
 
 using namespace m5avatar;
 extern Avatar avatar;
@@ -152,6 +153,8 @@ IMPORT_FILE(.rodata, "dashboard.html", dashboard_html);
 IMPORT_FILE(.rodata, "dashboard.js", dashboard_js);
 IMPORT_FILE(.rodata, "settings.html", settings_html);
 IMPORT_FILE(.rodata, "settings.js", settings_js);
+IMPORT_FILE(.rodata, "present.html", present_html);
+IMPORT_FILE(.rodata, "present.js", present_js);
 
 
 void handleRoot() {
@@ -492,6 +495,51 @@ void handle_wakeword() {
   body += "\"changed\":" + String(changed ? "true" : "false") + ",";
   body += "\"types\":[\"SimpleVox\",\"ModuleLLM-KWS\"],";
   body += "\"restart_required\":" + String(changed ? "true" : "false");
+  body += "}";
+  server.send(200, "application/json", body);
+}
+
+// 性格プリセット: GET でリスト + 現在の userRole、POST ?id=... で適用
+void handle_personality() {
+  // 適用
+  bool applied = false;
+  String applied_id = "";
+  if (server.hasArg("id")) {
+    String id = server.arg("id");
+    const PersonalityPreset* p = PersonalityPresets::find_by_id(id.c_str());
+    if (!p) { server.send(400, "text/plain", "unknown preset id"); return; }
+    if (!robot || !robot->llm) { server.send(500, "text/plain", "robot/llm not ready"); return; }
+    if (!robot->llm->save_userRole(String(p->role))) {
+      server.send(500, "text/plain", "save_userRole failed");
+      return;
+    }
+    applied = true;
+    applied_id = id;
+    Serial.printf("Personality preset applied: %s\n", id.c_str());
+  }
+
+  // レスポンス: list + current
+  String cur_role = (robot && robot->llm) ? robot->llm->get_userRole() : String("");
+  String body = "{\"presets\":[";
+  const PersonalityPreset* p = PersonalityPresets::list();
+  bool first = true;
+  while (p->id != nullptr) {
+    if (!first) body += ",";
+    body += "{";
+    body += "\"id\":\""; body += p->id; body += "\",";
+    body += "\"name\":\""; body += p->name; body += "\",";
+    body += "\"emoji\":\""; body += p->emoji; body += "\",";
+    body += "\"description\":\""; body += p->description; body += "\"";
+    body += "}";
+    first = false;
+    p++;
+  }
+  body += "],";
+  body += "\"current_role\":\""; body += json_escape(cur_role); body += "\",";
+  body += "\"applied\":" + String(applied ? "true" : "false");
+  if (applied) {
+    body += ",\"applied_id\":\""; body += applied_id; body += "\"";
+  }
   body += "}";
   server.send(200, "application/json", body);
 }
@@ -842,6 +890,8 @@ void init_web_server(void)
   server.on("/api/volume", HTTP_POST, handle_volume);
   server.on("/api/wakeword", HTTP_GET, handle_wakeword);
   server.on("/api/wakeword", HTTP_POST, handle_wakeword);
+  server.on("/api/personality", HTTP_GET, handle_personality);
+  server.on("/api/personality", HTTP_POST, handle_personality);
   // アクション系（テスト用）
   server.on("/api/led", HTTP_POST, handle_led_test);
   server.on("/api/led", HTTP_GET, handle_led_test);     // ブラウザから直接叩けるよう GET も許可
@@ -860,6 +910,13 @@ void init_web_server(void)
   });
   server.on("/settings.js", []() {
     server.send_P(200, "application/javascript", (const char*)settings_js, (size_t)sizeof_settings_js);
+  });
+  // Present ページ（テキスト → 発話）
+  server.on("/present.html", []() {
+    server.send_P(200, "text/html", (const char*)present_html, (size_t)sizeof_present_html);
+  });
+  server.on("/present.js", []() {
+    server.send_P(200, "application/javascript", (const char*)present_js, (size_t)sizeof_present_js);
   });
 
 

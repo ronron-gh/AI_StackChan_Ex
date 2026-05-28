@@ -228,10 +228,62 @@
     loadWakeword();
   }
 
+  // Personality preset カード
+  function detectActivePreset(presets, currentRole) {
+    if (!currentRole) return null;
+    for (const p of presets) {
+      if (p.role && currentRole.indexOf(p.role.substring(0, 30)) >= 0) return p.id;
+    }
+    return null;
+  }
+
+  async function loadPersonality() {
+    try {
+      const res = await fetch('/api/personality');
+      if (!res.ok) return;
+      const d = await res.json();
+      const grid = document.getElementById('pp_grid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      d.presets.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'pp-preset';
+        btn.title = p.description;
+        btn.dataset.id = p.id;
+        btn.innerHTML = '<span class="pp-emoji">' + p.emoji + '</span>' + p.name;
+        btn.addEventListener('click', () => applyPreset(p));
+        grid.appendChild(btn);
+      });
+      const cur = document.getElementById('pp_current');
+      if (cur) cur.textContent = d.current_role ? '現在: ' + (d.current_role.substring(0, 80) + (d.current_role.length > 80 ? '…' : '')) : '(未設定)';
+    } catch (e) {
+      console.error('Failed to load personality:', e);
+    }
+  }
+
+  async function applyPreset(preset) {
+    const cur = document.getElementById('pp_current');
+    if (cur) cur.textContent = '適用中: ' + preset.name + '...';
+    try {
+      const res = await fetch('/api/personality?id=' + encodeURIComponent(preset.id), { method: 'POST' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      if (cur) cur.textContent = '現在: ' + (d.current_role.substring(0, 80) + (d.current_role.length > 80 ? '…' : ''));
+      // ハイライト切替
+      document.querySelectorAll('.pp-preset').forEach(b => {
+        b.classList.toggle('active', b.dataset.id === preset.id);
+      });
+    } catch (e) {
+      console.error('Failed to apply preset:', e);
+      if (cur) cur.textContent = 'エラー: ' + e.message;
+    }
+  }
+
   setupMuteToggle();
   setupVolumeSlider();
   setupActions();
   setupWakeword();
+  loadPersonality();
   refresh();
   setInterval(refresh, 5000);
 })();
