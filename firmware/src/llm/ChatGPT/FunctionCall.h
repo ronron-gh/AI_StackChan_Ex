@@ -54,6 +54,10 @@ public:
     String get_time();
     String get_week();
 
+    // インターネット情報取得（Jina Reader/Search 経由、API キー不要）
+    String get_news(const char* topic);
+    String get_weather(const char* city);
+
     #if defined(ARDUINO_M5STACK_CORES3)
     #if defined(ENABLE_WAKEWORD)
     String register_wakeword(void);

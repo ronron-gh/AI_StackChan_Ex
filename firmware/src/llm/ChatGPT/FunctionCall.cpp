@@ -156,6 +156,34 @@ const String json_Functions =
       "\"type\":\"object\","
       "\"properties\": {}"
     "}"
+  "},"
+  "{"
+    "\"name\": \"get_news\","
+    "\"description\": \"指定したトピックに関する最新ニュースをインターネットから検索して取得する。例: 'AI', 'スポーツ', 'M5Stack'\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"topic\": {"
+          "\"type\": \"string\","
+          "\"description\": \"検索するニュースのトピック（日本語可）\""
+        "}"
+      "},"
+      "\"required\": [\"topic\"]"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"get_weather\","
+    "\"description\": \"指定した都市の今日の天気をインターネットから取得する。例: '東京', '大阪', '札幌'\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"city\": {"
+          "\"type\": \"string\","
+          "\"description\": \"天気を知りたい都市名（日本語可）\""
+        "}"
+      "},"
+      "\"required\": [\"city\"]"
+    "}"
 #if !defined(USE_EXTENSION_FUNCTIONS)
   "}"
 #else
@@ -301,13 +329,21 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
 #endif  //defined(ENABLE_WAKEWORD)
 #endif  //defined(ARDUINO_M5STACK_CORES3)
     else if(strcmp(name, "get_date") == 0){
-      response = get_date();    
+      response = get_date();
     }
     else if(strcmp(name, "get_time") == 0){
-      response = get_time();    
+      response = get_time();
     }
     else if(strcmp(name, "get_week") == 0){
-      response = get_week();    
+      response = get_week();
+    }
+    else if(strcmp(name, "get_news") == 0){
+      const char* topic = argsDoc["topic"];
+      response = get_news(topic ? topic : "");
+    }
+    else if(strcmp(name, "get_weather") == 0){
+      const char* city = argsDoc["city"];
+      response = get_weather(city ? city : "東京");
     }
 #if defined(USE_EXTENSION_FUNCTIONS)
     else if(strcmp(name, "reminder") == 0){
@@ -760,11 +796,94 @@ String FunctionCall::read_mail(void) {
   else{
     response = "受信メールはありません。";
   }
-  
+
   return response;
 }
 
 
 #endif  //if defined(USE_EXTENSION_FUNCTIONS)
+
+
+// ---------------------------------------------------------------------------
+// インターネット情報取得（Jina Search 経由、API キー不要）
+//
+// https://s.jina.ai/?q=<query> で JSON 結果を取得し、上位 N 件をテキスト化する。
+// gas-daily-mtg-doc-builder の WebSearchGateway パターンを ESP32 向けに移植。
+// ---------------------------------------------------------------------------
+static String jina_search(const String& query, int max_results = 3) {
+  // URL-encode query
+  String url = "https://s.jina.ai/?q=";
+  for (size_t i = 0; i < query.length(); i++) {
+    char c = query.charAt(i);
+    if (isalnum((unsigned char)c)) {
+      url += c;
+    } else {
+      char buf[5];
+      snprintf(buf, sizeof(buf), "%%%02X", (unsigned char)c);
+      url += buf;
+    }
+  }
+
+  Serial.printf("[jina] GET %s\n", url.c_str());
+  HTTPClient http;
+  http.setTimeout(10000);
+  http.setReuse(false);
+  http.begin(url);
+  http.addHeader("Accept", "application/json");
+
+  int code = http.GET();
+  if (code != 200) {
+    Serial.printf("[jina] HTTP %d\n", code);
+    http.end();
+    return String("検索に失敗しました（HTTP ") + code + "）。";
+  }
+
+  String body = http.getString();
+  http.end();
+
+  // JSON parse: { "data": [ { "title", "url", "description"|"content" }, ... ] }
+  DynamicJsonDocument doc(8192);
+  DeserializationError err = deserializeJson(doc, body);
+  if (err) {
+    Serial.printf("[jina] json parse error: %s\n", err.c_str());
+    return "検索結果の解析に失敗しました。";
+  }
+
+  JsonArray data = doc["data"].as<JsonArray>();
+  if (data.isNull() || data.size() == 0) {
+    return "検索結果が見つかりませんでした。";
+  }
+
+  String out = "";
+  int count = 0;
+  for (JsonObject item : data) {
+    if (count >= max_results) break;
+    String title = item["title"] | "（タイトルなし）";
+    String desc  = item["description"] | item["content"] | "";
+    if (desc.length() > 150) desc = desc.substring(0, 150) + "…";
+    out += String(count + 1) + ". " + title;
+    if (desc.length() > 0) out += " — " + desc;
+    out += "\n";
+    count++;
+  }
+
+  return out;
+}
+
+String FunctionCall::get_news(const char* topic) {
+  String t = topic ? String(topic) : String("");
+  String query = t + " 最新ニュース";
+  Serial.printf("[get_news] topic=%s\n", t.c_str());
+  String result = jina_search(query, 3);
+  return "「" + t + "」のニュース:\n" + result;
+}
+
+String FunctionCall::get_weather(const char* city) {
+  String c = city ? String(city) : String("");
+  String query = c + " 天気 今日";
+  Serial.printf("[get_weather] city=%s\n", c.c_str());
+  String result = jina_search(query, 2);
+  return c + " の天気:\n" + result;
+}
 
 
