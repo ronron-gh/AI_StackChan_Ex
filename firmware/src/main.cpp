@@ -360,7 +360,17 @@ void setup()
                                      "/SC_SecConfig.yaml", 2048,
                                      "/SC_BasicConfig.yaml", 2048);
 #else
-  if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
+  // SDカードマウントは起動直後のタイミング問題で失敗することがあるため、最大5回リトライ
+  bool sd_ok = false;
+  for (int i = 0; i < 5; i++) {
+    if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
+      sd_ok = true;
+      break;
+    }
+    Serial.printf("SD mount failed, retry %d/5\n", i + 1);
+    delay(500);
+  }
+  if (sd_ok) {
     // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
     system_config.loadConfig(SD, "/app/AiStackChanEx/SC_ExConfig.yaml");
 #endif
