@@ -369,6 +369,133 @@ void handle_volume() {
   server.send(200, "application/json", body);
 }
 
+// 前方宣言（json_escape は後段で定義）
+static String json_escape(const String& s);
+
+// YAML 内の wakeword.type と wakeword.keyword を書き換える小ヘルパ。
+// 行ベースで安全に編集。`wakeword:` ブロック内（2 スペースインデント）の
+// `type:` と `keyword:` を新しい値で置換し、ブロックが無ければ末尾に追加。
+static String update_wakeword_in_yaml(const String& yaml, int new_type, const String& new_keyword) {
+  String out;
+  out.reserve(yaml.length() + 64);
+  bool in_wakeword = false;
+  bool type_replaced = false;
+  bool keyword_replaced = false;
+
+  int start = 0;
+  while (start <= (int)yaml.length()) {
+    int eol = yaml.indexOf('\n', start);
+    String line = (eol < 0) ? yaml.substring(start) : yaml.substring(start, eol);
+
+    String trimmed = line; trimmed.trim();
+    if (trimmed.startsWith("wakeword:")) {
+      in_wakeword = true;
+      out += line;
+      if (eol >= 0) out += "\n";
+      if (eol < 0) break;
+      start = eol + 1;
+      continue;
+    }
+
+    if (in_wakeword) {
+      // インデントが 0 or トップレベルキーに戻ったらブロック終了
+      bool block_end = !line.isEmpty() && line.charAt(0) != ' ' && line.charAt(0) != '\t';
+      if (block_end) {
+        // ブロック内に type / keyword が無ければ追加してから抜ける
+        if (!type_replaced) {
+          out += "  type: " + String(new_type) + "\n";
+          type_replaced = true;
+        }
+        if (!keyword_replaced) {
+          out += "  keyword: \"" + new_keyword + "\"\n";
+          keyword_replaced = true;
+        }
+        in_wakeword = false;
+      } else {
+        // ブロック内の type / keyword を置換
+        if (trimmed.startsWith("type:")) {
+          out += "  type: " + String(new_type);
+          if (eol >= 0) out += "\n";
+          type_replaced = true;
+          if (eol < 0) break;
+          start = eol + 1;
+          continue;
+        }
+        if (trimmed.startsWith("keyword:")) {
+          out += "  keyword: \"" + new_keyword + "\"";
+          if (eol >= 0) out += "\n";
+          keyword_replaced = true;
+          if (eol < 0) break;
+          start = eol + 1;
+          continue;
+        }
+      }
+    }
+
+    out += line;
+    if (eol >= 0) out += "\n";
+    if (eol < 0) break;
+    start = eol + 1;
+  }
+
+  // wakeword ブロック自体が無かった場合は末尾に追加
+  if (!type_replaced || !keyword_replaced) {
+    if (!out.endsWith("\n")) out += "\n";
+    out += "\nwakeword:\n";
+    out += "  type: " + String(new_type) + "\n";
+    out += "  keyword: \"" + new_keyword + "\"\n";
+  }
+
+  return out;
+}
+
+// Wakeword 設定: GET で現在値、POST で更新（SD YAML を上書き、即時反映には再起動必要）
+void handle_wakeword() {
+  // POST or GET ?type=...&keyword=... で更新
+  bool changed = false;
+  if (server.hasArg("type") || server.hasArg("keyword")) {
+    int new_type = server.hasArg("type") ? server.arg("type").toInt()
+                                          : (robot ? robot->m_config.getExConfig().wakeword.type : 0);
+    if (new_type < 0) new_type = 0;
+    if (new_type > 1) new_type = 1;
+    String new_keyword = server.hasArg("keyword") ? server.arg("keyword")
+                                                   : (robot ? robot->m_config.getExConfig().wakeword.keyword : String(""));
+    // 改行・引用符を除去
+    new_keyword.replace("\"", "");
+    new_keyword.replace("\n", "");
+    new_keyword.replace("\r", "");
+
+    const char* path = "/app/AiStackChanEx/SC_ExConfig.yaml";
+    File f = SD.open(path, FILE_READ);
+    if (!f) { server.send(500, "text/plain", "SC_ExConfig.yaml not found"); return; }
+    String yaml;
+    yaml.reserve(f.size() + 16);
+    while (f.available()) yaml += (char)f.read();
+    f.close();
+
+    String new_yaml = update_wakeword_in_yaml(yaml, new_type, new_keyword);
+
+    File w = SD.open(path, FILE_WRITE);
+    if (!w) { server.send(500, "text/plain", "open for write failed"); return; }
+    w.print(new_yaml);
+    w.close();
+    Serial.printf("Wakeword updated via Web: type=%d keyword=%s\n", new_type, new_keyword.c_str());
+    changed = true;
+  }
+
+  int cur_type = robot ? robot->m_config.getExConfig().wakeword.type : 0;
+  String cur_kw = robot ? robot->m_config.getExConfig().wakeword.keyword : String("");
+
+  String body = "{";
+  body += "\"type\":" + String(cur_type) + ",";
+  body += "\"keyword\":\"" + json_escape(cur_kw) + "\",";
+  body += "\"changed\":" + String(changed ? "true" : "false") + ",";
+  body += "\"types\":[\"SimpleVox\",\"ModuleLLM-KWS\"],";
+  body += "\"restart_required\":" + String(changed ? "true" : "false");
+  body += "}";
+  server.send(200, "application/json", body);
+}
+
 // LED テスト: ?r=NN&g=NN&b=NN（値なしは消灯）
 void handle_led_test() {
   int r = server.arg("r").toInt();
@@ -713,6 +840,8 @@ void init_web_server(void)
   server.on("/api/mute", HTTP_POST, handle_mute);
   server.on("/api/volume", HTTP_GET, handle_volume);
   server.on("/api/volume", HTTP_POST, handle_volume);
+  server.on("/api/wakeword", HTTP_GET, handle_wakeword);
+  server.on("/api/wakeword", HTTP_POST, handle_wakeword);
   // アクション系（テスト用）
   server.on("/api/led", HTTP_POST, handle_led_test);
   server.on("/api/led", HTTP_GET, handle_led_test);     // ブラウザから直接叩けるよう GET も許可

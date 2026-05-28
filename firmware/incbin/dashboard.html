@@ -111,6 +111,27 @@
     .act-btn.pink   { background: #ec407a; }
     .act-btn.yellow { background: #fbc02d; color: #222; }
     .act-btn.warn   { background: #ff6b35; color: #fff; }
+    /* Wakeword カード */
+    .ww-card .ww-head { font-weight: 700; font-size: 0.95em; margin-bottom: 0.2em; }
+    .ww-card .ww-sub  { font-size: 0.75em; color: #888; margin-bottom: 0.7em; }
+    .ww-label {
+      display: block; font-size: 0.8em; color: #555; margin-bottom: 0.5em;
+    }
+    .ww-label select, .ww-label input {
+      display: block; width: 100%; padding: 0.4em 0.5em; margin-top: 0.2em;
+      border: 1px solid #ccc; border-radius: 4px; font-size: 0.9em;
+      font-family: inherit; box-sizing: border-box;
+    }
+    .ww-save {
+      width: 100%; margin-top: 0.4em; padding: 0.55em 0.7em;
+      border: 0; border-radius: 6px; background: #0077cc; color: #fff;
+      cursor: pointer; font-size: 0.9em; font-family: inherit;
+    }
+    .ww-save:hover { background: #005c9c; }
+    .ww-save:disabled { background: #aaa; cursor: not-allowed; }
+    .ww-status { font-size: 0.8em; margin-top: 0.4em; min-height: 1em; }
+    .ww-status.ok { color: #43a047; }
+    .ww-status.err { color: #e53935; }
   </style>
 </head>
 <body>
@@ -142,6 +163,22 @@
       </div>
       <div class="vol-sub">スライダーで即時反映・再起動後も保持</div>
       <input type="range" id="vol_slider" min="0" max="255" step="1" value="120">
+    </div>
+
+    <div class="card ww-card">
+      <div class="ww-head"><strong>🎙 Wakeword</strong></div>
+      <div class="ww-sub">SD YAML を直接書き換え。反映には再起動が必要</div>
+      <label class="ww-label">Type
+        <select id="ww_type">
+          <option value="0">SimpleVox</option>
+          <option value="1">ModuleLLM-KWS</option>
+        </select>
+      </label>
+      <label class="ww-label">Keyword
+        <input type="text" id="ww_keyword" placeholder="スタックチャン" maxlength="40">
+      </label>
+      <button class="ww-save" id="ww_save">💾 Save & Restart</button>
+      <div class="ww-status" id="ww_status"></div>
     </div>
 
     <div class="card act-card">
