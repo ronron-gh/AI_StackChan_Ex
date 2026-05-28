@@ -117,9 +117,10 @@ String WebVoiceVoxTTS::voicevox_tts_url(const char* url, const char* root_ca) {
 //            const char* mp3url = doc["mp3DownloadUrl"];
             const char* mp3url = doc["mp3StreamingUrl"];
             Serial.println(mp3url);
-            Serial.print("isApiKeyValid:");
-            if(doc["isApiKeyValid"]) Serial.println("OK");
-            else Serial.println("NG");
+            // tts.quest v3 は API キー不要設計のため isApiKeyValid=false は正常。
+            // 認証ありで使う場合のみ "authenticated" を出す。
+            if(doc["isApiKeyValid"]) Serial.println("tts.quest: authenticated");
+            else Serial.println("tts.quest: anonymous (no API key required for v3)");
             tts_url = String(mp3url);
 
             // const char* status_url = doc["audioStatusUrl"];
