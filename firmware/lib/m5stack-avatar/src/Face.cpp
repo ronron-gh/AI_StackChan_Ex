@@ -121,7 +121,7 @@ void Face::draw(DrawContext *ctx) {
 //  subWindow->draw(sprite, rect, ctx);
 
   // TODO(meganetaaan): make balloons and effects selectable
-  b.draw(sprite, br, ctx);
+  //b.draw(sprite, br, ctx);   //Rotateしないように、Rotate後に移動
   h.draw(sprite, br, ctx);
   //battery.draw(sprite, br, ctx);  //Rotateしないように、Rotate後に移動  motoh
   // drawAccessory(sprite, position, ctx);
@@ -151,8 +151,13 @@ void Face::draw(DrawContext *ctx) {
     rect.setPosition(rect.getTop(), rect.getLeft() + offset_x);
     subWindow->draw(tmpSprite, rect, ctx);
 
+    //吹き出しを顔の回転から独立させる（画面に固定）
+    b.draw(tmpSprite, br, ctx);
+
     tmpSprite->pushSprite(&M5.Display, 0, 0);
   } else {
+    //回転なし時は sprite に直接 Balloon を描画（回転問題なし）
+    b.draw(sprite, br, ctx);
     sprite->pushSprite(&M5.Display, boundingRect->getLeft(), boundingRect->getTop());
   }
   //sprite->deleteSprite();
