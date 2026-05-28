@@ -660,6 +660,18 @@ void setup()
   }
   
   mp3_init();
+  // MP3 再生時の表情・サーボ制御を listener として注入。
+  // driver/PlayMP3 が Avatar.h と servo_home に直接依存しないための分離。
+  PlayMP3::set_event_listeners(
+    []() {
+      avatar.setExpression(Expression::Happy);
+      servo_home = false;
+    },
+    []() {
+      avatar.setExpression(Expression::Neutral);
+      servo_home = true;
+    }
+  );
 
   //mod設定
   init_mod();
