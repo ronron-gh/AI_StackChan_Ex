@@ -59,6 +59,15 @@ StackchanExConfig system_config;
 Robot* robot;
 bool isOffline = false;
 
+// Mute モード（外出時等に TTS / 効果音をスキップ）
+// 揮発性: 再起動でリセット
+static volatile bool g_mute = false;
+bool is_muted() { return g_mute; }
+void set_mute(bool m) {
+  g_mute = m;
+  Serial.printf("Mute mode: %s\n", m ? "ON" : "OFF");
+}
+
 // M5StackChan サーボベース搭載 WS2812C RGB LED (PY32 IOExpander 経由で制御)
 // LED は robot->servo (= ServoCustom) の PY32 を介して操作する
 void led_init() {
@@ -355,6 +364,7 @@ ModBase* init_mod(void)
 
 void sw_tone()
 {
+  if (is_muted()) return;
   enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();
@@ -372,6 +382,7 @@ void sw_tone()
   
 void alarm_tone()
 {
+  if (is_muted()) return;
   enterMutexAudio();
   M5.Mic.end();
   M5.Speaker.begin();

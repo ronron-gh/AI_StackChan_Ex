@@ -270,9 +270,16 @@ void Robot::initTTS(StackchanExConfig& config){
 
 }
 
+extern bool is_muted();
+
 void Robot::speech(String text)
 {
   if(text != ""){
+    // Mute モード: TTS API 呼び出しごとスキップ
+    if (is_muted()) {
+      Serial.println("Robot::speech skipped (mute mode)");
+      return;
+    }
     servo_home = false;
     avatar.setExpression(Expression::Happy);
 
