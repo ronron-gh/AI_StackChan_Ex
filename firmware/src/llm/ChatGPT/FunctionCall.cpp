@@ -170,6 +170,20 @@ const String json_Functions =
       "},"
       "\"required\": [\"volume\"]"
     "}"
+  "},"
+  "{"
+    "\"name\": \"set_brightness\","
+    "\"description\": \"スタックチャンの画面の明るさを調整する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"brightness\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"設定する明るさの値（0-255）。255が最大で、0が最も暗い。\""
+        "}"
+      "},"
+      "\"required\": [\"brightness\"]"
+    "}"
 #if !defined(USE_EXTENSION_FUNCTIONS)
   "}"
 #else
@@ -326,6 +340,10 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
     else if(strcmp(name, "set_volume") == 0){
       const int volume = argsDoc["volume"];
       response = set_volume(volume);    
+    }
+    else if(strcmp(name, "set_brightness") == 0){
+      const int brightness = argsDoc["brightness"];
+      response = set_brightness(brightness);    
     }
 #if defined(USE_EXTENSION_FUNCTIONS)
     else if(strcmp(name, "reminder") == 0){
@@ -504,6 +522,17 @@ String FunctionCall::set_volume(int volume){
   M5.Speaker.setVolume(robot->spk_volume);
   
   String response = "音量を" + String(volume) + "に設定しました。";
+  Serial.println(response);
+  return response;
+}
+
+String FunctionCall::set_brightness(int brightness){
+  if(brightness < 0) brightness = 0;
+  if(brightness > 255) brightness = 255;
+  
+  M5.Display.setBrightness(brightness);
+  
+  String response = "画面の明るさを" + String(brightness) + "に設定しました。";
   Serial.println(response);
   return response;
 }
