@@ -6,6 +6,7 @@
 #include <Arduino.h>
 #include "mod/ModBase.h"
 #include "llm/RealtimeLLMBase.h"
+#include "drivers/Si12T/Si12T.h"
 
 class RealtimeAiMod: public ModBase{
 private:
@@ -24,6 +25,14 @@ private:
 
     // for alarm (Function Calling)
     void alarmEventHandler();
+
+    // for official CoreS3 head touch sensor test
+    si12t_handle_t headTouchHandle = nullptr;
+    bool headTouchInitialized = false;
+    bool headTouchInitTried = false;
+    unsigned long lastHeadTouchLogMs = 0;
+    void initHeadTouchSensor(void);
+    void logHeadTouchSensor(void);
 
 public:
     RealtimeAiMod(bool _isOffline);

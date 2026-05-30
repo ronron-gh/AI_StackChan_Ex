@@ -53,7 +53,8 @@ Robot::Robot(StackchanExConfig& config) : m_config(config)
               config.getServoInfo(AXIS_X)->offset,
               config.getServoInfo(AXIS_Y)->pin, config.getServoInfo(AXIS_Y)->start_degree,
               config.getServoInfo(AXIS_Y)->offset,
-              (ServoType)config.getServoType());
+              (ServoType)config.getServoType(),
+              &M5.In_I2C);
 #endif
 
   // TakaoBase setting 

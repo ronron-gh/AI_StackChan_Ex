@@ -133,6 +133,8 @@ void RealtimeAiMod::doubleTapped(float ax, float ay, float az)
 
 void RealtimeAiMod::idle(void)
 {
+  logHeadTouchSensor();
+
 #ifdef REALTIME_API_WITH_TTS
 
   if(robot->asyncPlaying || (pRtLLM->getOutputTextQueueSize() != 0)){
@@ -185,6 +187,64 @@ void RealtimeAiMod::alarmEventHandler()
     avatar.set_isSubWindowEnable(false);
   }
 
+}
+
+void RealtimeAiMod::initHeadTouchSensor(void)
+{
+  if (headTouchInitTried) {
+    return;
+  }
+  headTouchInitTried = true;
+
+  si12t_config_t si12tConfig = {};
+  si12tConfig.i2c = &M5.In_I2C;
+  si12tConfig.dev_addr = SI12T_GND_ADDRESS;
+  si12tConfig.freq = 100000;
+
+  esp_err_t ret = si12t_init(&si12tConfig, &headTouchHandle);
+  if (ret != ESP_OK) {
+    Serial.printf("[HeadTouch] Si12T init failed: %s\n", esp_err_to_name(ret));
+    return;
+  }
+
+  ret = si12t_setup(headTouchHandle, SI12T_TYPE_LOW, SI12T_SENSITIVITY_LEVEL_3);
+  if (ret != ESP_OK) {
+    Serial.printf("[HeadTouch] Si12T setup failed: %s\n", esp_err_to_name(ret));
+    si12t_delete(headTouchHandle);
+    headTouchHandle = nullptr;
+    return;
+  }
+
+  headTouchInitialized = true;
+  Serial.println("[HeadTouch] Si12T initialized");
+}
+
+void RealtimeAiMod::logHeadTouchSensor(void)
+{
+#if defined(ARDUINO_M5STACK_CORES3)
+  initHeadTouchSensor();
+  if (!headTouchInitialized) {
+    return;
+  }
+
+  const unsigned long now = millis();
+  if (now - lastHeadTouchLogMs < 500) {
+    return;
+  }
+  lastHeadTouchLogMs = now;
+
+  uint8_t touchResult = 0;
+  uint8_t channel[3] = {0, 0, 0};
+  esp_err_t ret = si12t_read_touch_result(headTouchHandle, &touchResult);
+  if (ret != ESP_OK) {
+    Serial.printf("[HeadTouch] read failed: %s\n", esp_err_to_name(ret));
+    return;
+  }
+
+  si12t_parse_touch_result_to(touchResult, channel);
+  Serial.printf("[HeadTouch] raw=0x%02X ch0=%u ch1=%u ch2=%u\n",
+                touchResult, channel[0], channel[1], channel[2]);
+#endif
 }
 
 bool RealtimeAiMod::isBusy(void)
