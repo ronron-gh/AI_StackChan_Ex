@@ -156,6 +156,20 @@ const String json_Functions =
       "\"type\":\"object\","
       "\"properties\": {}"
     "}"
+  "},"
+  "{"
+    "\"name\": \"set_volume\","
+    "\"description\": \"スタックチャンのスピーカー音量を調整する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"volume\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"設定する音量の値（0-255）。255が最大で、0が消音。\""
+        "}"
+      "},"
+      "\"required\": [\"volume\"]"
+    "}"
 #if !defined(USE_EXTENSION_FUNCTIONS)
   "}"
 #else
@@ -308,6 +322,10 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
     }
     else if(strcmp(name, "get_week") == 0){
       response = get_week();    
+    }
+    else if(strcmp(name, "set_volume") == 0){
+      const int volume = argsDoc["volume"];
+      response = set_volume(volume);    
     }
 #if defined(USE_EXTENSION_FUNCTIONS)
     else if(strcmp(name, "reminder") == 0){
@@ -475,6 +493,18 @@ String FunctionCall::get_week(){
   else{
     response = "時刻取得に失敗しました。";
   }
+  return response;
+}
+
+String FunctionCall::set_volume(int volume){
+  if(volume < 0) volume = 0;
+  if(volume > 255) volume = 255;
+  
+  robot->spk_volume = (uint8_t)volume;
+  M5.Speaker.setVolume(robot->spk_volume);
+  
+  String response = "音量を" + String(volume) + "に設定しました。";
+  Serial.println(response);
   return response;
 }
 

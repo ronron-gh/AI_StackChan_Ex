@@ -53,6 +53,7 @@ public:
     String get_date();
     String get_time();
     String get_week();
+    String set_volume(int volume);
 
     #if defined(ARDUINO_M5STACK_CORES3)
     #if defined(ENABLE_WAKEWORD)
