@@ -313,38 +313,6 @@ void init_mic_spk()
   //M5.Speaker.begin();
 }
 
-void i2c_scan(TwoWire& wire)
-{
-  byte error, address;
-  int nDevices = 0;
-
-  Serial.println("Scanning...");
-
-  for (address = 1; address < 127; address++) {
-    wire.beginTransmission(address);
-    error = wire.endTransmission();
-
-    if (error == 0) {
-      Serial.print("I2C device found at address 0x");
-      if (address < 16) Serial.print("0");
-      Serial.print(address, HEX);
-      Serial.println("  !");
-      nDevices++;
-    } else if (error == 4) {
-      Serial.print("Unknown error at address 0x");
-      if (address < 16) Serial.print("0");
-      Serial.println(address, HEX);
-    }
-  }
-
-  if (nDevices == 0) {
-    Serial.println("No I2C devices found\n");
-  } else {
-    Serial.println("done\n");
-  }
-
-}
-
 void setup()
 {
   /// シリアル出力のログレベルを VERBOSEに設定
@@ -360,32 +328,15 @@ void setup()
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
 
-
-  switch(M5.getBoard()) {
-    case m5gfx::board_t::board_M5StackCore2:
-      Serial.println("Board:M5StackCore2");
-      break;
-    case m5gfx::board_t::board_M5StackCoreS3:
-      Serial.println("Board:M5StackCoreS3");
-      break;
-    case m5gfx::board_t::board_M5StackCoreS3SE:
-      Serial.println("Board:M5StackCoreS3SE");
-      break;
-    case m5gfx::board_t::board_M5AtomS3R:
-      Serial.println("Board:M5AtomS3R");      
-      break;
-    case m5gfx::board_t::board_M5StackChan:
-      Serial.println("Board:M5StackChan");
-      break;
-    default:
-      Serial.println("Board:Unknown");
-      break;
-  }
-
+  ///// Debug /////
+#if 0
+  check_board();
   Wire.begin(); 
   i2c_scan(Wire);
   Wire1.begin(); 
   i2c_scan(Wire1);
+#endif
+  /////////////////
 
 #if defined(ARDUINO_M5STACK_ATOMS3R)
   M5.Lcd.setTextSize(2);
