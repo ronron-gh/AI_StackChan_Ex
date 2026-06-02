@@ -2,6 +2,9 @@
 # AI機能 (LLM, TTS, STT, Wakeword)
 llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM  2:ModuleLLM(Function Calling)  3:Gemini(Realtime)  4:OpenAI Compatible HTTP Endpoint
+  model: ""                          # ChatGPT(type 0): 空欄なら gpt-4o、指定すればそのモデル名で上書き。OpenAI互換エンドポイント(type 4): 指定必須(空欄ならリクエストは拒否されます)。
+  #model: "gpt-4o-mini"               # 例: ChatGPT(type 0) で gpt-4o 以外を使う場合
+  #model: "llama-3.1-8b-instruct"     # 例: OpenAI互換エンドポイント(type 4) のモデル名
   #customEndpoint: "http://192.168.X.XXX:8080/v1/chat/completions"   # http:// (平文) は customRootCAFile 不要
   #customEndpoint: "https://my-llm.example.com/v1/chat/completions"  # https:// は下の customRootCAFile が必須 (未指定ならリクエストは拒否されます)
   # customRootCAFile は https:// の customEndpoint を使う場合のみ必要です。

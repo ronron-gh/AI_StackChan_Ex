@@ -157,6 +157,12 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     else{
         _ex_parameters.llm.customEndpoint = "";
     }
+    if((_ex_parameters.llm.type == LLM_TYPE_CUSTOM_OPENAI)
+        && (_ex_parameters.llm.model.length() == 0 || _ex_parameters.llm.model == "null")){
+        // The OpenAI-compatible endpoint has no default model; surface the
+        // misconfiguration at boot. Requests are refused at send time.
+        M5_LOGE("llm type is Custom OpenAI (%d) but model is blank; requests will be refused", LLM_TYPE_CUSTOM_OPENAI);
+    }
 
     _ex_parameters.tts.type         = doc["tts"]["type"].as<int>();
     _ex_parameters.tts.model        = doc["tts"]["model"].as<String>();

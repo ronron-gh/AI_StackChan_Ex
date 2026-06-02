@@ -52,7 +52,7 @@
 
 typedef struct LLMConf {
     int type;
-    String model = "";
+    String model = "";           // Model name. ChatGPT (LLM_TYPE_CHATGPT): overrides the default gpt-4o when set, falls back to gpt-4o when blank. Custom OpenAI (LLM_TYPE_CUSTOM_OPENAI): required, requests are refused when blank. Inert for LLM types that do not use the ChatGPT class.
     int nMcpServers;
     mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
     bool enableMemory;

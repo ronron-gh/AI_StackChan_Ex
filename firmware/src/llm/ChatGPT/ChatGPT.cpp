@@ -102,6 +102,14 @@ void ChatGPT::load_role(){
 
   init_chat_doc(json_ChatString.c_str());   // chat_docを初期化
 
+  // 設定で model が指定されていれば、json_ChatString のデフォルト("gpt-4o")を上書きする。
+  // このクラスは ChatGPT(type 0) と OpenAI互換エンドポイント(type 4) でのみ生成されるため、
+  // それ以外の LLM type には影響しない。空欄のままなら(type 0)は gpt-4o を使い続ける。
+  const String& configuredModel = param.llm_conf.model;
+  if((configuredModel.length() > 0) && (configuredModel != "null")){
+    chat_doc["model"] = configuredModel;
+  }
+
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
@@ -324,6 +332,19 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   avatar.setSpeechText("考え中…");
   String ret;
   const String& customEndpoint = param.llm_conf.customEndpoint;
+  const String& model = param.llm_conf.model;
+  if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI && (model.length() == 0 || model == "null")){
+    // A custom OpenAI-compatible endpoint has no sensible default model, so the
+    // model field is mandatory. Refuse rather than sending an unintended model.
+    Serial.printf("Refusing request: llm type is Custom OpenAI but model is blank\n");
+    avatar.setExpression(Expression::Sad);
+    avatar.setSpeechText("モデル未設定");
+    delay(1500);
+    avatar.setSpeechText("");
+    avatar.setExpression(Expression::Neutral);
+    calledFunc = "";
+    return "";
+  }
   if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI && customEndpoint.length() > 0){
     const bool needs_ca = customEndpoint.startsWith("https://");
     if(needs_ca && param.llm_conf.customRootCA.length() == 0){
