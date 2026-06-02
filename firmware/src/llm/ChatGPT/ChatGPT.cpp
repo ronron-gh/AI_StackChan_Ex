@@ -110,6 +110,13 @@ void ChatGPT::load_role(){
     chat_doc["model"] = configuredModel;
   }
 
+  // OpenAI互換エンドポイントでは、サーバ既定の stream 挙動に依存しないよう
+  // 明示的に stream=false を指定する。このクライアントはSSEを解釈できず、
+  // 受信した応答全体を1個のJSONとしてパースするため。
+  if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI){
+    chat_doc["stream"] = false;
+  }
+
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
