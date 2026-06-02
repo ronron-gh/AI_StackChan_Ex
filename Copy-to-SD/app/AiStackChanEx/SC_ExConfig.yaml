@@ -7,13 +7,20 @@ llm:
   #model: "llama-3.1-8b-instruct"     # 例: OpenAI互換エンドポイント(type 4) のモデル名
   #customEndpoint: "http://192.168.X.XXX:8080/v1/chat/completions"   # http:// (平文) は customRootCAFile 不要
   #customEndpoint: "https://my-llm.example.com/v1/chat/completions"  # https:// は下の customRootCAFile が必須 (未指定ならリクエストは拒否されます)
-  # customRootCAFile は https:// の customEndpoint を使う場合のみ必要です。
+  # customRootCAFile / customRootCAFiles は https:// の customEndpoint を使う場合のみ必要です。
   # SD カードに PEM 形式のルート CA をテキストファイルとして置き、そのパスを指定してください。
   # ファイル例 (例: SD カードのルートに customRootCA.pem として保存):
   #   -----BEGIN CERTIFICATE-----
   #   MIIDdzCCAl+gAwIBAgIEAgAAuTANBgkqh...      (改行を保持した Base64 本文)
   #   -----END CERTIFICATE-----
+  # ルート CA が 1 つの場合は customRootCAFile に単一のパスを指定します。
   #customRootCAFile: "/customRootCA.pem"
+  # 複数のルート CA を信頼させたい場合は customRootCAFiles にパスの一覧を指定します。
+  # (各ファイルの中身は連結され、すべての証明書がルート CA として信頼されます。)
+  # customRootCAFile と customRootCAFiles は併用可能です(両方の証明書が読み込まれます)。
+  #customRootCAFiles:
+  #  - "/customRootCA.pem"
+  #  - "/customRootCA2.pem"
 
 tts:
   type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM

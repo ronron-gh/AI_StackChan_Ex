@@ -57,7 +57,7 @@ typedef struct LLMConf {
     mcp_server_s mcpServer[LLM_N_MCP_SERVERS_MAX];
     bool enableMemory;
     String customEndpoint = "";  // Optional URL for LLM_TYPE_CUSTOM_OPENAI. Empty falls back to api.openai.com. http:// works without a CA; https:// requires customRootCAFile and is refused at send time if the CA is missing.
-    String customRootCA = "";    // PEM contents of the root CA, loaded from llm.customRootCAFile (path on SD, e.g. "/customRootCA.pem"). Only needed for https:// customEndpoint. Expected format: a text file containing the -----BEGIN CERTIFICATE----- ... -----END CERTIFICATE----- block(s).
+    String customRootCA = "";    // PEM bundle of the trusted root CA(s), loaded from llm.customRootCAFile (single path on SD, e.g. "/customRootCA.pem") and/or llm.customRootCAFiles (a list of paths). Multiple files are concatenated into this one buffer; mbedTLS trusts every -----BEGIN CERTIFICATE----- ... -----END CERTIFICATE----- block as a root. Only needed for https:// customEndpoint.
 } llm_s;
 
 typedef struct TTSConf {
@@ -118,6 +118,11 @@ class StackchanExConfig : public StackchanSystemConfig
         void basicConfigNotFoundCallback(void) override;
         void secretConfigNotFoundCallback(void) override;
         void extendConfigNotFoundCallback(void);
+
+    private:
+        // Read a PEM file from _extend_fs and append it to _ex_parameters.llm.customRootCA,
+        // building one bundle that may hold several concatenated root certificates.
+        void appendRootCAFromFile(const String& ca_path);
 
 };
 

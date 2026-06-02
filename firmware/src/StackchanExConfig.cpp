@@ -111,6 +111,35 @@ void StackchanExConfig::extendConfigNotFoundCallback(void)
 
 }
 
+void StackchanExConfig::appendRootCAFromFile(const String& ca_path)
+{
+    if(_extend_fs == nullptr || ca_path.length() == 0){
+        return;
+    }
+    File ca_file = _extend_fs->open(ca_path.c_str());
+    if(!ca_file){
+        M5_LOGE("llm customRootCAFile not found: %s", ca_path.c_str());
+        return;
+    }
+    size_t sz = ca_file.size();
+    // Reserve room for the new file plus a separating newline.
+    _ex_parameters.llm.customRootCA.reserve(_ex_parameters.llm.customRootCA.length() + sz + 2);
+    // Separate concatenated PEM blocks with a newline so the "-----END-----"
+    // of one cert never runs into the "-----BEGIN-----" of the next.
+    if(_ex_parameters.llm.customRootCA.length() > 0
+       && !_ex_parameters.llm.customRootCA.endsWith("\n")){
+        _ex_parameters.llm.customRootCA += "\n";
+    }
+    while(ca_file.available()){
+        char chunk[128];
+        int n = ca_file.readBytes(chunk, sizeof(chunk) - 1);
+        if(n <= 0) break;
+        chunk[n] = 0;
+        _ex_parameters.llm.customRootCA += chunk;
+    }
+    ca_file.close();
+}
+
 void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
@@ -124,26 +153,18 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
     }
     _ex_parameters.llm.enableMemory = doc["llm"]["enableMemory"].as<bool>();
     _ex_parameters.llm.customRootCA = "";
-    if(_extend_fs != nullptr && doc["llm"]["customRootCAFile"].is<const char*>()){
-        String ca_path = doc["llm"]["customRootCAFile"].as<String>();
-        if(ca_path.length() > 0){
-            File ca_file = _extend_fs->open(ca_path.c_str());
-            if(ca_file){
-                size_t sz = ca_file.size();
-                _ex_parameters.llm.customRootCA.reserve(sz + 1);
-                while(ca_file.available()){
-                    char chunk[128];
-                    int n = ca_file.readBytes(chunk, sizeof(chunk) - 1);
-                    if(n <= 0) break;
-                    chunk[n] = 0;
-                    _ex_parameters.llm.customRootCA += chunk;
-                }
-                ca_file.close();
-            }
-            else{
-                M5_LOGE("llm customRootCAFile not found: %s", ca_path.c_str());
-            }
+    // Build the trusted CA bundle from a single customRootCAFile (string) and/or a
+    // customRootCAFiles list. Each PEM file is appended into one buffer; mbedTLS
+    // (via WiFiClientSecure::setCACert) parses the concatenated PEM blocks and
+    // trusts every certificate as a root, so chains with several roots work.
+    if(doc["llm"]["customRootCAFiles"].is<JsonArray>()){
+        JsonArray ca_files = doc["llm"]["customRootCAFiles"].as<JsonArray>();
+        for(JsonVariant ca_file_path : ca_files){
+            appendRootCAFromFile(ca_file_path.as<String>());
         }
+    }
+    if(doc["llm"]["customRootCAFile"].is<const char*>()){
+        appendRootCAFromFile(doc["llm"]["customRootCAFile"].as<String>());
     }
     if(doc["llm"]["customEndpoint"].is<const char*>()){
         _ex_parameters.llm.customEndpoint = doc["llm"]["customEndpoint"].as<String>();
@@ -194,7 +215,18 @@ void StackchanExConfig::printExtParameters(void)
     }
     M5_LOGI("llm enableMemory: %s", _ex_parameters.llm.enableMemory ? "true":"false");
     M5_LOGI("llm customEndpoint: %s", _ex_parameters.llm.customEndpoint.c_str());
-    M5_LOGI("llm customRootCA: %s", _ex_parameters.llm.customRootCA.length() > 0 ? "(set)" : "(none)");
+    {
+        // Report how many certificates were bundled, which helps confirm a
+        // multi-CA customRootCAFiles list was loaded as expected.
+        int nCerts = 0;
+        int idx = 0;
+        while((idx = _ex_parameters.llm.customRootCA.indexOf("-----BEGIN CERTIFICATE-----", idx)) >= 0){
+            nCerts++;
+            idx += 27;  // length of "-----BEGIN CERTIFICATE-----"
+        }
+        M5_LOGI("llm customRootCA: %s (%d certificate(s))",
+                _ex_parameters.llm.customRootCA.length() > 0 ? "(set)" : "(none)", nCerts);
+    }
 
 
     M5_LOGI("tts type: %d", _ex_parameters.tts.type);
