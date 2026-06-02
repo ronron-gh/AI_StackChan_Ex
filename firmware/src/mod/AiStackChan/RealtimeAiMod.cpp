@@ -228,10 +228,10 @@ void RealtimeAiMod::logHeadTouchSensor(void)
   }
 
   const unsigned long now = millis();
-  if (now - lastHeadTouchLogMs < 500) {
+  if (now - lastHeadTouchSampleMs < 50) {
     return;
   }
-  lastHeadTouchLogMs = now;
+  lastHeadTouchSampleMs = now;
 
   uint8_t touchResult = 0;
   uint8_t channel[3] = {0, 0, 0};
@@ -242,9 +242,83 @@ void RealtimeAiMod::logHeadTouchSensor(void)
   }
 
   si12t_parse_touch_result_to(touchResult, channel);
-  Serial.printf("[HeadTouch] raw=0x%02X ch0=%u ch1=%u ch2=%u\n",
-                touchResult, channel[0], channel[1], channel[2]);
+  int16_t position = 0;
+  HeadTouchGesture gesture = updateHeadTouchGesture(channel, &position);
+  if (gesture != HeadTouchGesture::None) {
+    Serial.printf("[HeadTouch] gesture=%s raw=0x%02X ch0=%u ch1=%u ch2=%u pos=%d\n",
+                  headTouchGestureName(gesture), touchResult, channel[0], channel[1], channel[2], position);
+  }
 #endif
+}
+
+RealtimeAiMod::HeadTouchGesture RealtimeAiMod::updateHeadTouchGesture(const uint8_t channel[3], int16_t *position)
+{
+  const uint16_t total = channel[0] + channel[1] + channel[2];
+  int16_t currentPosition = 0;
+  if (total != 0) {
+    const int32_t weighted = channel[0] * (-100) + channel[1] * 0 + channel[2] * 100;
+    currentPosition = static_cast<int16_t>(weighted / total);
+  }
+  if (position != nullptr) {
+    *position = currentPosition;
+  }
+
+  const uint8_t maxIntensity = max(channel[0], max(channel[1], channel[2]));
+  const bool touched = maxIntensity >= 1;
+  HeadTouchGesture gesture = HeadTouchGesture::None;
+  constexpr int16_t swipeThreshold = 40;
+
+  switch (headTouchState) {
+    case HeadTouchState::Idle:
+      if (touched) {
+        headTouchState = HeadTouchState::Touched;
+        headTouchInitialPosition = currentPosition;
+        gesture = HeadTouchGesture::Press;
+      }
+      break;
+
+    case HeadTouchState::Touched:
+      if (!touched) {
+        headTouchState = HeadTouchState::Idle;
+        gesture = HeadTouchGesture::Release;
+      } else {
+        const int16_t delta = currentPosition - headTouchInitialPosition;
+        if (delta > swipeThreshold) {
+          headTouchState = HeadTouchState::Swiping;
+          gesture = HeadTouchGesture::SwipeForward;
+        } else if (delta < -swipeThreshold) {
+          headTouchState = HeadTouchState::Swiping;
+          gesture = HeadTouchGesture::SwipeBackward;
+        }
+      }
+      break;
+
+    case HeadTouchState::Swiping:
+      if (!touched) {
+        headTouchState = HeadTouchState::Idle;
+        gesture = HeadTouchGesture::Release;
+      }
+      break;
+  }
+
+  return gesture;
+}
+
+const char *RealtimeAiMod::headTouchGestureName(HeadTouchGesture gesture) const
+{
+  switch (gesture) {
+    case HeadTouchGesture::Press:
+      return "Press";
+    case HeadTouchGesture::Release:
+      return "Release";
+    case HeadTouchGesture::SwipeForward:
+      return "SwipeForward";
+    case HeadTouchGesture::SwipeBackward:
+      return "SwipeBackward";
+    case HeadTouchGesture::None:
+    default:
+      return "None";
+  }
 }
 
 bool RealtimeAiMod::isBusy(void)

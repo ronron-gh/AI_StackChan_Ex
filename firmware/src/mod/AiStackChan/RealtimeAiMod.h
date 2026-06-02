@@ -30,9 +30,15 @@ private:
     si12t_handle_t headTouchHandle = nullptr;
     bool headTouchInitialized = false;
     bool headTouchInitTried = false;
-    unsigned long lastHeadTouchLogMs = 0;
+    unsigned long lastHeadTouchSampleMs = 0;
+    enum class HeadTouchState { Idle, Touched, Swiping };
+    enum class HeadTouchGesture { None, Press, Release, SwipeForward, SwipeBackward };
+    HeadTouchState headTouchState = HeadTouchState::Idle;
+    int16_t headTouchInitialPosition = 0;
     void initHeadTouchSensor(void);
     void logHeadTouchSensor(void);
+    HeadTouchGesture updateHeadTouchGesture(const uint8_t channel[3], int16_t *position);
+    const char *headTouchGestureName(HeadTouchGesture gesture) const;
 
 public:
     RealtimeAiMod(bool _isOffline);
