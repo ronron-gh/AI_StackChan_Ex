@@ -109,10 +109,12 @@ void ChatGPT::load_role(){
    * MCP tools listをfunctionとして挿入
    */
   for(int s=0; s<param.llm_conf.nMcpServers; s++){
+    if(true == param.llm_conf.mcpServer[s].disabled){
+      continue;
+    }
     if(!mcpClient[s]->isConnected()){
       continue;
     }
-
     for(int t=0; t<mcpClient[s]->nTools; t++){
       chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
     }
