@@ -3,6 +3,7 @@
 #include <SPIFFS.h>
 #include <Avatar.h>
 #include <HTTPClient.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include "rootCA/rootCACertificate.h"
 #include <ArduinoJson.h>
@@ -22,8 +23,8 @@ const String json_ChatString =
   "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
                   "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
                   "{\"role\": \"system\", \"content\": \"User Info: \"}],"  // 長期記憶の要約
-  "\"functions\": [],"
-  "\"function_call\":\"auto\""
+  //"\"functions\": [],"
+  //"\"function_call\":\"auto\""
 "}";
 
 
@@ -101,37 +102,56 @@ void ChatGPT::load_role(){
 
   init_chat_doc(json_ChatString.c_str());   // chat_docを初期化
 
+  // 設定で model が指定されていれば、json_ChatString のデフォルト("gpt-4o")を上書きする。
+  // このクラスは ChatGPT(type 0) と OpenAI互換エンドポイント(type 4) でのみ生成されるため、
+  // それ以外の LLM type には影響しない。空欄のままなら(type 0)は gpt-4o を使い続ける。
+  const String& configuredModel = param.llm_conf.model;
+  if((configuredModel.length() > 0) && (configuredModel != "null")){
+    chat_doc["model"] = configuredModel;
+  }
+
+  // OpenAI互換エンドポイントでは、サーバ既定の stream 挙動に依存しないよう
+  // 明示的に stream=false を指定する。このクライアントはSSEを解釈できず、
+  // 受信した応答全体を1個のJSONとしてパースするため。
+  if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI){
+    chat_doc["stream"] = false;
+  }
+
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_ROLE]["content"] = role;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
 
-  /*
-   * MCP tools listをfunctionとして挿入
-   */
-  for(int s=0; s<param.llm_conf.nMcpServers; s++){
-    if(true == param.llm_conf.mcpServer[s].disabled){
-      continue;
+  // OpenAI互換エンドポイントでは、Function Callingのプロンプトに
+  // 互換性がない場合があるため、Functionの設定はスキップする。
+  if(param.llm_conf.type != LLM_TYPE_CUSTOM_OPENAI){
+    /*
+    * MCP tools listをfunctionとして挿入
+    */
+    for(int s=0; s<param.llm_conf.nMcpServers; s++){
+      if(true == param.llm_conf.mcpServer[s].disabled){
+        continue;
+      }
+      if(!mcpClient[s]->isConnected()){
+        continue;
+      }
+      for(int t=0; t<mcpClient[s]->nTools; t++){
+        chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
+      }
     }
-    if(!mcpClient[s]->isConnected()){
-      continue;
-    }
-    for(int t=0; t<mcpClient[s]->nTools; t++){
-      chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
-    }
-  }
 
-  /*
-   * FunctionCall.cppで定義したfunctionを挿入
-   */
-  SpiRamJsonDocument functionsDoc(1024*10);
-  DeserializationError error = deserializeJson(functionsDoc, json_Functions.c_str());
-  if (error) {
-    Serial.println("load_role: JSON deserialization error");
-  }
+    /*
+    * FunctionCall.cppで定義したfunctionを挿入
+    */
+    SpiRamJsonDocument functionsDoc(1024*10);
+    DeserializationError error = deserializeJson(functionsDoc, json_Functions.c_str());
+    if (error) {
+      Serial.println("load_role: JSON deserialization error");
+    }
 
-  int nFuncs = functionsDoc.size();
-  for(int i=0; i<nFuncs; i++){
-    chat_doc["functions"].add(functionsDoc[i]);
+    int nFuncs = functionsDoc.size();
+    for(int i=0; i<nFuncs; i++){
+      chat_doc["functions"].add(functionsDoc[i]);
+    }
   }
 
   /*
@@ -145,48 +165,79 @@ void ChatGPT::load_role(){
 }
 
 
-String ChatGPT::https_post_json(const char* url, const char* json_string, const char* root_ca) {
+String ChatGPT::post_json(const char* url, const char* json_string, const char* root_ca) {
   String payload = "";
-  WiFiClientSecure *client = new WiFiClientSecure;
-  if(client) {
-    client -> setCACert(root_ca);
-    {
-      // Add a scoping block for HTTPClient https to make sure it is destroyed before WiFiClientSecure *client is 
-      HTTPClient https;
-      https.setTimeout( 65000 ); 
-  
-      Serial.print("[HTTPS] begin...\n");
-      if (https.begin(*client, url)) {  // HTTPS
-        Serial.print("[HTTPS] POST...\n");
-        // start connection and send HTTP header
-        https.addHeader("Content-Type", "application/json");
-        https.addHeader("Authorization", String("Bearer ") + param.api_key);
-        int httpCode = https.POST((uint8_t *)json_string, strlen(json_string));
-  
-        // httpCode will be negative on error
-        if (httpCode > 0) {
-          // HTTP header has been send and Server response header has been handled
-          Serial.printf("[HTTPS] POST... code: %d\n", httpCode);
-  
-          // file found at server
-          if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_MOVED_PERMANENTLY) {
-            payload = https.getString();
-            Serial.println("//////////////");
-            Serial.println(payload);
-            Serial.println("//////////////");
-          }
-        } else {
-          Serial.printf("[HTTPS] POST... failed, error: %s\n", https.errorToString(httpCode).c_str());
-        }  
-        https.end();
-      } else {
-        Serial.printf("[HTTPS] Unable to connect\n");
-      }
-      // End extra scoping block
-    }  
-    delete client;
+  const bool is_https = (strncmp(url, "https://", 8) == 0);
+  const char* tag = is_https ? "HTTPS" : "HTTP";
+
+  if (is_https && root_ca == nullptr) {
+    // Defense-in-depth: callers are expected to supply a CA for https://, and
+    // a null CA would fail the TLS handshake anyway. Refuse explicitly rather
+    // than attempting a connection that cannot verify the server.
+    Serial.printf("[%s] Refusing request: https:// with no root CA\n", tag);
+    return payload;
+  }
+
+  WiFiClient* client = nullptr;
+  if (is_https) {
+    WiFiClientSecure* secure_client = new WiFiClientSecure;
+    if (secure_client) {
+      secure_client->setCACert(root_ca);
+    }
+    client = secure_client;
   } else {
+    client = new WiFiClient;
+  }
+
+  if (!client) {
     Serial.println("Unable to create client");
+    return payload;
+  }
+
+  {
+    // Scope HTTPClient so it is destroyed before the underlying client is deleted.
+    HTTPClient http;
+    http.setTimeout(65000);
+
+    Serial.printf("[%s] begin...\n", tag);
+    if (http.begin(*client, url)) {
+      Serial.printf("[%s] POST...\n", tag);
+      http.addHeader("Content-Type", "application/json");
+      http.addHeader("Authorization", String("Bearer ") + param.api_key);
+      int httpCode = http.POST((uint8_t*)json_string, strlen(json_string));
+
+      if (httpCode > 0) {
+        Serial.printf("[%s] POST... code: %d\n", tag, httpCode);
+        if (httpCode >= 200 && httpCode < 300) {
+          payload = http.getString();
+          Serial.println("//////////////");
+          Serial.println(payload);
+          Serial.println("//////////////");
+        } else {
+          // Log the error body to help debug custom endpoints. Cap only to
+          // limit serial output (not heap: getString already read it all).
+          String err_body = http.getString();
+          if (err_body.length() > 512) {
+            err_body.remove(512);
+          }
+          Serial.printf("[%s] POST... non-2xx body: ", tag);
+          Serial.println(err_body);
+        }
+      } else {
+        Serial.printf("[%s] POST... failed, error: %s\n", tag, http.errorToString(httpCode).c_str());
+      }
+      http.end();
+    } else {
+      Serial.printf("[%s] Unable to connect\n", tag);
+    }
+  }
+
+  // WiFiClient's destructor is non-virtual, so delete via the concrete type
+  // to ensure ~WiFiClientSecure() runs and TLS state is freed.
+  if (is_https) {
+    delete static_cast<WiFiClientSecure*>(client);
+  } else {
+    delete client;
   }
   return payload;
 }
@@ -292,7 +343,41 @@ String ChatGPT::execChatGpt(String json_string, String& calledFunc) {
   avatar.setExpression(Expression::Doubt);
   avatar.setSpeechFont(&fonts::efontJA_16);
   avatar.setSpeechText("考え中…");
-  String ret = https_post_json("https://api.openai.com/v1/chat/completions", json_string.c_str(), root_ca_openai);
+  String ret;
+  const String& customEndpoint = param.llm_conf.customEndpoint;
+  const String& model = param.llm_conf.model;
+  if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI && (model.length() == 0 || model == "null")){
+    // A custom OpenAI-compatible endpoint has no sensible default model, so the
+    // model field is mandatory. Refuse rather than sending an unintended model.
+    Serial.printf("Refusing request: llm type is Custom OpenAI but model is blank\n");
+    avatar.setExpression(Expression::Sad);
+    avatar.setSpeechText("モデル未設定");
+    delay(1500);
+    avatar.setSpeechText("");
+    avatar.setExpression(Expression::Neutral);
+    calledFunc = "";
+    return "";
+  }
+  if(param.llm_conf.type == LLM_TYPE_CUSTOM_OPENAI && customEndpoint.length() > 0){
+    const bool needs_ca = customEndpoint.startsWith("https://");
+    if(needs_ca && param.llm_conf.customRootCA.length() == 0){
+      // Refuse rather than silently retargeting api.openai.com, which would
+      // send the configured API key to a host the user did not select.
+      Serial.printf("Refusing request: customEndpoint is https:// but customRootCAFile is missing: %s\n", customEndpoint.c_str());
+      avatar.setExpression(Expression::Sad);
+      avatar.setSpeechText("CA未設定");
+      delay(1500);
+      avatar.setSpeechText("");
+      avatar.setExpression(Expression::Neutral);
+      calledFunc = "";
+      return "";
+    }
+    const char* ca = needs_ca ? param.llm_conf.customRootCA.c_str() : nullptr;
+    ret = post_json(customEndpoint.c_str(), json_string.c_str(), ca);
+  }
+  else{
+    ret = post_json("https://api.openai.com/v1/chat/completions", json_string.c_str(), root_ca_openai);
+  }
   avatar.setExpression(Expression::Neutral);
   avatar.setSpeechText("");
   Serial.println(ret);
