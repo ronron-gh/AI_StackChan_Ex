@@ -33,7 +33,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 - ターゲットデバイス：
   - M5Stack Core2
   - M5Stack CoreS3
-  - 🆕AtomS3R + Atomic Echo Base
+  - AtomS3R + Atomic Echo Base
 - 開発PC：
   - OS: Windows11 
   - IDE：VSCode + PlatformIO

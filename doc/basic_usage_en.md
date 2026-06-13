@@ -24,6 +24,7 @@ You can select which AI service to use by configuring the YAML file on the SD ca
 |---|---|---|---|---|
 |OpenAI ChatGPT|×|〇|〇|・You need to get an API key<br>・Supports Function Calling. [Details page](function_calling_en.md)<br>・Supports MCP. [Details page](mcp_en.md)<br>・CoreS3 camera images can be input. [Details page](gpt4o_cores3camera_en.md)|
 |ModuleLLM|〇|〇|〇| Please check [How to set up ModuleLLM](module_llm_en.md). <br>Function calling is also supported (see [Appendix B on the same page](module_llm_en.md#appendix-a-how-to-implement-function-calling)).|
+|🆕OpenAI Compatible API|-|-|-| Please check [How to use the OpenAI compatible endpoint](custom_endpoint_en.md) |
 
 ### 1.2. Speech to Text (STT)
 

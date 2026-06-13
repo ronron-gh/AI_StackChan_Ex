@@ -23,8 +23,8 @@ const String json_ChatString =
   "\"messages\": [{\"role\": \"system\", \"content\": \"\"},"     // ユーザーが設定するロール
                   "{\"role\": \"system\", \"content\": \"\"},"    // システム用のロール
                   "{\"role\": \"system\", \"content\": \"User Info: \"}],"  // 長期記憶の要約
-  "\"functions\": [],"
-  "\"function_call\":\"auto\""
+  //"\"functions\": [],"
+  //"\"function_call\":\"auto\""
 "}";
 
 
@@ -121,33 +121,37 @@ void ChatGPT::load_role(){
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_SYSTEM_ROLE]["content"] = systemRole;
   chat_doc["messages"][SYSTEM_PROMPT_INDEX_USER_INFO]["content"] = userInfo;
 
-  /*
-   * MCP tools listをfunctionとして挿入
-   */
-  for(int s=0; s<param.llm_conf.nMcpServers; s++){
-    if(true == param.llm_conf.mcpServer[s].disabled){
-      continue;
+  // OpenAI互換エンドポイントでは、Function Callingのプロンプトに
+  // 互換性がない場合があるため、Functionの設定はスキップする。
+  if(param.llm_conf.type != LLM_TYPE_CUSTOM_OPENAI){
+    /*
+    * MCP tools listをfunctionとして挿入
+    */
+    for(int s=0; s<param.llm_conf.nMcpServers; s++){
+      if(true == param.llm_conf.mcpServer[s].disabled){
+        continue;
+      }
+      if(!mcpClient[s]->isConnected()){
+        continue;
+      }
+      for(int t=0; t<mcpClient[s]->nTools; t++){
+        chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
+      }
     }
-    if(!mcpClient[s]->isConnected()){
-      continue;
-    }
-    for(int t=0; t<mcpClient[s]->nTools; t++){
-      chat_doc["functions"].add(mcpClient[s]->toolsListDoc["result"]["tools"][t]);
-    }
-  }
 
-  /*
-   * FunctionCall.cppで定義したfunctionを挿入
-   */
-  SpiRamJsonDocument functionsDoc(1024*10);
-  DeserializationError error = deserializeJson(functionsDoc, json_Functions.c_str());
-  if (error) {
-    Serial.println("load_role: JSON deserialization error");
-  }
+    /*
+    * FunctionCall.cppで定義したfunctionを挿入
+    */
+    SpiRamJsonDocument functionsDoc(1024*10);
+    DeserializationError error = deserializeJson(functionsDoc, json_Functions.c_str());
+    if (error) {
+      Serial.println("load_role: JSON deserialization error");
+    }
 
-  int nFuncs = functionsDoc.size();
-  for(int i=0; i<nFuncs; i++){
-    chat_doc["functions"].add(functionsDoc[i]);
+    int nFuncs = functionsDoc.size();
+    for(int i=0; i<nFuncs; i++){
+      chat_doc["functions"].add(functionsDoc[i]);
+    }
   }
 
   /*
