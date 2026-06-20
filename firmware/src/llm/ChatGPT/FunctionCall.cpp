@@ -158,6 +158,22 @@ const String json_Functions =
     "}"
   "},"
   "{"
+    "\"name\": \"get_volume\","
+    "\"description\": \"Get the current speaker volume. Use this before relative volume changes.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"get_brightness\","
+    "\"description\": \"Get the current display brightness. Use this before relative brightness changes.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
     "\"name\": \"set_volume\","
     "\"description\": \"スタックチャンのスピーカー音量を調整する。\","
     "\"parameters\": {"
@@ -337,6 +353,12 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
     else if(strcmp(name, "get_week") == 0){
       response = get_week();    
     }
+    else if(strcmp(name, "get_volume") == 0){
+      response = get_volume();
+    }
+    else if(strcmp(name, "get_brightness") == 0){
+      response = get_brightness();
+    }
     else if(strcmp(name, "set_volume") == 0){
       const int volume = argsDoc["volume"];
       response = set_volume(volume);    
@@ -511,6 +533,19 @@ String FunctionCall::get_week(){
   else{
     response = "時刻取得に失敗しました。";
   }
+  return response;
+}
+
+String FunctionCall::get_volume(){
+  String response = "Current speaker volume is " + String(robot->spk_volume) + " (0-255).";
+  Serial.println(response);
+  return response;
+}
+
+String FunctionCall::get_brightness(){
+  const int brightness = M5.Display.getBrightness();
+  String response = "Current display brightness is " + String(brightness) + " (0-255).";
+  Serial.println(response);
   return response;
 }
 

@@ -53,6 +53,8 @@ public:
     String get_date();
     String get_time();
     String get_week();
+    String get_volume();
+    String get_brightness();
     String set_volume(int volume);
     String set_brightness(int brightness);
 
