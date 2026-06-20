@@ -156,6 +156,50 @@ const String json_Functions =
       "\"type\":\"object\","
       "\"properties\": {}"
     "}"
+  "},"
+  "{"
+    "\"name\": \"get_volume\","
+    "\"description\": \"Get the current speaker volume. Use this before relative volume changes.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"get_brightness\","
+    "\"description\": \"Get the current display brightness. Use this before relative brightness changes.\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {}"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"set_volume\","
+    "\"description\": \"スタックチャンのスピーカー音量を調整する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"volume\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"設定する音量の値（0-255）。255が最大で、0が消音。\""
+        "}"
+      "},"
+      "\"required\": [\"volume\"]"
+    "}"
+  "},"
+  "{"
+    "\"name\": \"set_brightness\","
+    "\"description\": \"スタックチャンの画面の明るさを調整する。\","
+    "\"parameters\": {"
+      "\"type\":\"object\","
+      "\"properties\": {"
+        "\"brightness\":{"
+          "\"type\": \"integer\","
+          "\"description\": \"設定する明るさの値（0-255）。255が最大で、0が最も暗い。\""
+        "}"
+      "},"
+      "\"required\": [\"brightness\"]"
+    "}"
 #if !defined(USE_EXTENSION_FUNCTIONS)
   "}"
 #else
@@ -308,6 +352,20 @@ String FunctionCall::exec_calledFunc(const char* name, const char* args){
     }
     else if(strcmp(name, "get_week") == 0){
       response = get_week();    
+    }
+    else if(strcmp(name, "get_volume") == 0){
+      response = get_volume();
+    }
+    else if(strcmp(name, "get_brightness") == 0){
+      response = get_brightness();
+    }
+    else if(strcmp(name, "set_volume") == 0){
+      const int volume = argsDoc["volume"];
+      response = set_volume(volume);    
+    }
+    else if(strcmp(name, "set_brightness") == 0){
+      const int brightness = argsDoc["brightness"];
+      response = set_brightness(brightness);    
     }
 #if defined(USE_EXTENSION_FUNCTIONS)
     else if(strcmp(name, "reminder") == 0){
@@ -475,6 +533,42 @@ String FunctionCall::get_week(){
   else{
     response = "時刻取得に失敗しました。";
   }
+  return response;
+}
+
+String FunctionCall::get_volume(){
+  String response = "Current speaker volume is " + String(robot->spk_volume) + " (0-255).";
+  Serial.println(response);
+  return response;
+}
+
+String FunctionCall::get_brightness(){
+  const int brightness = M5.Display.getBrightness();
+  String response = "Current display brightness is " + String(brightness) + " (0-255).";
+  Serial.println(response);
+  return response;
+}
+
+String FunctionCall::set_volume(int volume){
+  if(volume < 0) volume = 0;
+  if(volume > 255) volume = 255;
+  
+  robot->spk_volume = (uint8_t)volume;
+  M5.Speaker.setVolume(robot->spk_volume);
+  
+  String response = "音量を" + String(volume) + "に設定しました。";
+  Serial.println(response);
+  return response;
+}
+
+String FunctionCall::set_brightness(int brightness){
+  if(brightness < 0) brightness = 0;
+  if(brightness > 255) brightness = 255;
+  
+  M5.Display.setBrightness(brightness);
+  
+  String response = "画面の明るさを" + String(brightness) + "に設定しました。";
+  Serial.println(response);
   return response;
 }
 
