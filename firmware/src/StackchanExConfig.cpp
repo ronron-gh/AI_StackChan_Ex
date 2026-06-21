@@ -78,6 +78,7 @@ void StackchanExConfig::secretConfigNotFoundCallback(void)
 void StackchanExConfig::loadExtendConfig(fs::FS& fs, const char* yaml_filename, uint32_t yaml_size)
 {
     M5_LOGI("----- StackchanExConfig::loadExtendConfig:%s\n", yaml_filename);
+    _extend_fs = &fs;
     File file = fs.open(yaml_filename);
     if (file) {
         DynamicJsonDocument doc(yaml_size);
@@ -110,6 +111,35 @@ void StackchanExConfig::extendConfigNotFoundCallback(void)
 
 }
 
+void StackchanExConfig::appendRootCAFromFile(const String& ca_path)
+{
+    if(_extend_fs == nullptr || ca_path.length() == 0){
+        return;
+    }
+    File ca_file = _extend_fs->open(ca_path.c_str());
+    if(!ca_file){
+        M5_LOGE("llm customRootCAFile not found: %s", ca_path.c_str());
+        return;
+    }
+    size_t sz = ca_file.size();
+    // Reserve room for the new file plus a separating newline.
+    _ex_parameters.llm.customRootCA.reserve(_ex_parameters.llm.customRootCA.length() + sz + 2);
+    // Separate concatenated PEM blocks with a newline so the "-----END-----"
+    // of one cert never runs into the "-----BEGIN-----" of the next.
+    if(_ex_parameters.llm.customRootCA.length() > 0
+       && !_ex_parameters.llm.customRootCA.endsWith("\n")){
+        _ex_parameters.llm.customRootCA += "\n";
+    }
+    while(ca_file.available()){
+        char chunk[128];
+        int n = ca_file.readBytes(chunk, sizeof(chunk) - 1);
+        if(n <= 0) break;
+        chunk[n] = 0;
+        _ex_parameters.llm.customRootCA += chunk;
+    }
+    ca_file.close();
+}
+
 void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
@@ -122,6 +152,38 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
         _ex_parameters.llm.mcpServer[i].port = doc["llm"]["mcpServers"][i]["port"].as<int>();
     }
     _ex_parameters.llm.enableMemory = doc["llm"]["enableMemory"].as<bool>();
+    _ex_parameters.llm.customRootCA = "";
+    // Build the trusted CA bundle from a single customRootCAFile (string) and/or a
+    // customRootCAFiles list. Each PEM file is appended into one buffer; mbedTLS
+    // (via WiFiClientSecure::setCACert) parses the concatenated PEM blocks and
+    // trusts every certificate as a root, so chains with several roots work.
+    if(doc["llm"]["customRootCAFiles"].is<JsonArray>()){
+        JsonArray ca_files = doc["llm"]["customRootCAFiles"].as<JsonArray>();
+        for(JsonVariant ca_file_path : ca_files){
+            appendRootCAFromFile(ca_file_path.as<String>());
+        }
+    }
+    if(doc["llm"]["customRootCAFile"].is<const char*>()){
+        appendRootCAFromFile(doc["llm"]["customRootCAFile"].as<String>());
+    }
+    if(doc["llm"]["customEndpoint"].is<const char*>()){
+        _ex_parameters.llm.customEndpoint = doc["llm"]["customEndpoint"].as<String>();
+        if(_ex_parameters.llm.customEndpoint.startsWith("https://") && _ex_parameters.llm.customRootCA.length() == 0){
+            // Keep the endpoint so requests are refused at send time rather
+            // than silently retargeted to api.openai.com.
+            M5_LOGE("llm customEndpoint is https:// but no customRootCAFile was loaded; requests will be refused: %s",
+                    _ex_parameters.llm.customEndpoint.c_str());
+        }
+    }
+    else{
+        _ex_parameters.llm.customEndpoint = "";
+    }
+    if((_ex_parameters.llm.type == LLM_TYPE_CUSTOM_OPENAI)
+        && (_ex_parameters.llm.model.length() == 0 || _ex_parameters.llm.model == "null")){
+        // The OpenAI-compatible endpoint has no default model; surface the
+        // misconfiguration at boot. Requests are refused at send time.
+        M5_LOGE("llm type is Custom OpenAI (%d) but model is blank; requests will be refused", LLM_TYPE_CUSTOM_OPENAI);
+    }
 
     _ex_parameters.tts.type         = doc["tts"]["type"].as<int>();
     _ex_parameters.tts.model        = doc["tts"]["model"].as<String>();
@@ -152,6 +214,19 @@ void StackchanExConfig::printExtParameters(void)
         M5_LOGI("llm mcpServer[%d] port: %d", i, _ex_parameters.llm.mcpServer[i].port);
     }
     M5_LOGI("llm enableMemory: %s", _ex_parameters.llm.enableMemory ? "true":"false");
+    M5_LOGI("llm customEndpoint: %s", _ex_parameters.llm.customEndpoint.c_str());
+    {
+        // Report how many certificates were bundled, which helps confirm a
+        // multi-CA customRootCAFiles list was loaded as expected.
+        int nCerts = 0;
+        int idx = 0;
+        while((idx = _ex_parameters.llm.customRootCA.indexOf("-----BEGIN CERTIFICATE-----", idx)) >= 0){
+            nCerts++;
+            idx += 27;  // length of "-----BEGIN CERTIFICATE-----"
+        }
+        M5_LOGI("llm customRootCA: %s (%d certificate(s))",
+                _ex_parameters.llm.customRootCA.length() > 0 ? "(set)" : "(none)", nCerts);
+    }
 
 
     M5_LOGI("tts type: %d", _ex_parameters.tts.type);

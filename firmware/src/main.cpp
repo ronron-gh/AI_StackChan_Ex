@@ -315,6 +315,9 @@ void init_mic_spk()
 
 void setup()
 {
+  /// シリアル出力のログレベルを VERBOSEに設定
+  //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
+
   auto cfg = M5.config();
 
 #if defined(ARDUINO_M5STACK_ATOMS3R)
@@ -325,9 +328,15 @@ void setup()
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
 
-  /// シリアル出力のログレベルを VERBOSEに設定
-  //M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_VERBOSE);
-
+  ///// Debug /////
+#if 0
+  check_board();
+  Wire.begin(); 
+  i2c_scan(Wire);
+  Wire1.begin(); 
+  i2c_scan(Wire1);
+#endif
+  /////////////////
 
 #if defined(ARDUINO_M5STACK_ATOMS3R)
   M5.Lcd.setTextSize(2);

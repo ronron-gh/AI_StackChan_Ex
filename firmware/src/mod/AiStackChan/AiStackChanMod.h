@@ -15,6 +15,9 @@ private:
     #endif
     String avatarText;
     bool isOffline;
+    unsigned long headTouchHappyUntilMs = 0;
+    bool headTouchHappyActive = false;
+    void updateHeadTouchExpression(void);
 public:
     AiStackChanMod(bool _isOffline);
 

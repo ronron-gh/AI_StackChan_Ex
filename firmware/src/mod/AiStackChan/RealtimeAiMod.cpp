@@ -13,6 +13,7 @@
 #include "Scheduler.h"
 #include "MySchedule.h"
 #include "share/SDUtil.h"
+#include "driver/HeadTouchSensor.h"
 
 using namespace m5avatar;
 
@@ -138,20 +139,17 @@ void RealtimeAiMod::idle(void)
   if(robot->asyncPlaying || (pRtLLM->getOutputTextQueueSize() != 0)){
     // 発話中
     pRtLLM->setSpeaking(true);
-    servo_home = false;
-    avatar.setExpression(Expression::Happy);
   }
   else{
     // 発話停止中かつキューにテキストがない場合はLLM機能に発話終了を通知
     pRtLLM->setSpeaking(false);
-    servo_home = true;
-    avatar.setExpression(Expression::Neutral);
   }
 
 #endif  //REALTIME_API_WITH_TTS
 
   // Alarm (Function Calling)
   alarmEventHandler();
+  updateHeadTouchExpression();
 
 #if 0 
   //スケジューラ処理
@@ -185,6 +183,27 @@ void RealtimeAiMod::alarmEventHandler()
     avatar.set_isSubWindowEnable(false);
   }
 
+}
+
+void RealtimeAiMod::updateHeadTouchExpression(void)
+{
+  HeadTouchSensor::Gesture gesture = HeadTouchSensor::update();
+  if (HeadTouchSensor::isPetGesture(gesture)) {
+    headTouchHappyUntilMs = millis() + 3000;
+    headTouchHappyActive = true;
+    avatar.setExpression(Expression::Happy);
+    Serial.printf("[HeadTouch] pet gesture=%s\n", HeadTouchSensor::gestureName(gesture));
+  }
+
+  if (headTouchHappyActive && millis() < headTouchHappyUntilMs) {
+    avatar.setExpression(Expression::Happy);
+    return;
+  }
+
+  if (headTouchHappyActive) {
+    headTouchHappyActive = false;
+    avatar.setExpression(Expression::Neutral);
+  }
 }
 
 bool RealtimeAiMod::isBusy(void)

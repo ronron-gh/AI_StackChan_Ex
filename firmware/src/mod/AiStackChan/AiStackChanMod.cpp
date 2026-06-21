@@ -25,6 +25,7 @@
 #include "rootCA/rootCACertificate.h"  //speechToText
 #include "rootCA/rootCAgoogle.h"       //speechToText
 #include "driver/Audio.h"              //speechToText
+#include "driver/HeadTouchSensor.h"
 
 using namespace m5avatar;
 
@@ -424,6 +425,28 @@ void AiStackChanMod::idle(void)
     run_schedule();
   }
 
+  updateHeadTouchExpression();
+
 }
 
+void AiStackChanMod::updateHeadTouchExpression(void)
+{
+  HeadTouchSensor::Gesture gesture = HeadTouchSensor::update();
+  if (HeadTouchSensor::isPetGesture(gesture)) {
+    headTouchHappyUntilMs = millis() + 3000;
+    headTouchHappyActive = true;
+    avatar.setExpression(Expression::Happy);
+    Serial.printf("[HeadTouch] pet gesture=%s\n", HeadTouchSensor::gestureName(gesture));
+  }
+
+  if (headTouchHappyActive && millis() < headTouchHappyUntilMs) {
+    avatar.setExpression(Expression::Happy);
+    return;
+  }
+
+  if (headTouchHappyActive) {
+    headTouchHappyActive = false;
+    avatar.setExpression(Expression::Neutral);
+  }
+}
 

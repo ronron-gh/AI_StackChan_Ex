@@ -25,6 +25,11 @@ private:
     // for alarm (Function Calling)
     void alarmEventHandler();
 
+    // for official CoreS3 head touch sensor
+    unsigned long headTouchHappyUntilMs = 0;
+    bool headTouchHappyActive = false;
+    void updateHeadTouchExpression(void);
+
 public:
     RealtimeAiMod(bool _isOffline);
 
