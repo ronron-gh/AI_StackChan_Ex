@@ -1,7 +1,7 @@
 #ifndef _QR_DISPLAY_MOD_H
 #define _QR_DISPLAY_MOD_H
 
-#include <arduino.h>
+#include <Arduino.h>
 #include "mod/ModBase.h"
 
 
