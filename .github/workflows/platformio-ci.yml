@@ -23,7 +23,8 @@ jobs:
     - name: Install PlatformIO Core
       run: pip install --upgrade platformio
     - name: Build PlatformIO 
-      run: cd firmware && pio run --environment=$PIO_ENV
+      run: pio run --environment=$PIO_ENV
+      working-directory: ./firmware
       env:
         PIO_ENV: ${{ matrix.pio_env }}
 
