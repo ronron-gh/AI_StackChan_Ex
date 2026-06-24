@@ -1,0 +1,32 @@
+# CI documents: https://docs.platformio.org/en/latest/integration/ci/github-actions.html#integration
+name: PlatformIO CI
+
+on: [push]
+
+jobs:
+  build-simple:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pio_env: ["m5stack-core2-realtime", "m5stack-cores3-realtime"]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/cache@v5
+      with:
+        path: |
+                ~/.cache/pip
+                ~/.platformio/.cache
+        key: ${{ runner.os }}-pio
+    - uses: actions/setup-python@v6
+      with:
+          python-version: '3.11'
+    - name: Install PlatformIO Core
+      run: pip install --upgrade platformio
+    - name: Move to firmware folder
+      run: cd firmware
+    - name: Build PlatformIO 
+      run: pio run --environment=$PIO_ENV
+      env:
+        PIO_ENV: ${{ matrix.pio_env }}
+
+
