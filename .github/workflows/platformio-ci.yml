@@ -22,10 +22,8 @@ jobs:
           python-version: '3.11'
     - name: Install PlatformIO Core
       run: pip install --upgrade platformio
-    - name: Move to firmware folder
-      run: cd firmware
     - name: Build PlatformIO 
-      run: pio run --environment=$PIO_ENV
+      run: cd firmware && pio run --environment=$PIO_ENV
       env:
         PIO_ENV: ${{ matrix.pio_env }}
 
