@@ -1,6 +1,8 @@
 [English](README_en.md)
 
 # AI Stack-chan Ex
+[![PlatformIO CI](https://github.com/ronron-gh/AI_StackChan_Ex/actions/workflows/platformio-ci.yml/badge.svg)](https://github.com/ronron-gh/AI_StackChan_Ex/actions/workflows/platformio-ci.yml)
+
 robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackChan2)をベースに、次のように機能拡張しています。  
 - AI機能の拡張
   - Module LLM（M5Stackの拡張モジュール）によるAI会話機能の完全ローカル化
