@@ -1,7 +1,10 @@
 #include <ESP32WebServer.h>
 #include <nvs.h>
+#include <SD.h>
+#include <SPIFFS.h>
 #include "WebAPI.h"
 #include "Avatar.h"
+#include "StackchanExConfig.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/FunctionCall.h"
 #include "Robot.h"
@@ -10,6 +13,7 @@ using namespace m5avatar;
 extern Avatar avatar;
 extern uint8_t m5spk_virtual_channel;
 extern String STT_API_KEY;
+extern StackchanExConfig system_config;
 
 ESP32WebServer server(80);
 
@@ -22,108 +26,6 @@ static const char HEAD[] PROGMEM = R"KEWL(
   <title>AIｽﾀｯｸﾁｬﾝ</title>
 </head>)KEWL";
 
-static const char APIKEY_HTML[] PROGMEM = R"KEWL(
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>APIキー設定</title>
-  </head>
-  <body>
-    <h1>APIキー設定</h1>
-    <form>
-      <label for="role1">OpenAI API Key</label>
-      <input type="text" id="openai" name="openai" oninput="adjustSize(this)"><br>
-      <label for="role2">VoiceVox API Key</label>
-      <input type="text" id="voicevox" name="voicevox" oninput="adjustSize(this)"><br>
-      <label for="role3">Speech to Text API Key</label>
-      <input type="text" id="sttapikey" name="sttapikey" oninput="adjustSize(this)"><br>
-      <button type="button" onclick="sendData()">送信する</button>
-    </form>
-    <script>
-      function adjustSize(input) {
-        input.style.width = ((input.value.length + 1) * 8) + 'px';
-      }
-      function sendData() {
-        // FormDataオブジェクトを作成
-        const formData = new FormData();
-
-        // 各ロールの値をFormDataオブジェクトに追加
-        const openaiValue = document.getElementById("openai").value;
-        if (openaiValue !== "") formData.append("openai", openaiValue);
-
-        const voicevoxValue = document.getElementById("voicevox").value;
-        if (voicevoxValue !== "") formData.append("voicevox", voicevoxValue);
-
-        const sttapikeyValue = document.getElementById("sttapikey").value;
-        if (sttapikeyValue !== "") formData.append("sttapikey", sttapikeyValue);
-
-	    // POSTリクエストを送信
-	    const xhr = new XMLHttpRequest();
-	    xhr.open("POST", "/apikey_set");
-	    xhr.onload = function() {
-	      if (xhr.status === 200) {
-	        alert("データを送信しました！");
-	      } else {
-	        alert("送信に失敗しました。");
-	      }
-	    };
-	    xhr.send(formData);
-	  }
-	</script>
-  </body>
-</html>)KEWL";
-
-#if 0
-static const char ROLE_HTML[] PROGMEM = R"KEWL(
-<!DOCTYPE html>
-<html>
-<head>
-	<title>ロール設定</title>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<style>
-		textarea {
-			width: 80%;
-			height: 200px;
-			resize: both;
-		}
-	</style>
-</head>
-<body>
-	<h1>ロール設定</h1>
-	<form onsubmit="postData(event)">
-		<label for="textarea">ここにロールを記述してください。:</label><br>
-		<textarea id="textarea" name="textarea"></textarea><br><br>
-		<input type="submit" value="Submit">
-	</form>
-	<script>
-		function postData(event) {
-			event.preventDefault();
-			const textAreaContent = document.getElementById("textarea").value.trim();
-//			if (textAreaContent.length > 0) {
-				const xhr = new XMLHttpRequest();
-				xhr.open("POST", "/role_set", true);
-				xhr.setRequestHeader("Content-Type", "text/plain;charset=UTF-8");
-			// xhr.onload = () => {
-			// 	location.reload(); // 送信後にページをリロード
-			// };
-			xhr.onload = () => {
-				document.open();
-				document.write(xhr.responseText);
-				document.close();
-			};
-				xhr.send(textAreaContent);
-//        document.getElementById("textarea").value = "";
-				alert("Data sent successfully!");
-//			} else {
-//				alert("Please enter some text before submitting.");
-//			}
-		}
-	</script>
-</body>
-</html>)KEWL";
-#endif
 
 #define IMPORT_FILE(section, filename, symbol) \
 static constexpr const char* filename_##symbol = filename; \
@@ -139,15 +41,176 @@ asm(\
   ".balign 4\n"\
   ".section \".text\"\n")
 
-//IMPORT_FILE(.rodata, "index.html", index_html);
+
+IMPORT_FILE(.rodata, "home.html", home_html);
+IMPORT_FILE(.rodata, "config.html", config_html);
+IMPORT_FILE(.rodata, "config.js", config_js);
 IMPORT_FILE(.rodata, "personalize.html", personalize_html);
 IMPORT_FILE(.rodata, "personalize.js", personalize_js);
 
+static const char* SPIFFS_SEC_CONFIG_PATH = "/SC_SecConfig.yaml";
+static const char* SPIFFS_BASIC_CONFIG_PATH = "/SC_BasicConfig.yaml";
+static const char* SPIFFS_EX_CONFIG_PATH = "/SC_ExConfig.yaml";
+
+String read_text_file(fs::FS& fs, const char* path)
+{
+  File file = fs.open(path, FILE_READ);
+  if(!file){
+    return "";
+  }
+  String data = file.readString();
+  file.close();
+  return data;
+}
+
+bool write_text_file_atomic(fs::FS& fs, const char* path, const String& data, String* error)
+{
+  String temp_path = String(path) + ".tmp";
+  File temp = fs.open(temp_path.c_str(), FILE_WRITE);
+  if(!temp){
+    if(error != nullptr){
+      *error = String("Cannot open temp file: ") + temp_path;
+    }
+    return false;
+  }
+  size_t written = temp.print(data);
+  temp.flush();
+  temp.close();
+  if(written != data.length()){
+    fs.remove(temp_path.c_str());
+    if(error != nullptr){
+      *error = String("Failed to write full data: ") + path;
+    }
+    return false;
+  }
+  if(fs.exists(path)){
+    fs.remove(path);
+  }
+  if(!fs.rename(temp_path.c_str(), path)){
+    fs.remove(temp_path.c_str());
+    if(error != nullptr){
+      *error = String("Failed to rename temp file: ") + path;
+    }
+    return false;
+  }
+  return true;
+}
+
+bool parse_yaml_file(fs::FS& fs, const char* path, DynamicJsonDocument& doc)
+{
+  String yaml = read_text_file(fs, path);
+  if(yaml.length() == 0){
+    return false;
+  }
+  return !deserializeYml(doc, yaml.c_str());
+}
+
+String quote_yaml_string(const String& value)
+{
+  String quoted = "\"";
+  for(size_t i = 0; i < value.length(); i++){
+    char c = value.charAt(i);
+    if(c == '\\' || c == '"'){
+      quoted += '\\';
+    }
+    quoted += c;
+  }
+  quoted += "\"";
+  return quoted;
+}
+
+String json_string_or_empty(JsonVariantConst value)
+{
+  if(value.is<const char*>()){
+    return value.as<String>();
+  }
+  return "";
+}
+
+int json_int_or(JsonVariantConst value, int default_value)
+{
+  if(value.is<int>()){
+    return value.as<int>();
+  }
+  return default_value;
+}
+
+bool json_bool_or(JsonVariantConst value, bool default_value)
+{
+  if(value.is<bool>()){
+    return value.as<bool>();
+  }
+  return default_value;
+}
+
+String build_secret_yaml(JsonObjectConst sec)
+{
+  JsonObjectConst wifi = sec["wifi"];
+  JsonObjectConst apikey = sec["apikey"];
+  String yaml;
+  yaml += "wifi:\n";
+  yaml += "  ssid: " + quote_yaml_string(json_string_or_empty(wifi["ssid"])) + "\n";
+  yaml += "  password: " + quote_yaml_string(json_string_or_empty(wifi["password"])) + "\n";
+  yaml += "apikey:\n";
+  yaml += "  aiservice: " + quote_yaml_string(json_string_or_empty(apikey["aiservice"])) + "\n";
+  yaml += "  tts: " + quote_yaml_string(json_string_or_empty(apikey["tts"])) + "\n";
+  yaml += "  stt: " + quote_yaml_string(json_string_or_empty(apikey["stt"])) + "\n";
+  return yaml;
+}
+
+String build_basic_yaml(JsonObjectConst basic)
+{
+  JsonObjectConst servo = basic["servo"];
+  String servo_type = json_string_or_empty(basic["servo_type"]);
+  if(servo_type.length() == 0){
+    servo_type = "PWM";
+  }
+  String yaml;
+  yaml += "servo:\n";
+  yaml += "  pin:\n";
+  yaml += "    x: " + String(json_int_or(servo["pin"]["x"], 33)) + "\n";
+  yaml += "    y: " + String(json_int_or(servo["pin"]["y"], 32)) + "\n";
+  yaml += "  offset:\n";
+  yaml += "    x: " + String(json_int_or(servo["offset"]["x"], 0)) + "\n";
+  yaml += "    y: " + String(json_int_or(servo["offset"]["y"], 0)) + "\n";
+  yaml += "  center:\n";
+  yaml += "    x: " + String(json_int_or(servo["center"]["x"], 90)) + "\n";
+  yaml += "    y: " + String(json_int_or(servo["center"]["y"], 90)) + "\n";
+  yaml += "  lower_limit:\n";
+  yaml += "    x: " + String(json_int_or(servo["lower_limit"]["x"], 0)) + "\n";
+  yaml += "    y: " + String(json_int_or(servo["lower_limit"]["y"], 60)) + "\n";
+  yaml += "  upper_limit:\n";
+  yaml += "    x: " + String(json_int_or(servo["upper_limit"]["x"], 180)) + "\n";
+  yaml += "    y: " + String(json_int_or(servo["upper_limit"]["y"], 90)) + "\n";
+  yaml += "takao_base: ";
+  yaml += json_bool_or(basic["takao_base"], false) ? "true\n" : "false\n";
+  yaml += "servo_type: " + quote_yaml_string(servo_type) + "\n";
+  return yaml;
+}
+
+String build_extend_yaml(JsonObjectConst ex)
+{
+  JsonObjectConst llm = ex["llm"];
+  String yaml;
+  yaml += "llm:\n";
+  yaml += "  type: " + String(json_int_or(llm["type"], LLM_TYPE_CHATGPT)) + "\n";
+  yaml += "  enableMemory: ";
+  yaml += json_bool_or(llm["enableMemory"], false) ? "true\n" : "false\n";
+  return yaml;
+}
 
 void handleRoot() {
   //Serial.println("handleRoot");
   //server.send(200, "text/plain", "hello from m5stack!");
-  server.send_P(200, "text/html", (const char*)personalize_html, (size_t)sizeof_personalize_html);
+  server.send_P(200, "text/html", (const char*)home_html, (size_t)sizeof_home_html);
+}
+
+void handle_config_html() {
+  server.send_P(200, "text/html", (const char*)config_html, (size_t)sizeof_config_html);
+}
+
+void handle_config_js() {
+  server.send_P(200, "application/javascript", (const char*)config_js, (size_t)sizeof_config_js);
 }
 
 void handle_personalize_html() {
@@ -175,6 +238,10 @@ void handleNotFound(){
 }
 
 void handle_speech() {
+  if(robot == nullptr){
+    server.send(503, "text/plain", String("Robot is not ready"));
+    return;
+  }
   String message = server.arg("say");
   String speaker = server.arg("voice");
   //if(speaker != "") {
@@ -190,6 +257,10 @@ void handle_speech() {
 }
 
 void handle_chat() {
+  if(robot == nullptr){
+    server.send(503, "text/plain", String("Robot is not ready"));
+    return;
+  }
   static String response = "";
   // tts_parms_no = 1;
   String text = server.arg("text");
@@ -203,43 +274,11 @@ void handle_chat() {
   server.send(200, "text/html", String(HEAD)+String("<body>")+response+String("</body>"));
 }
 
-void handle_apikey() {
-  // ファイルを読み込み、クライアントに送信する
-  server.send(200, "text/html", APIKEY_HTML);
-}
-
-#if 0
-void handle_apikey_set() {
-  // POST以外は拒否
-  if (server.method() != HTTP_POST) {
+void handle_role_set() {
+  if(robot == nullptr || robot->llm == nullptr){
+    server.send(503, "text/plain", String("LLM is not ready"));
     return;
   }
-  // openai
-  String openai = server.arg("openai");
-  // voicetxt
-  String voicevox = server.arg("voicevox");
-  // voicetxt
-  String sttapikey = server.arg("sttapikey");
- 
-  OPENAI_API_KEY = openai;
-  VOICEVOX_API_KEY = voicevox;
-  STT_API_KEY = sttapikey;
-  Serial.println(openai);
-  Serial.println(voicevox);
-  Serial.println(sttapikey);
-
-  uint32_t nvs_handle;
-  if (ESP_OK == nvs_open("apikey", NVS_READWRITE, &nvs_handle)) {
-    nvs_set_str(nvs_handle, "openai", openai.c_str());
-    nvs_set_str(nvs_handle, "voicevox", voicevox.c_str());
-    nvs_set_str(nvs_handle, "sttapikey", sttapikey.c_str());
-    nvs_close(nvs_handle);
-  }
-  server.send(200, "text/plain", String("OK"));
-}
-#endif
-
-void handle_role_set() {
   String html = "";
 
   // POST以外は拒否
@@ -250,45 +289,40 @@ void handle_role_set() {
 
   // JSONデータをSPIFFSに保存
   if(robot->llm->save_userRole(role)){
-#if 0
-    // 整形したJSONデータを出力するHTMLデータを作成する
-    serializeJsonPretty(robot->llm->get_chat_doc(), html);
-    html = "<html><body><pre>" + html + "</pre></body></html>";
-    //Serial.println(html);
-#endif
     server.send(200, "text/plain", String("Role set successful"));
   }
   else{
     //html = "Failed to save role to SPIFFS.";
     server.send(500, "text/plain", String("Role set failed"));
   }
-
-  // HTMLデータをシリアルに出力する
-  //server.send(200, "text/html", html);
 };
 
 void handle_role_get() {
-#if 0
-  String html = "";
-  serializeJsonPretty(robot->llm->get_chat_doc(), html);
-  html = "<html><body><pre>" + html + "</pre></body></html>";
+  if(robot == nullptr || robot->llm == nullptr){
+    server.send(503, "text/plain", String("LLM is not ready"));
+    return;
+  }
 
-  // HTMLデータをシリアルに出力する
-  //Serial.println(html);
-  server.send(200, "text/html", String(HEAD) + html);
-#endif
   Serial.println("http request: handle_role_get");
   Serial.println(robot->llm->get_userRole());
   server.send(200, "text/plain", robot->llm->get_userRole());
 };
 
 void handle_memory_get() {
+  if(robot == nullptr || robot->llm == nullptr){
+    server.send(503, "text/plain", String("LLM is not ready"));
+    return;
+  }
   Serial.println("http request: handle_memory_get");
   Serial.println(robot->llm->get_userInfo());
   server.send(200, "text/plain", robot->llm->get_userInfo());
 };
 
 void handle_memory_clear() {
+  if(robot == nullptr || robot->llm == nullptr){
+    server.send(503, "text/plain", String("LLM is not ready"));
+    return;
+  }
   Serial.println("http request: handle_memory_clear");
   bool result = robot->llm->clear_userInfo();
   if(result){
@@ -314,46 +348,133 @@ void handle_face() {
   server.send(200, "text/plain", String("OK"));
 }
 
-#if 0
-void handle_setting() {
-  String value = server.arg("volume");
-  String led = server.arg("led");
-  String speaker = server.arg("speaker");
-//  volume = volume + "\n";
-  Serial.println(speaker);
-  Serial.println(value);
-  size_t speaker_no;
+void handle_config_get() {
+  DynamicJsonDocument response(4096);
+  bool has_sec = SPIFFS.exists(SPIFFS_SEC_CONFIG_PATH);
+  bool has_basic = SPIFFS.exists(SPIFFS_BASIC_CONFIG_PATH);
+  bool has_ex = SPIFFS.exists(SPIFFS_EX_CONFIG_PATH);
+  response["source"] = (has_sec || has_basic || has_ex) ? "spiffs" : "none";
+  response["complete"] = has_sec && has_basic && has_ex;
 
-  if(speaker != ""){
-    speaker_no = speaker.toInt();
-    if(speaker_no > 60) {
-      speaker_no = 60;
+  JsonObject sec = response["sec"].to<JsonObject>();
+  JsonObject wifi = sec["wifi"].to<JsonObject>();
+  JsonObject apikey = sec["apikey"].to<JsonObject>();
+  wifi["ssid"] = "";
+  wifi["password"] = "";
+  apikey["aiservice"] = "";
+  apikey["tts"] = "";
+  apikey["stt"] = "";
+  DynamicJsonDocument sec_doc(2048);
+  if(parse_yaml_file(SPIFFS, SPIFFS_SEC_CONFIG_PATH, sec_doc)){
+    wifi["ssid"] = sec_doc["wifi"]["ssid"].as<String>();
+    wifi["password"] = sec_doc["wifi"]["password"].as<String>();
+    apikey["aiservice"] = sec_doc["apikey"]["aiservice"].as<String>();
+    apikey["tts"] = sec_doc["apikey"]["tts"].as<String>();
+    apikey["stt"] = sec_doc["apikey"]["stt"].as<String>();
+  }else{
+    secret_config_s* secret = system_config.getSecretSetting();
+    if(secret != nullptr){
+      wifi["ssid"] = secret->wifi_info.ssid;
+      wifi["password"] = secret->wifi_info.password;
+      apikey["aiservice"] = secret->api_key.ai_service;
+      apikey["tts"] = secret->api_key.tts;
+      apikey["stt"] = secret->api_key.stt;
     }
-    TTS_SPEAKER_NO = String(speaker_no);
-    TTS_PARMS = TTS_SPEAKER + TTS_SPEAKER_NO;
   }
 
-  if(value == "") value = "180";
-  size_t volume = value.toInt();
-  uint8_t led_onoff = 0;
-  uint32_t nvs_handle;
-  if (ESP_OK == nvs_open("setting", NVS_READWRITE, &nvs_handle)) {
-    if(volume > 255) volume = 255;
-    nvs_set_u32(nvs_handle, "volume", volume);
-    if(led != "") {
-      if(led == "on") led_onoff = 1;
-      else  led_onoff = 0;
-      nvs_set_u8(nvs_handle, "led", led_onoff);
-    }
-    nvs_set_u8(nvs_handle, "speaker", speaker_no);
-
-    nvs_close(nvs_handle);
+  JsonObject basic = response["basic"].to<JsonObject>();
+  JsonObject servo = basic["servo"].to<JsonObject>();
+  servo["pin"]["x"] = 33;
+  servo["pin"]["y"] = 32;
+  servo["offset"]["x"] = 0;
+  servo["offset"]["y"] = 0;
+  servo["center"]["x"] = 90;
+  servo["center"]["y"] = 90;
+  servo["lower_limit"]["x"] = 0;
+  servo["lower_limit"]["y"] = 60;
+  servo["upper_limit"]["x"] = 180;
+  servo["upper_limit"]["y"] = 90;
+  basic["takao_base"] = false;
+  basic["servo_type"] = "PWM";
+  DynamicJsonDocument basic_doc(2048);
+  if(parse_yaml_file(SPIFFS, SPIFFS_BASIC_CONFIG_PATH, basic_doc)){
+    servo["pin"]["x"] = basic_doc["servo"]["pin"]["x"] | 33;
+    servo["pin"]["y"] = basic_doc["servo"]["pin"]["y"] | 32;
+    servo["offset"]["x"] = basic_doc["servo"]["offset"]["x"] | 0;
+    servo["offset"]["y"] = basic_doc["servo"]["offset"]["y"] | 0;
+    servo["center"]["x"] = basic_doc["servo"]["center"]["x"] | 90;
+    servo["center"]["y"] = basic_doc["servo"]["center"]["y"] | 90;
+    servo["lower_limit"]["x"] = basic_doc["servo"]["lower_limit"]["x"] | 0;
+    servo["lower_limit"]["y"] = basic_doc["servo"]["lower_limit"]["y"] | 60;
+    servo["upper_limit"]["x"] = basic_doc["servo"]["upper_limit"]["x"] | 180;
+    servo["upper_limit"]["y"] = basic_doc["servo"]["upper_limit"]["y"] | 90;
+    basic["takao_base"] = basic_doc["takao_base"] | false;
+    basic["servo_type"] = basic_doc["servo_type"].as<String>().length() > 0
+                         ? basic_doc["servo_type"].as<String>()
+                         : String("PWM");
   }
-  M5.Speaker.setVolume(volume);
-  M5.Speaker.setChannelVolume(m5spk_virtual_channel, volume);
-  server.send(200, "text/plain", String("OK"));
+
+  JsonObject ex = response["ex"].to<JsonObject>();
+  JsonObject llm = ex["llm"].to<JsonObject>();
+  llm["type"] = LLM_TYPE_CHATGPT;
+  llm["enableMemory"] = false;
+  DynamicJsonDocument ex_doc(2048);
+  if(parse_yaml_file(SPIFFS, SPIFFS_EX_CONFIG_PATH, ex_doc)){
+    llm["type"] = ex_doc["llm"]["type"] | LLM_TYPE_CHATGPT;
+    llm["enableMemory"] = ex_doc["llm"]["enableMemory"] | false;
+  }else{
+    ex_config_s ex_config = system_config.getExConfig();
+    if(ex_config.llm.type == LLM_TYPE_CHATGPT || ex_config.llm.type == LLM_TYPE_GEMINI){
+      llm["type"] = ex_config.llm.type;
+    }
+    llm["enableMemory"] = ex_config.llm.enableMemory;
+  }
+
+  String json;
+  serializeJson(response, json);
+  server.send(200, "application/json", json);
 }
-#endif
+
+void handle_config_post() {
+  if(server.method() != HTTP_POST){
+    server.send(405, "text/plain", String("Method Not Allowed"));
+    return;
+  }
+
+  String body = server.arg("plain");
+  String error = "";
+  DynamicJsonDocument request(4096);
+  DeserializationError parse_error = deserializeJson(request, body);
+  if(parse_error){
+    server.send(400, "text/plain", String("JSON parse error: ") + parse_error.c_str());
+    return;
+  }
+
+  String sec_yaml = build_secret_yaml(request["sec"]);
+  String basic_yaml = build_basic_yaml(request["basic"]);
+  String ex_yaml = build_extend_yaml(request["ex"]);
+
+  if(!system_config.saveSecretConfigYaml(SPIFFS, SPIFFS_SEC_CONFIG_PATH, sec_yaml, &error)){
+    server.send(400, "text/plain", error.length() > 0 ? error : String("Invalid SC_SecConfig.yaml"));
+    return;
+  }
+  if(!write_text_file_atomic(SPIFFS, SPIFFS_BASIC_CONFIG_PATH, basic_yaml, &error)){
+    server.send(500, "text/plain", error.length() > 0 ? error : String("Failed to save SC_BasicConfig.yaml"));
+    return;
+  }
+  if(!write_text_file_atomic(SPIFFS, SPIFFS_EX_CONFIG_PATH, ex_yaml, &error)){
+    server.send(500, "text/plain", error.length() > 0 ? error : String("Failed to save SC_ExConfig.yaml"));
+    return;
+  }
+
+  server.send(200, "application/json", String("{\"status\":\"ok\"}"));
+}
+
+void handle_config_restart() {
+  server.send(200, "text/plain", String("Restarting"));
+  delay(200);
+  ESP.restart();
+}
 
 
 void init_web_server(void)
@@ -361,6 +482,8 @@ void init_web_server(void)
   // Files
   //
   server.on("/", handleRoot);
+  server.on("/config.html", handle_config_html);
+  server.on("/config.js", handle_config_js);
   server.on("/personalize.html", handle_personalize_html);
   server.on("/personalize.js", handle_personalize_js);
 
@@ -370,13 +493,13 @@ void init_web_server(void)
   server.on("/speech", handle_speech);
   server.on("/face", handle_face);
   server.on("/chat", handle_chat);
-  server.on("/apikey", handle_apikey);
-  //server.on("/setting", handle_setting);
-  //server.on("/apikey_set", HTTP_POST, handle_apikey_set);
   server.on("/role_set", HTTP_POST, handle_role_set);
   server.on("/role_get", handle_role_get);
   server.on("/memory_get", handle_memory_get);
   server.on("/memory_clear", handle_memory_clear);
+  server.on("/config", HTTP_GET, handle_config_get);
+  server.on("/config", HTTP_POST, handle_config_post);
+  server.on("/config/restart", HTTP_POST, handle_config_restart);
 
   // Other
   //
@@ -387,7 +510,7 @@ void init_web_server(void)
 
   server.begin();
   Serial.println("HTTP server started");
-  M5.Lcd.println("HTTP server started");  
+  //M5.Lcd.println("HTTP server started");  
 }
 
 void web_server_handle_client(void)

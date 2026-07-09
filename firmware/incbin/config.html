@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Config - AI Stack-chan Ex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="/config.js" defer></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f9;
+      --panel: #ffffff;
+      --text: #1d252c;
+      --muted: #5d6975;
+      --line: #d9e0e7;
+      --primary: #0b6f8f;
+      --danger: #b3261e;
+      --ok: #1d7f43;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 20px;
+    }
+    main {
+      width: min(860px, 100%);
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1.05rem;
+    }
+    a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    fieldset {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin: 0 0 16px;
+      padding: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 700;
+    }
+    input,
+    select {
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      font-size: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .triple {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .field {
+      min-width: 0;
+    }
+    .secret-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    button {
+      min-height: 44px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+    }
+    #status,
+    #error {
+      min-height: 1.4em;
+      margin-top: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+    #status {
+      color: var(--ok);
+    }
+    #error {
+      color: var(--danger);
+    }
+    @media (max-width: 680px) {
+      body {
+        padding: 0;
+      }
+      main {
+        min-height: 100vh;
+        border: 0;
+        border-radius: 0;
+      }
+      header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .grid,
+      .triple {
+        grid-template-columns: 1fr;
+      }
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Config</h1>
+      <a href="/">Home</a>
+    </header>
+    <form id="configForm">
+      <fieldset>
+        <h2>Wi-Fi</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="wifiSsid">SSID</label>
+            <input id="wifiSsid" autocomplete="off">
+          </div>
+          <div class="field secret-row">
+            <div>
+              <label for="wifiPassword">Password</label>
+              <input id="wifiPassword" type="password" autocomplete="off">
+            </div>
+            <button type="button" data-toggle-secret="wifiPassword">Show</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <h2>Realtime AI Service</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="aiService">Service</label>
+            <select id="aiService">
+              <option value="0">OpenAI Realtime</option>
+              <option value="3">Google Gemini Live</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="enableMemory">Enable Memory</label>
+            <select id="enableMemory">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+          </div>
+          <div class="field secret-row">
+            <div>
+              <label for="aiApiKey">API Key</label>
+              <input id="aiApiKey" type="password" autocomplete="off">
+            </div>
+            <button type="button" data-toggle-secret="aiApiKey">Show</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <h2>Servo</h2>
+        <div class="grid">
+          <div class="field">
+            <label for="servoType">Type</label>
+            <select id="servoType">
+              <option value="PWM">PWM : SG90PWMServo</option>
+              <option value="SCS">SCS : Feetech SCS0009</option>
+              <option value="DYN_XL330">DYN_XL330 : Dynamixel XL330</option>
+              <option value="RT_DYN_XL330">RT_DYN_XL330 : RTVersion</option>
+              <option value="M5_SCS">M5_SCS : M5StackChan Servo</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="takaoBase">Enable Takao Base</label>
+            <select id="takaoBase">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="triple">
+          <div class="field">
+            <label for="servoPinPreset">Pin Preset</label>
+            <select id="servoPinPreset"></select>
+          </div>
+          <div class="field">
+            <label for="pinX">Pin X / RX</label>
+            <input id="pinX" type="number">
+          </div>
+          <div class="field">
+            <label for="pinY">Pin Y / TX</label>
+            <input id="pinY" type="number">
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label for="offsetX">Offset X</label>
+            <input id="offsetX" type="number">
+          </div>
+          <div class="field">
+            <label for="offsetY">Offset Y</label>
+            <input id="offsetY" type="number">
+          </div>
+          <div class="field">
+            <label for="centerX">Center X</label>
+            <input id="centerX" type="number">
+          </div>
+          <div class="field">
+            <label for="centerY">Center Y</label>
+            <input id="centerY" type="number">
+          </div>
+          <div class="field">
+            <label for="lowerX">Lower Limit X</label>
+            <input id="lowerX" type="number">
+          </div>
+          <div class="field">
+            <label for="lowerY">Lower Limit Y</label>
+            <input id="lowerY" type="number">
+          </div>
+          <div class="field">
+            <label for="upperX">Upper Limit X</label>
+            <input id="upperX" type="number">
+          </div>
+          <div class="field">
+            <label for="upperY">Upper Limit Y</label>
+            <input id="upperY" type="number">
+          </div>
+        </div>
+      </fieldset>
+
+      <div class="actions">
+        <button class="primary" type="submit">Save</button>
+        <button type="button" id="reloadButton">Reload</button>
+        <button type="button" id="restartButton">Restart</button>
+      </div>
+    </form>
+    <div id="status"></div>
+    <div id="error"></div>
+  </main>
+</body>
+</html>

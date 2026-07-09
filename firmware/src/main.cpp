@@ -52,8 +52,10 @@
 #endif
 
 StackchanExConfig system_config;
-Robot* robot;
+Robot* robot = nullptr;
 bool isOffline = false;
+bool isWebServerEnabled = false;
+bool isConfigPortalMode = false;
 
 
 // NTP接続情報　NTP connection information.
@@ -78,6 +80,45 @@ const Expression expressions_table[] = {
 };
 
 FtpServer ftpSrv;   //set #define FTP_DEBUG in ESP8266FtpServer.h to see ftp verbose on serial
+
+static const char* SPIFFS_EX_CONFIG_PATH = "/SC_ExConfig.yaml";
+static const char* SPIFFS_SEC_CONFIG_PATH = "/SC_SecConfig.yaml";
+static const char* SPIFFS_BASIC_CONFIG_PATH = "/SC_BasicConfig.yaml";
+static const char* SD_EX_CONFIG_PATH = "/app/AiStackChanEx/SC_ExConfig.yaml";
+static const char* SD_SEC_CONFIG_PATH = "/yaml/SC_SecConfig.yaml";
+static const char* SD_BASIC_CONFIG_PATH = "/yaml/SC_BasicConfig.yaml";
+static const char* CONFIG_AP_SSID = "StackChanEx-Config";
+static const char* CONFIG_AP_PASSWORD = "stackchan";
+static const char* CONFIG_PORTAL_URL = "http://192.168.4.1/";
+
+enum class WifiFallbackMode {
+  ConfigAp,
+  Offline
+};
+
+bool fs_file_exists(fs::FS& fs, const char* path)
+{
+  if(!fs.exists(path)){
+    Serial.printf("%s not found\n", path);
+    return false;
+  }
+  File file = fs.open(path, FILE_READ);
+  if(!file){
+    Serial.printf("%s exists but cannot open\n", path);
+    return false;
+  }
+  bool exists = !file.isDirectory() && file.size() > 0;
+  Serial.printf("%s %s size:%u\n", path, exists ? "exist" : "invalid", (unsigned)file.size());
+  file.close();
+  return exists;
+}
+
+bool has_required_config_files(fs::FS& fs, const char* ex_path, const char* sec_path, const char* basic_path)
+{
+  return fs_file_exists(fs, ex_path)
+      && fs_file_exists(fs, sec_path)
+      && fs_file_exists(fs, basic_path);
+}
 
 
 void lipSync(void *args)
@@ -157,7 +198,6 @@ void battery_check(void *args) {
 bool Wifi_connection_check() {
   unsigned long start_millis = millis();
 
-  // 前回接続時情報で接続する
   while (WiFi.status() != WL_CONNECTED) {
     M5.Display.print(".");
     Serial.print(".");
@@ -171,30 +211,150 @@ bool Wifi_connection_check() {
   return true;
 }
 
-bool WifiSmartConfig() {
-#if defined(USE_LLM_MODULE)
-  // LLMモジュール使用時は普通はオフラインが前提のため、Smart Config待ちはしない
-  return false;
-#else
-  unsigned long start_millis = millis();
+bool connect_wifi_from_yaml(wifi_s* wifi_info)
+{
+  if(wifi_info == nullptr || wifi_info->ssid.length() == 0){
+    Serial.println("WiFi SSID is not configured.");
+    return false;
+  }
+
+  Serial.printf("Connecting to WiFi SSID: %s\n", wifi_info->ssid.c_str());
+  WiFi.disconnect();
+  WiFi.softAPdisconnect(true);
   WiFi.mode(WIFI_STA);
-  WiFi.beginSmartConfig();
-  M5.Display.println("Waiting for SmartConfig");
-  Serial.println("Waiting for SmartConfig");
-  while (!WiFi.smartConfigDone()) {
-    delay(1000);
-    M5.Display.print("#");
-    Serial.print("#");
-    // 30秒以上接続できなかったら抜ける
-    if ( 30000 < millis() - start_millis) {
-      Serial.println("");
-      //Serial.println("Reset");
-      //ESP.restart();
-      return false;
+  WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
+  return Wifi_connection_check();
+}
+
+WifiFallbackMode select_wifi_fallback_mode()
+{
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  return WifiFallbackMode::ConfigAp;
+#endif
+
+  M5.Display.fillScreen(TFT_BLACK);
+  M5.Display.setCursor(0, 0);
+  M5.Display.println("WiFi connection failed.");
+  M5.Display.println("");
+  M5.Display.println("BtnA: Config AP");
+  M5.Display.println("BtnC: Offline");
+  M5.Display.println("");
+  M5.Display.println("Touch left/right also works.");
+
+  while(true){
+    M5.update();
+    if(M5.BtnA.wasPressed()){
+      return WifiFallbackMode::ConfigAp;
+    }
+    if(M5.BtnC.wasPressed()){
+      return WifiFallbackMode::Offline;
+    }
+#if defined(ARDUINO_M5STACK_Core2) || defined( ARDUINO_M5STACK_CORES3 )
+    if(M5.Touch.getCount()){
+      auto touch = M5.Touch.getDetail();
+      if(touch.wasPressed()){
+        if(touch.x < (M5.Display.width() / 2)){
+          return WifiFallbackMode::ConfigAp;
+        }
+        return WifiFallbackMode::Offline;
+      }
+    }
+#endif
+    delay(20);
+  }
+}
+
+void show_config_portal_qr(const String& url, bool ap_mode)
+{
+  M5.Display.fillScreen(TFT_WHITE);
+  M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
+  M5.Display.setCursor(0, 0);
+  if(ap_mode){
+    M5.Display.printf("SSID: %s\n", CONFIG_AP_SSID);
+    M5.Display.printf("PASS: %s\n", CONFIG_AP_PASSWORD);
+  }else{
+    M5.Display.println("Config web");
+  }
+  M5.Display.println(url);
+#if !defined(ARDUINO_M5STACK_ATOMS3R)
+  int32_t qr_size = min(M5.Display.width(), M5.Display.height()) - 80;
+  if(qr_size < 120){
+    qr_size = min(M5.Display.width(), M5.Display.height()) - 20;
+  }
+  int32_t qr_x = (M5.Display.width() - qr_size) / 2;
+  int32_t qr_y = (M5.Display.height() - qr_size) / 2;
+  if(qr_y < 70){
+    qr_y = 70;
+  }
+  M5.Display.qrcode(url, qr_x, qr_y, qr_size, 5);
+#endif
+}
+
+void start_config_portal()
+{
+  WiFi.disconnect();
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(CONFIG_AP_SSID, CONFIG_AP_PASSWORD);
+  Serial.printf("Config AP started. SSID: %s URL: %s\n", CONFIG_AP_SSID, CONFIG_PORTAL_URL);
+  show_config_portal_qr(CONFIG_PORTAL_URL, true);
+  init_web_server();
+  isOffline = true;
+  isWebServerEnabled = true;
+  isConfigPortalMode = true;
+}
+
+void start_config_web_server_sta()
+{
+  String url = "http://" + WiFi.localIP().toString() + "/";
+  Serial.printf("Config web server started. URL: %s\n", url.c_str());
+  show_config_portal_qr(url, false);
+  init_web_server();
+  isOffline = true;
+  isWebServerEnabled = true;
+  isConfigPortalMode = true;
+}
+
+void show_config_portal_avatar_qr()
+{
+  String url = CONFIG_PORTAL_URL;
+  avatar.updateSubWindowQrcode(url, 78);
+  avatar.setSpeechText("Config: http://192.168.4.1/");
+  avatar.set_isSubWindowEnable(true);
+  avatar.setScale(0.7);
+  avatar.setFaceOffsetY(-80);
+}
+
+bool load_system_config(bool sd_available)
+{
+  bool use_sd_config = false;
+  bool full_config_loaded = false;
+#if defined(ARDUINO_M5STACK_ATOMS3R)
+  use_sd_config = false;
+#else
+  if(sd_available){
+    use_sd_config = has_required_config_files(SD, SD_EX_CONFIG_PATH, SD_SEC_CONFIG_PATH, SD_BASIC_CONFIG_PATH);
+  }
+#endif
+
+  if(use_sd_config){
+    Serial.println("Loading config from SD.");
+    system_config.loadConfig(SD, SD_EX_CONFIG_PATH);
+    full_config_loaded = true;
+  }else if(has_required_config_files(SPIFFS, SPIFFS_EX_CONFIG_PATH, SPIFFS_SEC_CONFIG_PATH, SPIFFS_BASIC_CONFIG_PATH)){
+    Serial.println("Loading config from SPIFFS.");
+    system_config.loadConfig(SPIFFS, SPIFFS_EX_CONFIG_PATH, 2048,
+                                      SPIFFS_SEC_CONFIG_PATH, 2048,
+                                      SPIFFS_BASIC_CONFIG_PATH, 2048);
+    full_config_loaded = true;
+  }else{
+    Serial.println("Config files are incomplete. Loading only SC_SecConfig.yaml if available.");
+    if(sd_available && fs_file_exists(SD, SD_SEC_CONFIG_PATH)){
+      system_config.loadSecretConfigYaml(SD, SD_SEC_CONFIG_PATH);
+    }else if(fs_file_exists(SPIFFS, SPIFFS_SEC_CONFIG_PATH)){
+      system_config.loadSecretConfigYaml(SPIFFS, SPIFFS_SEC_CONFIG_PATH);
     }
   }
-  return true;
-#endif
+  return full_config_loaded;
 }
 
 void time_sync(const char* ntpsrv, long gmt_offset, int daylight_offset) {
@@ -362,85 +522,80 @@ void setup()
   init_mic_spk();
 
   /// settings
-#if defined(ARDUINO_M5STACK_ATOMS3R)
-  if (SPIFFS.begin()) {
-    // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
-    system_config.loadConfig(SPIFFS, "/SC_ExConfig.yaml", 2048,
-                                     "/SC_SecConfig.yaml", 2048,
-                                     "/SC_BasicConfig.yaml", 2048);
-#else
-  if (SD.begin(GPIO_NUM_4, SPI, 25000000)) {
-    // この関数ですべてのYAMLファイル(Basic, Secret, Extend)を読み込む
-    system_config.loadConfig(SD, "/app/AiStackChanEx/SC_ExConfig.yaml");
-#endif
-    // Wifi設定読み込み
-    wifi_s* wifi_info = system_config.getWiFiSetting();
-    Serial.printf("\nSSID: %s\n",wifi_info->ssid.c_str());
-    Serial.printf("Key: %s\n",wifi_info->password.c_str());
-
-    // 前回設定で接続
-    Serial.println("Connecting to WiFi");
-    WiFi.disconnect();
-    WiFi.softAPdisconnect(true);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin();
-    if(Wifi_connection_check()){
-      Serial.println("Successfully connected to Wi-Fi using the previous settings.");
-    }else{
-      // 前回設定での接続に失敗。SDカード設定による接続にトライ。
-      Serial.println("The previous WiFi connection failed. Attempting to connect using the SD card settings.");
-      if(wifi_info->ssid.length() == 0){
-        // SDカード設定の取得に失敗。Smart Configをスタート。
-        Serial.println("Can't get WiFi settings. Start Smart Config.");
-        if(!WifiSmartConfig()){
-          // Smart Config失敗。オフラインモード。
-          Serial.println("Smart Config failed. Running in offline mode.");
-          isOffline = true;
-        }
-      }else{
-        WiFi.begin(wifi_info->ssid.c_str(), wifi_info->password.c_str());
-        if(Wifi_connection_check()){
-          // SDカード設定による接続に成功。
-          Serial.println("Successfully established a Wi-Fi connection via the SD card settings.");
-        }else{
-          // SDカード設定による接続に失敗。Smart Configをスタート。
-          Serial.println("WiFi connection failed due to SD card settings. Start Smart Config.");
-          if(!WifiSmartConfig()){
-            // Smart Config失敗。オフラインモード。
-            Serial.println("Smart Config failed. Running in offline mode.");
-            isOffline = true;
-          }
-        }
-      }
-    }
-
-    if(!isOffline){
-      Serial.println(WiFi.localIP());
-      M5.Lcd.println(WiFi.localIP());
-      delay(1000);
-
-      //Webサーバ設定
-      init_web_server();
-      //FTPサーバ設定（SPIFFS用）
-      ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
-      Serial.println("FTP server started");
-      M5.Lcd.println("FTP server started");
-
-      //時刻同期
-      time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
-    }else{
-      M5.Lcd.print("Can't connect to WiFi. Start offline mode.\n");
-    }
-
-    robot = new Robot(system_config);
-
-    //SD.end();
-  } else {
-    M5.Lcd.print("Failed to load SD card settings. System reset after 5 seconds.");
+  if(!SPIFFS.begin()){
+    M5.Lcd.print("Failed to mount SPIFFS. System reset after 5 seconds.");
     delay(5000);
     ESP.restart();
-    //WiFi.begin();
   }
+
+  bool sd_available = false;
+#if !defined(ARDUINO_M5STACK_ATOMS3R)
+  sd_available = SD.begin(GPIO_NUM_4, SPI, 25000000);
+#endif
+  bool full_config_loaded = load_system_config(sd_available);
+
+  // Wifi設定読み込み
+  wifi_s* wifi_info = system_config.getWiFiSetting();
+  Serial.printf("\nSSID: %s\n", wifi_info->ssid.c_str());
+  Serial.printf("Key: %s\n", wifi_info->password.length() > 0 ? "(set)" : "(empty)");
+
+  if(!full_config_loaded){
+#if defined(REALTIME_API)
+    Serial.println("Full config set is missing. Starting config web flow.");
+    if(connect_wifi_from_yaml(wifi_info)){
+      start_config_web_server_sta();
+    }else{
+      start_config_portal();
+    }
+#else
+    M5.Display.fillScreen(TFT_BLACK);
+    M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+    M5.Display.setCursor(0, 0);
+    M5.Display.println("Config incomplete.");
+    M5.Display.println("");
+    M5.Display.println("Missing one or more files:");
+    M5.Display.println("SC_BasicConfig.yaml");
+    M5.Display.println("SC_SecConfig.yaml");
+    M5.Display.println("SC_ExConfig.yaml");
+    while(true){
+      M5.update();
+      delay(100);
+    }
+#endif
+    goto END;
+  }
+
+  if(connect_wifi_from_yaml(wifi_info)){
+    Serial.println("Successfully connected to Wi-Fi using YAML settings.");
+  }else{
+    WifiFallbackMode fallback = select_wifi_fallback_mode();
+    if(fallback == WifiFallbackMode::ConfigAp){
+      start_config_portal();
+      goto END;
+    }else{
+      isOffline = true;
+      M5.Lcd.print("Start offline mode.\n");
+    }
+  }
+
+  if(!isOffline){
+    Serial.println(WiFi.localIP());
+    M5.Lcd.println(WiFi.localIP());
+    delay(1000);
+
+    //Webサーバ設定
+    init_web_server();
+    isWebServerEnabled = true;
+    //FTPサーバ設定（SPIFFS用）
+    ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
+    Serial.println("FTP server started");
+    M5.Lcd.println("FTP server started");
+
+    //時刻同期
+    time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);
+  }
+
+  robot = new Robot(system_config);
   
   mp3_init();
 
@@ -459,6 +614,10 @@ void setup()
   //avatar.init();
   avatar.init(16);
 #endif
+
+  if(isConfigPortalMode){
+    show_config_portal_avatar_qr();
+  }
 
   avatar.addTask(lipSync, "lipSync", 2048, 2);
   avatar.addTask(servo, "servo", 2048);
@@ -489,6 +648,9 @@ void setup()
   check_heap_free_size();
   check_heap_largest_free_block();
 
+END:
+  // Nothing to do.
+  return ;
 }
 
 
@@ -499,6 +661,13 @@ void loop()
   M5.update();
   //get_elapsed_time_micro("M5.update time");
   ModBase* mod = get_current_mod();
+  if(mod == nullptr){
+    if(isWebServerEnabled){
+      web_server_handle_client();
+    }
+    delay(10);
+    return;
+  }
   mod->idle();
   //get_elapsed_time_micro("Mod idle time");
 
@@ -574,8 +743,10 @@ void loop()
 #endif
   //get_elapsed_time_micro("Callback process time");
 
-  if(!isOffline){
+  if(isWebServerEnabled){
     web_server_handle_client();
+  }
+  if(!isOffline){
     ftpSrv.handleFTP();
   }
 

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Stack-chan Ex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7f9;
+      --panel: #ffffff;
+      --text: #1d252c;
+      --muted: #5d6975;
+      --line: #d9e0e7;
+      --primary: #0b6f8f;
+      --primary-dark: #07576f;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    main {
+      width: min(520px, 100%);
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 24px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.5rem;
+    }
+    p {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    nav {
+      display: grid;
+      gap: 12px;
+    }
+    a {
+      display: block;
+      padding: 14px 16px;
+      min-height: 48px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+      text-align: center;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: #fff;
+    }
+    a.primary {
+      color: #fff;
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+    a.primary:active,
+    a.primary:hover {
+      background: var(--primary-dark);
+    }
+    a:active,
+    a:hover {
+      border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AI Stack-chan Ex</h1>
+    <p>Open configuration or personalization.</p>
+    <nav>
+      <a class="primary" href="/config.html">Config</a>
+      <a href="/personalize.html">Personalize</a>
+    </nav>
+  </main>
+</body>
+</html>

@@ -51,6 +51,10 @@ ModBase* change_mod(bool reverse)
 
 ModBase* get_current_mod(void)
 {
-  return modList[0];
+  if(modList.size() > 0){
+    return modList[0];
+  }else{
+    return nullptr;
+  }
 }
 

@@ -2,10 +2,14 @@
 Notes on FW design, etc.
 
 - [Task](#task)
-- [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
-- [Realtime API Function Calling](#realtime-api-function-calling)
+- [Mod](#mod)
+  - [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
+- [Function Calling](#function-calling)
   - [Avatar Expression](#avatar-expression)
+- [Wi-Fi config portal](#wi-fi-config-portal)
 - [Web App](#web-app)
+  - [Home page](#home-page)
+  - [Config page](#config-page)
   - [Personalize page](#personalize-page)
 - [Head Touch Sensor](#head-touch-sensor)
 
@@ -23,7 +27,8 @@ Notes on FW design, etc.
 | asyncTtsStreamTask | TTS streaming play | 5 * 1024 | 2 |
 | webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 3 |
 
-## ESP-NOW Remote Control Mod
+## Mod
+### ESP-NOW Remote Control Mod
 
 初期実装では `src/mod/EspNowRemote` に Receiver 固定の Mod を追加する。
 
@@ -37,7 +42,7 @@ Notes on FW design, etc.
 - ESP-NOW Mod 実行中は Wi-Fi channel 変更により Web/FTP/Realtime API と干渉する可能性がある。
 - ESP-NOW Mod 離脱時は ESP-NOW を停止し、offline mode でなければ Wi-Fi STA の再接続を最大 5 秒待つ。
 
-## Realtime API Function Calling
+## Function Calling
 
 ### Avatar Expression
 
@@ -57,8 +62,154 @@ Realtime API ビルドでは、Function Calling により AI が会話中の感�
   - `json_Functions` は通常 ChatGPT や Gemini Live からも参照されるため、この関数の schema と実行処理は `#if defined(REALTIME_API)` で限定する。
   - `systemRole_realtimeAvatarExpression` は Realtime 系 LLM の `load_role()` で `systemRole_memory` または `systemRole_noMemory` に追加する。
 
+
+## Wi-Fi config portal
+
+SmartConfig は使わず、起動時の Wi-Fi 接続元は YAML の `wifi.ssid` / `wifi.password` のみにする。
+
+- SD に設定 YAML がある場合は SD を優先する。
+- SD が無い、または主要 YAML が無い場合は SPIFFS の YAML を使う。
+- `SC_ExConfig.yaml`、`SC_SecConfig.yaml`、`SC_BasicConfig.yaml` の一式が揃っていない場合は通常機能を起動しない。
+  - `REALTIME_API` ビルドでは、`SC_SecConfig.yaml` がある場合は Wi-Fi 接続だけ試し、成功したら STA 接続上で設定 Web を起動する。
+  - `REALTIME_API` ビルドでは、Wi-Fi 接続できない場合、または `SC_SecConfig.yaml` も無い場合は Config AP を起動する。
+  - `REALTIME_API` 以外のビルドでは、不完全な設定を画面に表示し、そのまま待機する。
+- 設定一式が揃っている通常起動時は、`wifi.ssid` が空、または接続に失敗した場合に画面上で Config AP 起動または Offline 起動を選ぶ。
+- Config AP は SSID `StackChanEx-Config`、password `stackchan` で起動し、`http://192.168.4.1/` の QR コードを画面に表示する。
+- AP モード中は会話機能は offline 相当として扱うが、Web サーバーは動かし続ける。
+- AtomS3R は画面が小さいため QR コードは表示せず、Wi-Fi 接続失敗時は Config AP を直接起動する。
+
+
 ## Web App
 WebAPI.cpp のインラインアセンブラ(マクロ：IMPORT_FILE)で incbinフォルダ内のhtmlファイルやjsファイルをプログラム領域に埋め込む。
+
+### Home page
+Web アプリの入口 `/` として `home.html` を返す。`home.html` には次の 2 つの導線を置く。
+
+- Personalize
+  - `/personalize.html` に遷移する。
+  - Role と Memory の管理を行う。
+- Config
+  - `/config.html` に遷移する。
+  - Wi-Fi、API key、Realtime API 用 YAML 設定、SD から SPIFFS へのコピーを行う。
+
+設定用 AP モードで QR に載せる URL も `/` とし、スマートフォンで開いた直後に用途を選べるようにする。
+
+### Config page
+
+- ファイル構成
+  - `incbin/config.html`
+  - `incbin/config.js`
+- 言語
+  - ページやダイアログ内の言語は英語版のみ。
+- 概要
+  - 画面の入力内容を SC_SecConfig.yaml、SC_BasicConfig.yaml、SC_ExConfig.yaml のフォーマットにしてAPIで設定する。
+  - 画面表示時、更新時、Reloadボタン押下時はAPIで設定値を取得して画面の入力値に反映する。
+- 画面構成
+  - Wi-Fi
+    - SSID
+    - Password (値は'*'で隠す/表示するを切り換え可能とする)
+  - Realtime AI Service
+    - ドロップダウン内の以下サービスから選択
+      - OpenAI Realtime
+      - Google Gemini Live
+    - API Key　(値は'*'で隠す/表示するを切り換え可能とする)
+    - Enable Memory (true or false を設定)
+  - Servo
+    - 以下項目を設定。詳細は [Servo Setting Details](#servo-setting-details) に記載
+      - Type
+      - Pin
+      - Offset
+      - Center
+      - Lower limit
+      - Upper limit
+      - Enable Takao Base
+  - Save ボタン
+    - 画面の入力値をSC_SecConfig.yaml、SC_BasicConfig.yaml、SC_ExConfig.yaml のフォーマットにしてAPIで設定する。
+  - Reload ボタン
+    - APIで現在の設定を取得し、画面の入力値を更新する。
+  - Restart ボタン
+    - 設定内容をシステムに反映するためのシステムリセットを実行。
+
+#### Servo Setting Details 
+
+- Type
+  - ドロップダウン内の以下タイプから選択
+    - PWM : SG90PWMServo
+    - SCS : Feetech SCS0009
+    - DYN_XL330 : Dynamixel XL330
+    - RT_DYN_XL330 : RTVersion 
+    - M5_SCS : M5StackChan Servo
+- Pin (x, y) 
+  - 選んだTypeに応じて選択肢をドロップダウンで提示 (シリアルサーボは(x:RX, y:TX)に読み替え)。任意の値に変更も可。
+    - PWM, SCS, DYN_XL330
+      - Core2 PortA x:33, y:32 
+      - Core2 PortB x:36, y:26
+      - Core2 PortC x:13, y:14
+      - CoreS3 PortA x:2, y:1
+      - CoreS3 PortB x:9, y:8
+      - CoreS3 PortC x:17, y:18
+    - RT_DYN_XL330
+      - x:6, y:7
+    - M5_SCS
+      - x:7, y:6
+- Offset (x, y)
+  - Typeによらないが、Typeを選んだときに x:0, y:0 に初期化。任意の値に変更も可。
+- Center (x, y)
+  - サーボの初期位置を、選択したTypeに応じて以下のように初期化。任意の値に変更も可。
+    - PWM
+      - x:90, y:90
+    - SCS
+      - x:150, y:150
+    - DYN_XL330
+      - x:180, y:270
+    - RT_DYN_XL330
+      - x:180, y:5
+    - M5_SCS
+      - x:150, y:85
+- Lower limit (x, y)
+  - サーボの可動範囲の下限を、選択したTypeに応じて以下のように初期化。任意の値に変更も可。
+    - PWM
+      - x:0, y:60
+    - SCS
+      - x:0, y:120
+    - DYN_XL330
+      - x:0, y:220
+    - RT_DYN_XL330
+      - x:90, y:-5
+    - M5_SCS
+      - x:0, y:0
+- Upper limit (x, y)
+  - サーボの可動範囲の上限を、選択したTypeに応じて以下のように初期化。任意の値に変更も可。
+    - PWM
+      - x:180, y:90
+    - SCS
+      - x:300, y:150
+    - DYN_XL330
+      - x:360, y:270
+    - RT_DYN_XL330
+      - x:270, y:15
+    - M5_SCS
+      - x:300, y:90
+- Enable Takao Base
+  - ドロップダウンで true か false を選択。Type選択時は false に初期化。
+
+#### API
+- `GET /config`: JSONで現在の設定値を返す。SPIFFS の設定ファイルが無い場合はデフォルト値またはRAM上の設定値を返す。
+  - `source`: `spiffs` または `none`
+  - `complete`: SPIFFS に `SC_SecConfig.yaml`、`SC_BasicConfig.yaml`、`SC_ExConfig.yaml` が揃っているか
+  - `sec`: Wi-Fi と API key
+  - `basic`: Servo 設定
+  - `ex`: Realtime AI Service と Enable Memory
+- `POST /config`: POST body の JSON を検証し、SPIFFS に `SC_SecConfig.yaml`、`SC_BasicConfig.yaml`、`SC_ExConfig.yaml` として保存する。
+- `POST /config/restart`: 設定反映のため再起動する。
+
+#### 保存処理
+- `SC_SecConfig.yaml` は `StackchanExConfig::saveSecretConfigYaml()` が `deserializeYml()` で構文と `wifi` / `apikey` セクションを検証する。
+- `SC_BasicConfig.yaml` は Servo 関連、`takao_base`、`servo_type` のみを生成する。
+- `SC_ExConfig.yaml` は `llm.type` と `llm.enableMemory` のみを生成する。
+- 保存後は RAM 上の `_secret_config` も更新するが、Wi-Fi 再接続は行わず Web UI から再起動を促す。
+- Save成功時は、設定した値を有効にするため Restart 前に SD カードを抜くよう画面に表示する。
+
 
 ### Personalize page
 - ファイル構成
@@ -68,6 +219,7 @@ WebAPI.cpp のインラインアセンブラ(マクロ：IMPORT_FILE)で incbin�
   - ページやダイアログ内の言語は英語版のみ。
 - 画面構成
   - Role (Custom Instructions)
+  - Memory
 
 #### Role (Custom Instructions)
 - 構成
