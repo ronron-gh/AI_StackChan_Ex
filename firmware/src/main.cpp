@@ -96,6 +96,36 @@ enum class WifiFallbackMode {
   Offline
 };
 
+struct ScreenButton {
+  int32_t x;
+  int32_t y;
+  int32_t w;
+  int32_t h;
+};
+
+bool is_point_in_button(int32_t x, int32_t y, const ScreenButton& button)
+{
+  return x >= button.x && x < (button.x + button.w)
+      && y >= button.y && y < (button.y + button.h);
+}
+
+void draw_centered_text(const char* text, int32_t x, int32_t y, int32_t w)
+{
+  int32_t text_width = M5.Display.textWidth(text);
+  M5.Display.setCursor(x + ((w - text_width) / 2), y);
+  M5.Display.print(text);
+}
+
+void draw_wifi_fallback_button(const ScreenButton& button, uint16_t fill_color, uint16_t border_color, const char* title, const char* caption)
+{
+  M5.Display.fillRoundRect(button.x, button.y, button.w, button.h, 10, fill_color);
+  M5.Display.drawRoundRect(button.x, button.y, button.w, button.h, 10, border_color);
+  M5.Display.setTextColor(TFT_WHITE, fill_color);
+  M5.Display.setTextSize(1);
+  draw_centered_text(title, button.x, button.y + 22, button.w);
+  draw_centered_text(caption, button.x, button.y + button.h - 24, button.w);
+}
+
 bool fs_file_exists(fs::FS& fs, const char* path)
 {
   if(!fs.exists(path)){
@@ -233,13 +263,22 @@ WifiFallbackMode select_wifi_fallback_mode()
 #endif
 
   M5.Display.fillScreen(TFT_BLACK);
-  M5.Display.setCursor(0, 0);
-  M5.Display.println("WiFi connection failed.");
-  M5.Display.println("");
-  M5.Display.println("BtnA: Config AP");
-  M5.Display.println("BtnC: Offline");
-  M5.Display.println("");
-  M5.Display.println("Touch left/right also works.");
+  M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+  M5.Display.setTextSize(1);
+  draw_centered_text("Wi-Fi connection failed", 0, 18, M5.Display.width());
+  draw_centered_text("Choose how to continue", 0, 48, M5.Display.width());
+
+  const int32_t margin = 16;
+  const int32_t gap = 12;
+  const int32_t button_y = 88;
+  const int32_t button_h = 92;
+  const int32_t button_w = (M5.Display.width() - (margin * 2) - gap) / 2;
+  const ScreenButton config_ap_button = { margin, button_y, button_w, button_h };
+  const ScreenButton offline_button = { margin + button_w + gap, button_y, button_w, button_h };
+  draw_wifi_fallback_button(config_ap_button, TFT_DARKCYAN, TFT_CYAN, "Config AP", "BtnA");
+  draw_wifi_fallback_button(offline_button, TFT_DARKGREY, TFT_LIGHTGREY, "Offline", "BtnC");
+
+  M5.Display.setTextColor(TFT_LIGHTGREY, TFT_BLACK);
 
   while(true){
     M5.update();
@@ -253,10 +292,12 @@ WifiFallbackMode select_wifi_fallback_mode()
     if(M5.Touch.getCount()){
       auto touch = M5.Touch.getDetail();
       if(touch.wasPressed()){
-        if(touch.x < (M5.Display.width() / 2)){
+        if(is_point_in_button(touch.x, touch.y, config_ap_button)){
           return WifiFallbackMode::ConfigAp;
         }
-        return WifiFallbackMode::Offline;
+        if(is_point_in_button(touch.x, touch.y, offline_button)){
+          return WifiFallbackMode::Offline;
+        }
       }
     }
 #endif
