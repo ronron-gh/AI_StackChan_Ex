@@ -28,6 +28,7 @@
 
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <esp_system.h>
 #include <ArduinoJson.h>
 #include "SpiRamJsonDocument.h"
 #include <ESP8266FtpServer.h>
@@ -87,7 +88,7 @@ static const char* SPIFFS_BASIC_CONFIG_PATH = "/SC_BasicConfig.yaml";
 static const char* SD_EX_CONFIG_PATH = "/app/AiStackChanEx/SC_ExConfig.yaml";
 static const char* SD_SEC_CONFIG_PATH = "/yaml/SC_SecConfig.yaml";
 static const char* SD_BASIC_CONFIG_PATH = "/yaml/SC_BasicConfig.yaml";
-static const char* CONFIG_AP_SSID = "StackChanEx-Config";
+static const char* CONFIG_AP_SSID_PREFIX = "StackChanEx-Config";
 static const char* CONFIG_AP_PASSWORD = "stackchan";
 static const char* CONFIG_PORTAL_URL = "http://192.168.4.1/";
 
@@ -124,6 +125,14 @@ void draw_wifi_fallback_button(const ScreenButton& button, uint16_t fill_color, 
   M5.Display.setTextSize(1);
   draw_centered_text(title, button.x, button.y + 22, button.w);
   draw_centered_text(caption, button.x, button.y + button.h - 24, button.w);
+}
+
+String generate_config_ap_ssid()
+{
+  char ssid[32];
+  uint32_t suffix = esp_random() % 1000000;
+  snprintf(ssid, sizeof(ssid), "%s-%06u", CONFIG_AP_SSID_PREFIX, (unsigned)suffix);
+  return String(ssid);
 }
 
 bool fs_file_exists(fs::FS& fs, const char* path)
@@ -305,13 +314,13 @@ WifiFallbackMode select_wifi_fallback_mode()
   }
 }
 
-void show_config_portal_qr(const String& url, bool ap_mode)
+void show_config_portal_qr(const String& url, bool ap_mode, const String& ap_ssid = String())
 {
   M5.Display.fillScreen(TFT_WHITE);
   M5.Display.setTextColor(TFT_BLACK, TFT_WHITE);
   M5.Display.setCursor(0, 0);
   if(ap_mode){
-    M5.Display.printf("SSID: %s\n", CONFIG_AP_SSID);
+    M5.Display.printf("SSID: %s\n", ap_ssid.c_str());
     M5.Display.printf("PASS: %s\n", CONFIG_AP_PASSWORD);
   }else{
     M5.Display.println("Config web");
@@ -333,11 +342,12 @@ void show_config_portal_qr(const String& url, bool ap_mode)
 
 void start_config_portal()
 {
+  String ap_ssid = generate_config_ap_ssid();
   WiFi.disconnect();
   WiFi.mode(WIFI_AP);
-  WiFi.softAP(CONFIG_AP_SSID, CONFIG_AP_PASSWORD);
-  Serial.printf("Config AP started. SSID: %s URL: %s\n", CONFIG_AP_SSID, CONFIG_PORTAL_URL);
-  show_config_portal_qr(CONFIG_PORTAL_URL, true);
+  WiFi.softAP(ap_ssid.c_str(), CONFIG_AP_PASSWORD);
+  Serial.printf("Config AP started. SSID: %s URL: %s\n", ap_ssid.c_str(), CONFIG_PORTAL_URL);
+  show_config_portal_qr(CONFIG_PORTAL_URL, true, ap_ssid);
   init_web_server();
   isOffline = true;
   isWebServerEnabled = true;

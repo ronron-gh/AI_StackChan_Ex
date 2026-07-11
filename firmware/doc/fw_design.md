@@ -74,7 +74,7 @@ SmartConfig は使わず、起動時の Wi-Fi 接続元は YAML の `wifi.ssid` 
   - `REALTIME_API` ビルドでは、Wi-Fi 接続できない場合、または `SC_SecConfig.yaml` も無い場合は Config AP を起動する。
   - `REALTIME_API` 以外のビルドでは、不完全な設定を画面に表示し、そのまま待機する。
 - 設定一式が揃っている通常起動時は、`wifi.ssid` が空、または接続に失敗した場合に画面上で Config AP 起動または Offline 起動を選ぶ。
-- Config AP は SSID `StackChanEx-Config`、password `stackchan` で起動し、`http://192.168.4.1/` の QR コードを画面に表示する。
+- Config AP は SSID `StackChanEx-Config-NNNNNN`、password `stackchan` で起動し、`http://192.168.4.1/` の QR コードを画面に表示する。SSID 末尾の 6 桁数字は AP 起動時に生成する。
 - AP モード中は会話機能は offline 相当として扱うが、Web サーバーは動かし続ける。
 - AtomS3R は画面が小さいため QR コードは表示せず、Wi-Fi 接続失敗時は Config AP を直接起動する。
 
