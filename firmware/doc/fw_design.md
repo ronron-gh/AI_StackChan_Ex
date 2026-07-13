@@ -11,6 +11,7 @@ Notes on FW design, etc.
   - [Home page](#home-page)
   - [Config page](#config-page)
   - [Personalize page](#personalize-page)
+- [Status Monitor](#status-monitor)
 - [Head Touch Sensor](#head-touch-sensor)
 
 
@@ -240,6 +241,20 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
 - 画面更新時の動作
   - API /memory_get をPOSTし、記憶内容を取得してフォームに表示する。
  
+## Status Monitor
+
+`StatusMonitorMod` shows runtime state in tab form on the avatar sub-window.
+
+| Tab | Contents |
+| --- | --- |
+| System | Existing system status: firmware version, Wi-Fi IP/MAC, heap, battery. |
+| AI Service | AI service name, memory enabled/disabled, MCP server list. |
+
+The AI Service tab reads `llm.type`, `llm.enableMemory`, and `llm.mcpServers` from `StackchanExConfig`. The old Function Call info view is not shown because it belongs to the previous Function Calling design.
+
+The graphical tab header is drawn through `Avatar::updateSubWindowCustom()`. This keeps Avatar running and lets `StatusMonitorMod` render directly into the SubWindow during the Avatar draw cycle.
+The tabs are touch targets. `StatusMonitorMod` owns tab `box_t` hit areas aligned with the drawn tab rectangles, while physical BtnA/BtnC still move to the previous/next tab.
+
 ## Head Touch Sensor
 
 `src/driver/HeadTouchSensor.*` provides the shared polling driver for the official CoreS3 head touch sensor.

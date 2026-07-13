@@ -11,7 +11,9 @@ namespace m5avatar {
 SubWindow::SubWindow() : 
   drawType(SUB_DRAW_TYPE_NONE),
   isDrawEnable(false),
-  drawingBufIdx(0) 
+  drawingBufIdx(0),
+  customDrawCallback(nullptr),
+  customDrawUserData(nullptr)
 {
   //LCD_WIDTH = 320;
   //LCD_HEIGHT = 240;
@@ -112,6 +114,9 @@ void SubWindow::draw(M5Canvas *spi, BoundingRect rect, DrawContext *ctx) {
     else if(drawType == SUB_DRAW_TYPE_TXT){
       pushSpriteTxt(spi, rect, ctx, subWdTxtBuf);
     }
+    else if(drawType == SUB_DRAW_TYPE_CUSTOM && customDrawCallback != nullptr){
+      customDrawCallback(spi, rect, ctx, customDrawUserData);
+    }
     else if(drawType == SUB_DRAW_TYPE_QRCODE){
       int y = rect.getTop();
       if(y != 0){
@@ -132,6 +137,8 @@ void SubWindow::set_isDrawEnable(bool _isDrawEnable){
   isDrawEnable = _isDrawEnable;
   if(!isDrawEnable){
     drawType = SUB_DRAW_TYPE_NONE;
+    customDrawCallback = nullptr;
+    customDrawUserData = nullptr;
   }
 }
 
@@ -233,6 +240,24 @@ void SubWindow::updateDrawContentQrcode(String txt){
 
 
 // SDカードのファイルを配列にコピー
+void SubWindow::updateDrawContentCustom(SubWindowDrawCallback callback, void *userData){
+  if((drawType != SUB_DRAW_TYPE_NONE) && (drawType != SUB_DRAW_TYPE_CUSTOM)){
+    Serial.println("Can't update sub window (sub window is used for another type");
+    return ;
+  }
+
+  if(callback == nullptr){
+    drawType = SUB_DRAW_TYPE_NONE;
+    customDrawCallback = nullptr;
+    customDrawUserData = nullptr;
+    return ;
+  }
+
+  drawType = SUB_DRAW_TYPE_CUSTOM;
+  customDrawCallback = callback;
+  customDrawUserData = userData;
+}
+
 size_t SubWindow::copySDFileToRAM(const char *path, uint8_t *out, int outBufSize) {
   size_t error = 0;
   size_t readed_size;

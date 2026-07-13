@@ -20,8 +20,12 @@ typedef enum e_sub_draw_type
   SUB_DRAW_TYPE_CAM565,
   SUB_DRAW_TYPE_JPG,
   SUB_DRAW_TYPE_TXT,
-  SUB_DRAW_TYPE_QRCODE
+  SUB_DRAW_TYPE_QRCODE,
+  SUB_DRAW_TYPE_CUSTOM
 } SUB_DRAW_TYPE;
+
+typedef void (*SubWindowDrawCallback)(M5Canvas *spi, BoundingRect rect,
+                                      DrawContext *ctx, void *userData);
 
 class SubWindow final : public Drawable {
  private:
@@ -42,6 +46,8 @@ class SubWindow final : public Drawable {
   //テキスト表示用
   String subWdTxtBuf;
   bool isDrawEnable;
+  SubWindowDrawCallback customDrawCallback;
+  void *customDrawUserData;
   uint16_t drawType;    //画像 or テキスト
   M5Canvas *spriteTxt;  //テキスト表示用のスプライト
 
@@ -62,6 +68,7 @@ public:
   bool updateDrawContentJpg(String& fname);
   void updateDrawContentTxt(String txt);
   void updateDrawContentQrcode(String txt);
+  void updateDrawContentCustom(SubWindowDrawCallback callback, void *userData);
 };
 
 }  // namespace m5avatar
