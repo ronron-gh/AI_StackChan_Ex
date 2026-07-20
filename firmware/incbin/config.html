@@ -61,6 +61,32 @@
       margin: 0 0 16px;
       padding: 16px;
     }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .tab-button {
+      min-width: 0;
+      border: 0;
+      border-bottom: 3px solid transparent;
+      border-radius: 6px 6px 0 0;
+      color: var(--muted);
+    }
+    .tab-button[aria-selected="true"] {
+      border-bottom-color: var(--primary);
+      background: #e8f3f6;
+      color: var(--primary);
+    }
+    .tab-button:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -2px;
+    }
+    .tab-panel[hidden] {
+      display: none;
+    }
     label {
       display: block;
       margin-bottom: 6px;
@@ -160,7 +186,16 @@
       <a href="/">Home</a>
     </header>
     <form id="configForm">
-      <fieldset>
+      <div class="tabs" role="tablist" aria-label="Config sections">
+        <button class="tab-button" id="tabWifi" type="button" role="tab"
+                aria-selected="true" aria-controls="panelWifi" tabindex="0">Wi-Fi</button>
+        <button class="tab-button" id="tabAiService" type="button" role="tab"
+                aria-selected="false" aria-controls="panelAiService" tabindex="-1">AI Service</button>
+        <button class="tab-button" id="tabServo" type="button" role="tab"
+                aria-selected="false" aria-controls="panelServo" tabindex="-1">Servo</button>
+      </div>
+
+      <fieldset class="tab-panel" id="panelWifi" role="tabpanel" aria-labelledby="tabWifi">
         <h2>Wi-Fi</h2>
         <div class="grid">
           <div class="field">
@@ -177,7 +212,8 @@
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="tab-panel" id="panelAiService" role="tabpanel"
+                aria-labelledby="tabAiService" hidden>
         <h2>Realtime AI Service</h2>
         <div class="grid">
           <div class="field">
@@ -204,7 +240,8 @@
         </div>
       </fieldset>
 
-      <fieldset>
+      <fieldset class="tab-panel" id="panelServo" role="tabpanel"
+                aria-labelledby="tabServo" hidden>
         <h2>Servo</h2>
         <div class="grid">
           <div class="field">

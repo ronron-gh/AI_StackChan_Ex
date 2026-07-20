@@ -97,6 +97,11 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
 
 ### Config page
 
+- Wi-Fi、AI Service、Servo の設定領域をタブで切り替えて表示する。
+- タブを切り替えても未保存の入力値は保持し、Save は全タブの設定内容をまとめて保存する。
+- Save、Reload、Restart と処理結果のメッセージはタブ領域の外に配置し、どのタブからでも操作可能とする。
+- Reload は全タブの設定値を更新し、現在選択中のタブは維持する。
+
 - ファイル構成
   - `incbin/config.html`
   - `incbin/config.js`

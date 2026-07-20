@@ -41,7 +41,6 @@ asm(\
   ".balign 4\n"\
   ".section \".text\"\n")
 
-
 IMPORT_FILE(.rodata, "home.html", home_html);
 IMPORT_FILE(.rodata, "config.html", config_html);
 IMPORT_FILE(.rodata, "config.js", config_js);

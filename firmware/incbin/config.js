@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const restartButton = document.getElementById('restartButton');
   const statusDiv = document.getElementById('status');
   const errorDiv = document.getElementById('error');
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
 
   const fields = {
     wifiSsid: document.getElementById('wifiSsid'),
@@ -91,6 +92,40 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   let currentServoType = fields.servoType.value;
+
+  function activateTab(tab, moveFocus) {
+    tabs.forEach(function (item) {
+      const selected = item === tab;
+      item.setAttribute('aria-selected', selected ? 'true' : 'false');
+      item.tabIndex = selected ? 0 : -1;
+      document.getElementById(item.getAttribute('aria-controls')).hidden = !selected;
+    });
+    if (moveFocus) {
+      tab.focus();
+    }
+  }
+
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener('click', function () {
+      activateTab(tab, false);
+    });
+    tab.addEventListener('keydown', function (event) {
+      let nextIndex = index;
+      if (event.key === 'ArrowRight') {
+        nextIndex = (index + 1) % tabs.length;
+      } else if (event.key === 'ArrowLeft') {
+        nextIndex = (index - 1 + tabs.length) % tabs.length;
+      } else if (event.key === 'Home') {
+        nextIndex = 0;
+      } else if (event.key === 'End') {
+        nextIndex = tabs.length - 1;
+      } else {
+        return;
+      }
+      event.preventDefault();
+      activateTab(tabs[nextIndex], true);
+    });
+  });
 
   function showStatus(message) {
     statusDiv.textContent = message;
