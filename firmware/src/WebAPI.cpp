@@ -142,6 +142,54 @@ bool json_bool_or(JsonVariantConst value, bool default_value)
   return default_value;
 }
 
+bool validate_mcp_servers(JsonObjectConst llm, String* error)
+{
+  JsonVariantConst value = llm["mcpServers"];
+  if(value.isNull()){
+    return true;
+  }
+  if(!value.is<JsonArrayConst>()){
+    *error = "llm.mcpServers must be an array";
+    return false;
+  }
+  JsonArrayConst servers = value.as<JsonArrayConst>();
+  if(servers.size() > LLM_N_MCP_SERVERS_MAX){
+    *error = "llm.mcpServers must contain at most " + String(LLM_N_MCP_SERVERS_MAX) + " servers";
+    return false;
+  }
+  int index = 0;
+  for(JsonVariantConst item : servers){
+    if(!item.is<JsonObjectConst>()){
+      *error = "llm.mcpServers[" + String(index) + "] must be an object";
+      return false;
+    }
+    JsonObjectConst server = item.as<JsonObjectConst>();
+    if(!server["name"].is<const char*>() || server["name"].as<String>().length() == 0){
+      *error = "llm.mcpServers[" + String(index) + "].name is required";
+      return false;
+    }
+    if(!server["disabled"].is<bool>()){
+      *error = "llm.mcpServers[" + String(index) + "].disabled must be true or false";
+      return false;
+    }
+    if(!server["url"].is<const char*>() || server["url"].as<String>().length() == 0){
+      *error = "llm.mcpServers[" + String(index) + "].url is required";
+      return false;
+    }
+    if(!server["port"].is<int>()){
+      *error = "llm.mcpServers[" + String(index) + "].port must be an integer";
+      return false;
+    }
+    int port = server["port"].as<int>();
+    if(port < 1 || port > 65535){
+      *error = "llm.mcpServers[" + String(index) + "].port must be from 1 to 65535";
+      return false;
+    }
+    index++;
+  }
+  return true;
+}
+
 String build_secret_yaml(JsonObjectConst sec)
 {
   JsonObjectConst wifi = sec["wifi"];
@@ -195,6 +243,19 @@ String build_extend_yaml(JsonObjectConst ex)
   yaml += "  type: " + String(json_int_or(llm["type"], LLM_TYPE_CHATGPT)) + "\n";
   yaml += "  enableMemory: ";
   yaml += json_bool_or(llm["enableMemory"], false) ? "true\n" : "false\n";
+  JsonArrayConst servers = llm["mcpServers"].as<JsonArrayConst>();
+  if(servers.size() == 0){
+    yaml += "  mcpServers: []\n";
+  }else{
+    yaml += "  mcpServers:\n";
+    for(JsonObjectConst server : servers){
+      yaml += "    - name: " + quote_yaml_string(server["name"].as<String>()) + "\n";
+      yaml += "      disabled: ";
+      yaml += server["disabled"].as<bool>() ? "true\n" : "false\n";
+      yaml += "      url: " + quote_yaml_string(server["url"].as<String>()) + "\n";
+      yaml += "      port: " + String(server["port"].as<int>()) + "\n";
+    }
+  }
   return yaml;
 }
 
@@ -348,7 +409,7 @@ void handle_face() {
 }
 
 void handle_config_get() {
-  DynamicJsonDocument response(4096);
+  DynamicJsonDocument response(8192);
   bool has_sec = SPIFFS.exists(SPIFFS_SEC_CONFIG_PATH);
   bool has_basic = SPIFFS.exists(SPIFFS_BASIC_CONFIG_PATH);
   bool has_ex = SPIFFS.exists(SPIFFS_EX_CONFIG_PATH);
@@ -417,16 +478,37 @@ void handle_config_get() {
   JsonObject llm = ex["llm"].to<JsonObject>();
   llm["type"] = LLM_TYPE_CHATGPT;
   llm["enableMemory"] = false;
-  DynamicJsonDocument ex_doc(2048);
+  JsonArray mcp_servers = llm["mcpServers"].to<JsonArray>();
+  DynamicJsonDocument ex_doc(4096);
   if(parse_yaml_file(SPIFFS, SPIFFS_EX_CONFIG_PATH, ex_doc)){
     llm["type"] = ex_doc["llm"]["type"] | LLM_TYPE_CHATGPT;
     llm["enableMemory"] = ex_doc["llm"]["enableMemory"] | false;
+    JsonArrayConst stored_servers = ex_doc["llm"]["mcpServers"].as<JsonArrayConst>();
+    int count = 0;
+    for(JsonObjectConst stored_server : stored_servers){
+      if(count >= LLM_N_MCP_SERVERS_MAX){
+        break;
+      }
+      JsonObject server = mcp_servers.createNestedObject();
+      server["name"] = stored_server["name"].as<String>();
+      server["disabled"] = stored_server["disabled"] | false;
+      server["url"] = stored_server["url"].as<String>();
+      server["port"] = stored_server["port"] | 0;
+      count++;
+    }
   }else{
     ex_config_s ex_config = system_config.getExConfig();
     if(ex_config.llm.type == LLM_TYPE_CHATGPT || ex_config.llm.type == LLM_TYPE_GEMINI){
       llm["type"] = ex_config.llm.type;
     }
     llm["enableMemory"] = ex_config.llm.enableMemory;
+    for(int i = 0; i < ex_config.llm.nMcpServers && i < LLM_N_MCP_SERVERS_MAX; i++){
+      JsonObject server = mcp_servers.createNestedObject();
+      server["name"] = ex_config.llm.mcpServer[i].name;
+      server["disabled"] = ex_config.llm.mcpServer[i].disabled;
+      server["url"] = ex_config.llm.mcpServer[i].url;
+      server["port"] = ex_config.llm.mcpServer[i].port;
+    }
   }
 
   String json;
@@ -442,10 +524,14 @@ void handle_config_post() {
 
   String body = server.arg("plain");
   String error = "";
-  DynamicJsonDocument request(4096);
+  DynamicJsonDocument request(8192);
   DeserializationError parse_error = deserializeJson(request, body);
   if(parse_error){
     server.send(400, "text/plain", String("JSON parse error: ") + parse_error.c_str());
+    return;
+  }
+  if(!validate_mcp_servers(request["ex"]["llm"], &error)){
+    server.send(400, "text/plain", error);
     return;
   }
 

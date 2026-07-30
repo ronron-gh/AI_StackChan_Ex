@@ -97,7 +97,7 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
 
 ### Config page
 
-- Wi-Fi、AI Service、Servo の設定領域をタブで切り替えて表示する。
+- Wi-Fi、AI Service、Servo、MCPs (Option) の設定領域をタブで切り替えて表示する。
 - タブを切り替えても未保存の入力値は保持し、Save は全タブの設定内容をまとめて保存する。
 - Save、Reload、Restart と処理結果のメッセージはタブ領域の外に配置し、どのタブからでも操作可能とする。
 - Reload は全タブの設定値を更新し、現在選択中のタブは維持する。
@@ -120,6 +120,11 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
       - Google Gemini Live
     - API Key　(値は'*'で隠す/表示するを切り換え可能とする)
     - Enable Memory (true or false を設定)
+  - MCPs (Option)
+    - MCPサーバーを最大5件設定する。未使用の入力枠は保存しない。
+    - 各サーバーに Name、Disabled、URL / Host、Port を設定する。
+    - Disabled は `true` / `false` のドロップダウンで選択する。
+    - Name、URL / Host、Port の一部だけが入力された場合は保存エラーとする。
   - Servo
     - 以下項目を設定。詳細は [Servo Setting Details](#servo-setting-details) に記載
       - Type
@@ -205,14 +210,15 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
   - `complete`: SPIFFS に `SC_SecConfig.yaml`、`SC_BasicConfig.yaml`、`SC_ExConfig.yaml` が揃っているか
   - `sec`: Wi-Fi と API key
   - `basic`: Servo 設定
-  - `ex`: Realtime AI Service と Enable Memory
+  - `ex`: Realtime AI Service、Enable Memory、最大5件のMCPサーバー設定
 - `POST /config`: POST body の JSON を検証し、SPIFFS に `SC_SecConfig.yaml`、`SC_BasicConfig.yaml`、`SC_ExConfig.yaml` として保存する。
 - `POST /config/restart`: 設定反映のため再起動する。
 
 #### 保存処理
 - `SC_SecConfig.yaml` は `StackchanExConfig::saveSecretConfigYaml()` が `deserializeYml()` で構文と `wifi` / `apikey` セクションを検証する。
 - `SC_BasicConfig.yaml` は Servo 関連、`takao_base`、`servo_type` のみを生成する。
-- `SC_ExConfig.yaml` は `llm.type` と `llm.enableMemory` のみを生成する。
+- `SC_ExConfig.yaml` は `llm.type`、`llm.enableMemory`、`llm.mcpServers` を生成する。MCPサーバーは最大5件とし、各要素に `name`、`disabled`、`url`、`port` を保存する。
+- `LLM_N_MCP_SERVERS_MAX` は5とし、設定読込、Web API、MCPクライアント配列で共通の上限として使用する。YAMLに6件以上ある場合は先頭5件だけを読み込む。
 - 保存後は RAM 上の `_secret_config` も更新するが、Wi-Fi 再接続は行わず Web UI から再起動を促す。
 - Save成功時は、設定した値を有効にするため Restart 前に SD カードを抜くよう画面に表示する。
 

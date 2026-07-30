@@ -63,7 +63,7 @@
     }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 4px;
       margin-bottom: 16px;
       border-bottom: 1px solid var(--line);
@@ -115,6 +115,20 @@
     }
     .field {
       min-width: 0;
+    }
+    .mcp-server {
+      border-top: 1px solid var(--line);
+      margin-top: 16px;
+      padding-top: 16px;
+    }
+    .mcp-server:first-of-type {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+    .mcp-server h3 {
+      margin: 0 0 12px;
+      font-size: 1rem;
     }
     .secret-row {
       display: grid;
@@ -193,6 +207,8 @@
                 aria-selected="false" aria-controls="panelAiService" tabindex="-1">AI Service</button>
         <button class="tab-button" id="tabServo" type="button" role="tab"
                 aria-selected="false" aria-controls="panelServo" tabindex="-1">Servo</button>
+        <button class="tab-button" id="tabMcps" type="button" role="tab"
+                aria-selected="false" aria-controls="panelMcps" tabindex="-1">MCPs (Option)</button>
       </div>
 
       <fieldset class="tab-panel" id="panelWifi" role="tabpanel" aria-labelledby="tabWifi">
@@ -310,6 +326,56 @@
           <div class="field">
             <label for="upperY">Upper Limit Y</label>
             <input id="upperY" type="number">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="tab-panel" id="panelMcps" role="tabpanel"
+                aria-labelledby="tabMcps" hidden>
+        <h2>MCP Servers (Option)</h2>
+        <div class="mcp-server" data-mcp-server>
+          <h3>Server 1</h3>
+          <div class="grid">
+            <div class="field"><label for="mcpName1">Name</label><input id="mcpName1" data-mcp-name autocomplete="off"></div>
+            <div class="field"><label for="mcpDisabled1">Disabled</label><select id="mcpDisabled1" data-mcp-disabled><option value="false">false</option><option value="true">true</option></select></div>
+            <div class="field"><label for="mcpUrl1">URL / Host</label><input id="mcpUrl1" data-mcp-url autocomplete="off"></div>
+            <div class="field"><label for="mcpPort1">Port</label><input id="mcpPort1" data-mcp-port type="number" min="1" max="65535" step="1"></div>
+          </div>
+        </div>
+        <div class="mcp-server" data-mcp-server>
+          <h3>Server 2</h3>
+          <div class="grid">
+            <div class="field"><label for="mcpName2">Name</label><input id="mcpName2" data-mcp-name autocomplete="off"></div>
+            <div class="field"><label for="mcpDisabled2">Disabled</label><select id="mcpDisabled2" data-mcp-disabled><option value="false">false</option><option value="true">true</option></select></div>
+            <div class="field"><label for="mcpUrl2">URL / Host</label><input id="mcpUrl2" data-mcp-url autocomplete="off"></div>
+            <div class="field"><label for="mcpPort2">Port</label><input id="mcpPort2" data-mcp-port type="number" min="1" max="65535" step="1"></div>
+          </div>
+        </div>
+        <div class="mcp-server" data-mcp-server>
+          <h3>Server 3</h3>
+          <div class="grid">
+            <div class="field"><label for="mcpName3">Name</label><input id="mcpName3" data-mcp-name autocomplete="off"></div>
+            <div class="field"><label for="mcpDisabled3">Disabled</label><select id="mcpDisabled3" data-mcp-disabled><option value="false">false</option><option value="true">true</option></select></div>
+            <div class="field"><label for="mcpUrl3">URL / Host</label><input id="mcpUrl3" data-mcp-url autocomplete="off"></div>
+            <div class="field"><label for="mcpPort3">Port</label><input id="mcpPort3" data-mcp-port type="number" min="1" max="65535" step="1"></div>
+          </div>
+        </div>
+        <div class="mcp-server" data-mcp-server>
+          <h3>Server 4</h3>
+          <div class="grid">
+            <div class="field"><label for="mcpName4">Name</label><input id="mcpName4" data-mcp-name autocomplete="off"></div>
+            <div class="field"><label for="mcpDisabled4">Disabled</label><select id="mcpDisabled4" data-mcp-disabled><option value="false">false</option><option value="true">true</option></select></div>
+            <div class="field"><label for="mcpUrl4">URL / Host</label><input id="mcpUrl4" data-mcp-url autocomplete="off"></div>
+            <div class="field"><label for="mcpPort4">Port</label><input id="mcpPort4" data-mcp-port type="number" min="1" max="65535" step="1"></div>
+          </div>
+        </div>
+        <div class="mcp-server" data-mcp-server>
+          <h3>Server 5</h3>
+          <div class="grid">
+            <div class="field"><label for="mcpName5">Name</label><input id="mcpName5" data-mcp-name autocomplete="off"></div>
+            <div class="field"><label for="mcpDisabled5">Disabled</label><select id="mcpDisabled5" data-mcp-disabled><option value="false">false</option><option value="true">true</option></select></div>
+            <div class="field"><label for="mcpUrl5">URL / Host</label><input id="mcpUrl5" data-mcp-url autocomplete="off"></div>
+            <div class="field"><label for="mcpPort5">Port</label><input id="mcpPort5" data-mcp-port type="number" min="1" max="65535" step="1"></div>
           </div>
         </div>
       </fieldset>

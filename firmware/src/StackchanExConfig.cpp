@@ -279,7 +279,10 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
     _ex_parameters.llm.model        = doc["llm"]["model"].as<String>();
-    _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
+    int nMcpServers = doc["llm"]["mcpServers"].size();
+    _ex_parameters.llm.nMcpServers = nMcpServers < LLM_N_MCP_SERVERS_MAX
+                                    ? nMcpServers
+                                    : LLM_N_MCP_SERVERS_MAX;
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         _ex_parameters.llm.mcpServer[i].name = doc["llm"]["mcpServers"][i]["name"].as<String>();
         _ex_parameters.llm.mcpServer[i].disabled = doc["llm"]["mcpServers"][i]["disabled"].as<bool>();

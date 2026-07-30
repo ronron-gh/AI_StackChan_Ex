@@ -33,7 +33,7 @@
 #define LLM_TYPE_MODULE_LLM_FNCL        2
 #define LLM_TYPE_GEMINI                 3
 #define LLM_TYPE_CUSTOM_OPENAI          4
-#define LLM_N_MCP_SERVERS_MAX           10
+#define LLM_N_MCP_SERVERS_MAX           5
 
 #define TTS_TYPE_WEB_VOICEVOX           0
 #define TTS_TYPE_ELEVENLABS             1
