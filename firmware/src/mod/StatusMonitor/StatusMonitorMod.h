@@ -3,16 +3,24 @@
 
 #include <Arduino.h>
 #include "mod/ModBase.h"
+#include <Avatar.h>
 
 
 class StatusMonitorMod: public ModBase{
 private:
     box_t box_BtnA;
     box_t box_BtnC;
-    box_t box_BtnUA;
-    box_t box_BtnUC;
-    const int MAX_PAGE_NO = 2;
+    box_t box_TabSystem;
+    box_t box_TabAiService;
+    static const int TAB_COUNT = 2;
     int current_page_no;
+    String buildSystemStatus();
+    String buildAiServiceStatus();
+    const char* getAiServiceName(int llm_type);
+    void drawStatusMonitor(M5Canvas *spi, m5avatar::BoundingRect rect,
+                            m5avatar::DrawContext *ctx);
+    static void drawSubWindow(M5Canvas *spi, m5avatar::BoundingRect rect,
+                              m5avatar::DrawContext *ctx, void *userData);
 public:
     StatusMonitorMod(void);
     void init(void);

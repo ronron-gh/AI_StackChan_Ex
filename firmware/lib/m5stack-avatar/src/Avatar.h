@@ -70,6 +70,9 @@ class Avatar {
   bool updateSubWindowJpg(String& fname);      //motoh
   void updateSubWindowTxt(String txt, int top = 0, int left = 0, int width = 320, int height = 240);         //motoh
   void updateSubWindowQrcode(String& txt, int top = 0);      //motoh
+  void updateSubWindowCustom(SubWindowDrawCallback callback, void *userData,
+                             int top = 0, int left = 0,
+                             int width = 320, int height = 240);  //motoh
   void set_isSubWindowEnable(bool isEnable);  //motoh
   void setFaceOffsetX(int16_t offset_x);      //motoh
   void setFaceOffsetY(int16_t offset_y);      //motoh

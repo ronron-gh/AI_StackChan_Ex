@@ -33,7 +33,7 @@
 #define LLM_TYPE_MODULE_LLM_FNCL        2
 #define LLM_TYPE_GEMINI                 3
 #define LLM_TYPE_CUSTOM_OPENAI          4
-#define LLM_N_MCP_SERVERS_MAX           10
+#define LLM_N_MCP_SERVERS_MAX           5
 
 #define TTS_TYPE_WEB_VOICEVOX           0
 #define TTS_TYPE_ELEVENLABS             1
@@ -115,6 +115,12 @@ class StackchanExConfig : public StackchanSystemConfig
         ex_config_s getExConfig() { return _ex_parameters; }
         void setExConfig(ex_config_s config) { _ex_parameters = config; } 
 
+        bool validateSecretConfigYaml(const String& yaml, String* error = nullptr);
+        bool saveSecretConfigYaml(fs::FS& fs, const char* path, const String& yaml,
+                                  String* error = nullptr, bool apply_now = true);
+        bool loadSecretConfigYaml(fs::FS& fs, const char* path, uint32_t yaml_size = 2048);
+        String exportSecretConfigYaml(bool mask_secret = false);
+
         void basicConfigNotFoundCallback(void) override;
         void secretConfigNotFoundCallback(void) override;
         void extendConfigNotFoundCallback(void);
@@ -123,6 +129,9 @@ class StackchanExConfig : public StackchanSystemConfig
         // Read a PEM file from _extend_fs and append it to _ex_parameters.llm.customRootCA,
         // building one bundle that may hold several concatenated root certificates.
         void appendRootCAFromFile(const String& ca_path);
+        bool parseSecretConfigYaml(const String& yaml, DynamicJsonDocument& doc, String* error);
+        bool writeFileAtomic(fs::FS& fs, const char* path, const String& data, String* error);
+        String quoteYamlString(const String& value);
 
 };
 

@@ -1,28 +1,68 @@
 # Realtime API
 
 - [概要](#概要)
-- [設定方法](#設定方法)
+- [ビルド方法](#ビルド方法)
+- [設定方法① Web UIによる設定（推奨）](#設定方法-web-uiによる設定推奨)
+- [設定方法② SDカードによる設定](#設定方法-sdカードによる設定)
   - [YAMLの設定① (Wi-Fi、APIキー)](#yamlの設定-wi-fiapiキー)
   - [YAMLの設定② (LLM)](#yamlの設定-llm)
   - [YAMLの設定③ (サーボ)](#yamlの設定-サーボ)
-  - [ビルド＆書き込み](#ビルド書き込み)
 - [使い方](#使い方)
   - [リアルタイム会話](#リアルタイム会話)
   - [サーボ動作の停止、再開](#サーボ動作の停止再開)
 - [Function Calling及びMCP](#function-calling及びmcp)
 - [TTSとの組み合わせ (OpenAI Realtimeのみ)](#ttsとの組み合わせ-openai-realtimeのみ)
-  - [設定方法](#設定方法-1)
+  - [設定方法](#設定方法)
 
 ## 概要
 Realtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。OpenAI Realtime API 及び Gemini Live APIに対応しています。  
 
-## 設定方法
-Realtime APIを有効にするために次の設定を行います。
+## ビルド方法
+下図のように、VSCode(PlatformIO)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  
 
-・YAMLファイル（3種類）を作成しSDカードに保存(※)  
-・ビルド＆書き込み
+> Note:  
+> PlatformIOで初めてプロジェクトを開いてビルドするまでの手順は、[基本的な利用方法 2.2.ビルド＆書き込み](basic_usage.md#22-ビルド書き込み)を参照ください。
 
-> ※ AtomS3RはSDカード非対応のため、SPIFFSにYAMLファイルを書き込みます。書き込み方法は[こちら](./atoms3r.md)を参照ください。
+![](../images/realtime_api_select_env.png)
+
+
+
+## 設定方法① Web UIによる設定（推奨）
+SDカード不要の、Web UIによる設定方法です。次の手順で設定します。
+
+① M5Stackの電源ON。
+
+② 初回はWi-Fi未設定のため、次のようなモード選択画面が表示される。  
+　「Config AP」を選択してAPモードで起動する。
+
+- Config AP : APモードで起動しWeb UIで設定を行うモード  
+- Offline : オフラインのまま起動するモード
+
+　![](../images/ap_mode_select.png)
+
+③ APモードで起動すると次のような画面になるので、表示されているSSIDにスマートフォンやPCで接続し、表示されているURL（もしくはQRコード）によりConfigページにアクセスする。
+
+　![](../images/ap_mode_ssid_and_url.png)
+
+④ Configページの各タブで設定を入力し、Saveボタンで保存する。
+> Note:  
+> 全タブ入力後にSaveボタンを1度押せば、全タブの内容が保存されます。
+
+- Wi-Fi：接続先Wi-FiアクセスポイントのSSIDとパスワードの設定
+- AI Service：利用するリアルタイムAPIの選択、及びAPIキーの設定
+- Servo：サーボの種類、ピン番号の設定
+- MCPs(Option)：MCPサーバーの設定（任意）  
+
+　![](../images/config_page.png)
+
+⑤ RestartボタンでM5Stackを再起動すると設定が反映される。
+
+## 設定方法② SDカードによる設定
+従来のようにSDカードのYAMLファイルで設定する方法です。
+以下の3種類のYAMLファイルをSDカードに保存し、M5Stackのスロットに挿入して電源を入れなおすことで反映されます。
+
+> Note:  
+> AtomS3RはSDカード非対応のため、SPIFFSにYAMLファイルを書き込みます。書き込み方法は[こちら](./atoms3r.md)を参照ください。
 
 ### YAMLの設定① (Wi-Fi、APIキー)
 SDカードフォルダ：/yaml  
@@ -61,11 +101,6 @@ SDカードフォルダ：/yaml
 
 サーボの種類、ポート等を[基本的な利用方法 2.1.YAMLによる初期設定](./basic_usage.md#sc_basicconfigyaml)に従い設定します。サーボを使わない場合は省略して問題ありません。
 
-### ビルド＆書き込み
-下図のように、VSCode(Platformio)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  
-
-![](../images/realtime_api_select_env.png)
-
 
 ## 使い方
 ### リアルタイム会話
@@ -73,6 +108,7 @@ SDカードフォルダ：/yaml
 
 ② M5Core画面の上部（アバターの額のあたり）をタッチすると吹き出しが"Listening..."に変わり、リアルタイム会話を開始します（もう一度タッチするとリアルタイム会話を停止します）。
 
+> Note:  
 > AtomS3Rは画面自体が物理ボタンになっているため、画面中央を少し強めに押し込んでください。
 
 ③ 30秒以上会話が無い状態が続くとリアルタイム会話を終了し、吹き出しが"Please touch"に戻ります。

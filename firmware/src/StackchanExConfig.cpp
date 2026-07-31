@@ -4,6 +4,141 @@
 StackchanExConfig::StackchanExConfig() {};
 StackchanExConfig::~StackchanExConfig() {};
 
+bool StackchanExConfig::parseSecretConfigYaml(const String& yaml, DynamicJsonDocument& doc, String* error)
+{
+    DeserializationError err = deserializeYml(doc, yaml.c_str());
+    if(err){
+        if(error != nullptr){
+            *error = String("YAML parse error: ") + err.c_str();
+        }
+        return false;
+    }
+
+    if(!doc["wifi"].is<JsonObject>()){
+        if(error != nullptr){
+            *error = "Missing wifi section";
+        }
+        return false;
+    }
+    if(!doc["apikey"].is<JsonObject>()){
+        if(error != nullptr){
+            *error = "Missing apikey section";
+        }
+        return false;
+    }
+    return true;
+}
+
+bool StackchanExConfig::validateSecretConfigYaml(const String& yaml, String* error)
+{
+    DynamicJsonDocument doc(2048);
+    if(!parseSecretConfigYaml(yaml, doc, error)){
+        return false;
+    }
+
+    JsonObject wifi = doc["wifi"];
+    JsonObject apikey = doc["apikey"];
+    const bool has_wifi_keys = wifi.containsKey("ssid") && wifi.containsKey("password");
+    const bool has_apikey_keys = apikey.containsKey("aiservice")
+                              && apikey.containsKey("tts")
+                              && apikey.containsKey("stt");
+    if(!has_wifi_keys || !has_apikey_keys){
+        if(error != nullptr){
+            *error = "SC_SecConfig.yaml must contain wifi.ssid/password and apikey.aiservice/tts/stt";
+        }
+        return false;
+    }
+    return true;
+}
+
+bool StackchanExConfig::writeFileAtomic(fs::FS& fs, const char* path, const String& data, String* error)
+{
+    String temp_path = String(path) + ".tmp";
+    File temp = fs.open(temp_path.c_str(), FILE_WRITE);
+    if(!temp){
+        if(error != nullptr){
+            *error = String("Cannot open temp file: ") + temp_path;
+        }
+        return false;
+    }
+
+    size_t written = temp.print(data);
+    temp.flush();
+    temp.close();
+    if(written != data.length()){
+        fs.remove(temp_path.c_str());
+        if(error != nullptr){
+            *error = "Failed to write full YAML data";
+        }
+        return false;
+    }
+
+    if(fs.exists(path)){
+        fs.remove(path);
+    }
+    if(!fs.rename(temp_path.c_str(), path)){
+        fs.remove(temp_path.c_str());
+        if(error != nullptr){
+            *error = String("Failed to rename temp file to ") + path;
+        }
+        return false;
+    }
+    return true;
+}
+
+bool StackchanExConfig::saveSecretConfigYaml(fs::FS& fs, const char* path, const String& yaml,
+                                             String* error, bool apply_now)
+{
+    DynamicJsonDocument doc(2048);
+    if(!parseSecretConfigYaml(yaml, doc, error)){
+        return false;
+    }
+    if(!validateSecretConfigYaml(yaml, error)){
+        return false;
+    }
+    if(!writeFileAtomic(fs, path, yaml, error)){
+        return false;
+    }
+    if(apply_now){
+        setSecretConfig(doc);
+    }
+    return true;
+}
+
+bool StackchanExConfig::loadSecretConfigYaml(fs::FS& fs, const char* path, uint32_t yaml_size)
+{
+    loadSecretConfig(fs, path, yaml_size);
+    return true;
+}
+
+String StackchanExConfig::quoteYamlString(const String& value)
+{
+    String quoted = "\"";
+    for(size_t i = 0; i < value.length(); i++){
+        char c = value.charAt(i);
+        if(c == '\\' || c == '"'){
+            quoted += '\\';
+        }
+        quoted += c;
+    }
+    quoted += "\"";
+    return quoted;
+}
+
+String StackchanExConfig::exportSecretConfigYaml(bool mask_secret)
+{
+    const String masked = "********";
+    String yaml = "";
+    yaml += "wifi:\n";
+    yaml += "  ssid: " + quoteYamlString(_secret_config.wifi_info.ssid) + "\n";
+    yaml += "  password: " + quoteYamlString(mask_secret ? masked : _secret_config.wifi_info.password) + "\n";
+    yaml += "apikey:\n";
+    yaml += "  aiservice: " + quoteYamlString(mask_secret ? masked : _secret_config.api_key.ai_service) + "\n";
+    yaml += "  tts: " + quoteYamlString(mask_secret ? masked : _secret_config.api_key.tts) + "\n";
+    yaml += "  stt: " + quoteYamlString(mask_secret ? masked : _secret_config.api_key.stt) + "\n";
+    return yaml;
+}
+
 
 void StackchanExConfig::basicConfigNotFoundCallback(void)
 {
@@ -144,7 +279,10 @@ void StackchanExConfig::setExtendSettings(DynamicJsonDocument doc)
 {
     _ex_parameters.llm.type         = doc["llm"]["type"].as<int>();
     _ex_parameters.llm.model        = doc["llm"]["model"].as<String>();
-    _ex_parameters.llm.nMcpServers  = doc["llm"]["mcpServers"].size();
+    int nMcpServers = doc["llm"]["mcpServers"].size();
+    _ex_parameters.llm.nMcpServers = nMcpServers < LLM_N_MCP_SERVERS_MAX
+                                    ? nMcpServers
+                                    : LLM_N_MCP_SERVERS_MAX;
     for(int i=0; i<_ex_parameters.llm.nMcpServers; i++){
         _ex_parameters.llm.mcpServer[i].name = doc["llm"]["mcpServers"][i]["name"].as<String>();
         _ex_parameters.llm.mcpServer[i].disabled = doc["llm"]["mcpServers"][i]["disabled"].as<bool>();
