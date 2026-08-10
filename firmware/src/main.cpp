@@ -573,7 +573,7 @@ void setup()
   init_mic_spk();
 
   /// settings
-  if(!SPIFFS.begin()){
+  if(!SPIFFS.begin(true)){
     M5.Lcd.print("Failed to mount SPIFFS. System reset after 5 seconds.");
     delay(5000);
     ESP.restart();
