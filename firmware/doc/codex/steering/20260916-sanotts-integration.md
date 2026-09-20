@@ -5,7 +5,7 @@
 ## 目的・対象範囲
 
 - SanoTTS-jpをオプションのオフラインTTSとして追加する。初期対応は検証済みのM5Stack CoreS3に限定する。
-- `C:\git\SanoTTS_Arduino_CoreS3` のExample 05（日本語解析、W8A8＋PIE、ストリーミング再生）を基準とする。既存のespressif32 6.3.2、M5Unified 0.2.15を維持する。
+- `C:\git\SanoTTS_Arduino_CoreS3` のコミット `da7d7527eed4752f525a983552f191161b4d5478` にあるExample 05（日本語解析、W8A8＋PIE、ストリーミング再生）と `doc/porting.md` を基準とする。既存のespressif32 6.3.2、M5Unified 0.2.15を維持する。
 - firmwareには接続コード、ビルド補助、導入説明だけを追加する。推論ライブラリ、Open JTalk関連コード、モデル重み、辞書はユーザーが別途配置し、自動取得しない。
 - Core2・AtomS3R対応、任意モデル・辞書の切替、SDからの実行時ロードは初期対応に含めない。
 
@@ -14,8 +14,8 @@
 - 新規 `src/tts/SanoTTS.h/.cpp` と必要なC連携ファイル: TTSBaseとの接続、日本語解析・推論・PCM再生。
 - `src/Robot.cpp`: TTS生成の選択肢追加。新規TTSを未ビルドで選択した場合の安全な扱い。
 - `src/StackchanExConfig.h`: `TTS_TYPE_SANO = 5` を追加し、既存0〜4は維持。
-- `platformio.ini`、新規 `scripts/` 内のSanoTTS用ビルド補助: オプション環境、外部ソースの組込み、モデル・辞書の検査とヘッダー生成。
-- `.gitignore`: `lib/saanotts_core/` と `model/sanotts/` のユーザー配置物を除外。生成物は既存の管理外 `.pio/build/<env>/generated/` に置く。
+- `platformio.ini`: オプション環境と、ユーザーが配置したSanoTTS用preスクリプトの指定。
+- `.gitignore`: `lib/saanotts_core/`、`model/`、`scripts/` のユーザー配置物を除外。生成物は既存の管理外 `.pio/build/<env>/generated/` に置く。
 - 新規 `doc/sanotts.md`、`doc/fw_design.md`、必要に応じてリポジトリのREADME・設定例: 導入、選択方法、タスク・メモリ構成、バイナリ配布時の表示条件への案内。
 
 ## ビルド・導入方針
@@ -23,9 +23,9 @@
 - `[sanotts-cores3]` に `USE_SANOTTS`、`SAAN_INT8_ACT=1`、`SAAN_PIE=1`、日本語解析用の定義と専用preスクリプトをまとめる。
 - `m5stack-cores3-sanotts`、`m5stack-cores3-llm-sanotts`、`m5stack-cores3-realtime-sanotts` を既存環境から派生させる。Realtime派生では `REALTIME_API_WITH_TTS` も有効化する。
 - YAMLは既存の `tts.type: 5` で選択する。APIキーは不要、既存のmodel/voiceは初期対応では使用しない。現行Web設定画面にTTS種別の選択欄はないため、専用UIの新設は行わない。
-- ユーザーは検証版の `lib/saanotts_core/` を配置し、モデル `student_i8.bin` と辞書 `k1-dict-44000-2mb.bin` を `model/sanotts/` に配置する。日本語解析器はライブラリ外の `examples/05_text_input/japanese_parser.c` と `src/saan_kanji.h` にあるため、この2ファイルも管理外 `lib/saanotts_core/` 配下へユーザーが配置する契約とする。推論・日本語解析実装をfirmwareの管理対象へコピーせず、モデル/辞書の接続コードだけを用意する。参照する検証リポジトリのコミットを実装時に固定して導入手順へ記録する。
+- ユーザーは上記コミットの `lib/saanotts_core/` をフォルダーごと配置する。検証版 `src/saan_model.c/.h` はコピー対象に含めない。モデル `student_i8.bin` と辞書 `k1-dict-44000-2mb.bin` は `model/` 直下、検証版 `scripts/` は `scripts/` へ配置する。日本語解析器、Open JTalk、PlatformIO用のソース選択とPSRAMヒープ置換は整理後のライブラリに含まれるため、個別ファイルの追加やfirmware側での解析ソース列挙は不要とする。推論・日本語解析実装をfirmwareの管理対象へコピーせず、モデル/辞書の接続コードだけを用意する。生成された `saan_model_blob.h` の取り込み、16バイト整列確認、`saan_weights_open()` とエラーログは `SanoTTS.cpp` の単一翻訳単位に実装し、モデル配列の重複定義を防ぐ。
 - モデルは検証版のSAAN blob v2・654,032 B、辞書はK1D1 v2・44,000エントリ・977,456 Bに固定し、既知SHA-256・形式をビルド時に検査する。16バイト整列const配列としてflashに埋め込み、既存パーティションを維持する。最終firmware全体がapp領域6,553,600 Bに収まることを確認する。
-- 検証版library.jsonは推論コア4ファイルだけが対象。辞書解析・Open JTalk・PSRAMヒープ置換を明示的に追加するビルド補助が必要。ライブラリ自身のビルドと二重コンパイルしないように対象を分け、既存firmwareのソースフィルターを置き換えない。
+- 検証版の `library.json` と `platformio_build.py` をそのまま利用する。`SAAN_KANJI=1` と `LABEL_IDS_EXTERNAL_SCRATCH=1` をプロジェクト共通のbuild flagsへ渡すと、ライブラリ側が日本語解析ソースを追加し、Open JTalkだけにPSRAMヒープ置換を適用する。モデル・辞書の検査と埋め込みにはユーザーが配置した `scripts/platformio_model.py` と `scripts/platformio_dictionary.py` および各生成スクリプトを利用する。外部ソースを重複指定したり既存firmwareのソースフィルターを置き換えたりしない。
 - オプション無効の環境では外部ヘッダー・生成スクリプト・外部ライブラリのコンパイルを不要とする。外部ライブラリが配置済みでも無効ビルドへの混入を防ぐ。有効ビルドで配置不足・非対応ボードを検出した場合は具体的なエラーで停止する。
 
 ## 実行時の方針・設計上の注意点
@@ -46,11 +46,11 @@
 
 ### 1. 外部資産とビルド基盤
 
-- [ ] 検証用リポジトリの採用コミットと、コピー対象となる `lib/saanotts_core/` の構成を確定する。
-- [ ] `lib/saanotts_core/`、`model/sanotts/` と生成物の配置契約を決め、ユーザー配置物を `.gitignore` に追加する。
+- [x] 検証用リポジトリの採用コミットを `da7d7527eed4752f525a983552f191161b4d5478` とし、コピー対象を整理後の `lib/saanotts_core/` 全体に確定する。
+- [x] `lib/saanotts_core/`、`model/`、`scripts/` と生成物の配置契約を確定し、ユーザー配置物を `.gitignore` に追加する。モデル・辞書のサイズと既知SHA-256の一致も確認する。
 - [ ] モデル・辞書を検査して `.pio/build/<env>/generated/` に16バイト整列const配列を生成するpreスクリプトを追加する。
 - [ ] `[sanotts-cores3]` と `m5stack-cores3-sanotts` を追加し、CoreS3以外や配置不足・形式不正・ハッシュ不一致を具体的なエラーで拒否する。
-- [ ] 外部ソースを一度だけコンパイルし、Open JTalkのソースだけにPSRAMヒープ置換を適用する。
+- [ ] `library.json` と `platformio_build.py` に外部ソースの選択を任せ、Open JTalkのソースだけにPSRAMヒープ置換が適用されることと二重コンパイルがないことを確認する。
 - [ ] SanoTTS無効環境では外部資産・生成スクリプト・外部ソースを必要とせず、既存CoreS3/Core2環境へ混入しないことを確認する。
 
 ### 2. TTSコアと短文発話
