@@ -48,10 +48,10 @@
 
 - [x] 検証用リポジトリの採用コミットを `da7d7527eed4752f525a983552f191161b4d5478` とし、コピー対象を整理後の `lib/saanotts_core/` 全体に確定する。
 - [x] `lib/saanotts_core/`、`model/`、`scripts/` と生成物の配置契約を確定し、ユーザー配置物を `.gitignore` に追加する。モデル・辞書のサイズと既知SHA-256の一致も確認する。
-- [ ] モデル・辞書を検査して `.pio/build/<env>/generated/` に16バイト整列const配列を生成するpreスクリプトを追加する。
-- [ ] `[sanotts-cores3]` と `m5stack-cores3-sanotts` を追加し、CoreS3以外や配置不足・形式不正・ハッシュ不一致を具体的なエラーで拒否する。
+- [x] 管理対象のpreスクリプトでボード・配置・既知SHA-256を検査し、コピー済みの `platformio_model.py` と `platformio_dictionary.py` で `.pio/build/<env>/generated/` に16バイト整列const配列を生成する。
+- [x] `[sanotts-cores3]` と `m5stack-cores3-sanotts` を追加し、CoreS3以外や配置不足・形式不正・ハッシュ不一致を具体的なエラーで拒否する。
 - [ ] `library.json` と `platformio_build.py` に外部ソースの選択を任せ、Open JTalkのソースだけにPSRAMヒープ置換が適用されることと二重コンパイルがないことを確認する。
-- [ ] SanoTTS無効環境では外部資産・生成スクリプト・外部ソースを必要とせず、既存CoreS3/Core2環境へ混入しないことを確認する。
+- [x] SanoTTS無効環境では外部資産・生成スクリプト・外部ソースを必要とせず、既存CoreS3/Core2環境へ混入しないことを確認する。
 
 ### 2. TTSコアと短文発話
 
