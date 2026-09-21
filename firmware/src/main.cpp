@@ -540,6 +540,10 @@ void setup()
   M5.begin(cfg);
 
   ///// Debug /////
+
+  //ヒープメモリ残量確認(デバッグ用)
+  check_heap_free_size();
+  check_heap_largest_free_block();
 #if 0
   check_board();
   Wire.begin(); 
@@ -571,6 +575,11 @@ void setup()
   //Serial.printf("Brightness: %d\n", brightness);
 
   init_mic_spk();
+
+  //ヒープメモリ残量確認(デバッグ用)
+  Serial.println("Heap check: After mic and speaker initialization");
+  check_heap_free_size();
+  check_heap_largest_free_block();
 
   /// settings
   if(!SPIFFS.begin(true)){
@@ -629,6 +638,11 @@ void setup()
     }
   }
 
+  //ヒープメモリ残量確認(デバッグ用)
+  Serial.println("Heap check: After Wi-Fi initialization");
+  check_heap_free_size();
+  check_heap_largest_free_block();
+
   if(!isOffline){
     Serial.println(WiFi.localIP());
     M5.Lcd.println(WiFi.localIP());
@@ -637,10 +651,21 @@ void setup()
     //Webサーバ設定
     init_web_server();
     isWebServerEnabled = true;
+
+    //ヒープメモリ残量確認(デバッグ用)
+    Serial.println("Heap check: After Web server initialization");
+    check_heap_free_size();
+    check_heap_largest_free_block();
+
     //FTPサーバ設定（SPIFFS用）
     ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
     Serial.println("FTP server started");
     M5.Lcd.println("FTP server started");
+
+    //ヒープメモリ残量確認(デバッグ用)
+    Serial.println("Heap check: After FTP server initialization");
+    check_heap_free_size();
+    check_heap_largest_free_block();
 
     //時刻同期
     time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);

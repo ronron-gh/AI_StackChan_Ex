@@ -115,6 +115,56 @@ bool openDictionary() {
            g_dictionary.char_runs && g_dictionary.unk;
 }
 
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+class BufferedOutput {
+public:
+    ~BufferedOutput() {
+        if (started_ && !finished_ && M5.Speaker.isRunning()) M5.Speaker.end();
+        if (storage_) heap_caps_free(storage_);
+    }
+
+    bool allocate(size_t expected) {
+        storage_ = static_cast<int16_t *>(heap_caps_malloc(
+            expected * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        if (!storage_) Serial.printf("SanoTTS: cannot allocate %u-byte PCM buffer in PSRAM\n",
+                                     static_cast<unsigned>(expected * sizeof(int16_t)));
+        return storage_ != nullptr;
+    }
+
+    int16_t *destination(size_t count) { return storage_ + filled_; }
+
+    bool submit(size_t count) {
+        filled_ += count;
+        return true;
+    }
+
+    bool finish(size_t expected) {
+        if (filled_ != expected || !M5.Speaker.isRunning()) return false;
+        Serial.printf("SanoTTS: buffered PCM=%u bytes\n",
+                      static_cast<unsigned>(expected * sizeof(int16_t)));
+        if (!M5.Speaker.playRaw(storage_, expected, SAAN_SR, false, 1, 0, false)) return false;
+        started_ = true;
+        const int64_t timeout = esp_timer_get_time() +
+                                static_cast<int64_t>(expected) * 1000000 / SAAN_SR + 5000000;
+        while (M5.Speaker.isPlaying(0)) {
+            if (esp_timer_get_time() > timeout) return false;
+            vTaskDelay(pdMS_TO_TICKS(10));
+        }
+        const auto cfg = M5.Speaker.config();
+        const uint32_t drain = (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + SAAN_SR - 1) / SAAN_SR + 20;
+        vTaskDelay(pdMS_TO_TICKS(drain));
+        finished_ = true;
+        return true;
+    }
+
+    uint32_t queueEmptyEvents() const { return 0; }
+
+private:
+    int16_t *storage_ = nullptr;
+    size_t filled_ = 0;
+    bool started_ = false, finished_ = false;
+};
+#else
 class StreamingOutput {
 public:
     ~StreamingOutput() {
@@ -185,6 +235,7 @@ private:
     uint32_t queueEmptyEvents_ = 0;
     bool started_ = false, finished_ = false;
 };
+#endif
 }
 
 SanoTTS::SanoTTS() {
@@ -228,12 +279,16 @@ void SanoTTS::workerLoop() {
 bool SanoTTS::initialize() {
     if (!openModel() || !openDictionary() || !saan_kanji_init()) return false;
     g_arenaMemory = heap_caps_aligned_alloc(16, kArenaBytes, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    const bool internalArena = g_arenaMemory != nullptr;
     if (!g_arenaMemory)
         g_arenaMemory = heap_caps_aligned_alloc(16, kArenaBytes, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (!g_arenaMemory) {
         Serial.println("SanoTTS: cannot allocate inference arena");
         return false;
     }
+    Serial.printf("SanoTTS: arena=%s %u bytes at %p\n",
+                  internalArena ? "internal RAM" : "PSRAM",
+                  static_cast<unsigned>(kArenaBytes), g_arenaMemory);
     Serial.println("SanoTTS: ready");
     return true;
 }
@@ -314,9 +369,14 @@ bool SanoTTS::inferAndPlay(const int32_t *ids, int32_t count) {
     if (status != SAAN_OK || arena.failed ||
         arena.used != saan_stream_arena_used(count) || stream.n_frames <= 0) return false;
     const uint64_t expectedWide = static_cast<uint64_t>(stream.n_frames) * SAAN_HOP;
-    if (expectedWide > static_cast<uint64_t>(SAAN_SR) * 30) return false;
+    if (expectedWide > static_cast<uint64_t>(SAAN_SR) * 30 ||
+        expectedWide > SIZE_MAX / sizeof(int16_t)) return false;
     const size_t expected = static_cast<size_t>(expectedWide);
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+    BufferedOutput output;
+#else
     StreamingOutput output;
+#endif
     if (!output.allocate(expected)) return false;
     size_t samples = 0;
     int64_t maxPullUs = 0;
@@ -351,8 +411,13 @@ bool SanoTTS::inferAndPlay(const int32_t *ids, int32_t count) {
         vTaskDelay(1);
     }
     const bool complete = ended && samples == expected && output.finish(expected);
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+    Serial.printf("SanoTTS: max_pull=%.2f ms buffered=%u samples\n",
+                  maxPullUs / 1000.0, static_cast<unsigned>(samples));
+#else
     Serial.printf("SanoTTS: max_pull=%.2f ms queue_empty_events=%u\n",
                   maxPullUs / 1000.0, output.queueEmptyEvents());
+#endif
     return complete;
 }
 
