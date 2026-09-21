@@ -50,21 +50,27 @@
 - [x] `lib/saanotts_core/`、`model/`、`scripts/` と生成物の配置契約を確定し、ユーザー配置物を `.gitignore` に追加する。モデル・辞書のサイズと既知SHA-256の一致も確認する。
 - [x] 管理対象のpreスクリプトでボード・配置・既知SHA-256を検査し、コピー済みの `platformio_model.py` と `platformio_dictionary.py` で `.pio/build/<env>/generated/` に16バイト整列const配列を生成する。
 - [x] `[sanotts-cores3]` と `m5stack-cores3-sanotts` を追加し、CoreS3以外や配置不足・形式不正・ハッシュ不一致を具体的なエラーで拒否する。
-- [ ] `library.json` と `platformio_build.py` に外部ソースの選択を任せ、Open JTalkのソースだけにPSRAMヒープ置換が適用されることと二重コンパイルがないことを確認する。
+- [x] `library.json` と `platformio_build.py` に外部ソースの選択を任せ、Open JTalkのソースだけにPSRAMヒープ置換が適用されることと二重コンパイルがないことを確認する。
 - [x] SanoTTS無効環境では外部資産・生成スクリプト・外部ソースを必要とせず、既存CoreS3/Core2環境へ混入しないことを確認する。
+
+PlatformIOのdeep依存解析は無効な `#if defined(USE_SANOTTS)` 内のincludeも走査するため、通常環境では `lib_ignore = saanotts_core` を指定し、SanoTTS環境だけ解除する。
 
 ### 2. TTSコアと短文発話
 
-- [ ] `SanoTTS` クラスとモデル・辞書の接続コードを追加し、`TTSBase` の同期的な `stream()` 契約と `isOfflineService=true` を実装する。
-- [ ] SanoTTS専用ワーカー、要求の直列化、初期化・終了処理を実装し、呼び出し元タスクのスタックサイズに依存しない構成にする。
-- [ ] 日本語の短文をidsへ変換し、W8A8＋PIE推論と22,050 Hz monoのストリーミング再生を接続する。
-- [ ] 既存の音量設定を使用し、発話前後と失敗時にマイク・スピーカーの状態を復元する。
-- [ ] `TTS_TYPE_SANO = 5` と `Robot::initTTS()` の選択処理を追加する。未有効・初期化失敗時も既存コードがnullptr参照しないようにする。
+- [x] `SanoTTS` クラスとモデル・辞書の接続コードを追加し、`TTSBase` の同期的な `stream()` 契約と `isOfflineService=true` を実装する。
+- [x] SanoTTS専用ワーカー、要求の直列化、初期化・終了処理を実装し、呼び出し元タスクのスタックサイズに依存しない構成にする。
+- [x] 日本語の短文をidsへ変換し、W8A8＋PIE推論と22,050 Hz monoのストリーミング再生を接続する。
+- [x] 既存の音量設定を使用し、発話前後と失敗時にマイク・スピーカーの状態を復元する。
+- [x] `TTS_TYPE_SANO = 5` と `Robot::initTTS()` の選択処理を追加する。未有効・初期化失敗時も既存コードがnullptr参照しないようにする。
 - [ ] 通常のAI Stack-chan経路で日本語短文の同期発話と非同期発話を確認する。
+
+ここまでの項目は `m5stack-cores3-sanotts` のコンパイル・リンクで確認済み。最後の項目はCoreS3実機で確認する。
+
+実機のストリーミング再生で音切れが確認された。タスク優先度とコア割り当ての変更では改善しなかったため元の構成へ戻し、DMAを512サンプル×8本に拡大した状態で文章分割を先に進める。`max_pull` と `queue_empty_events` は発話ごとに出力する。
 
 ### 3. 長文・リップシンク・異常系
 
-- [ ] 句読点・改行を優先したUTF-8安全な文章分割を実装する。
+- [x] 句読点・改行を優先したUTF-8安全な文章分割を実装する。
 - [ ] 入力/正規化後1,023 Bと最大350 idsを超えた場合に、より短い単位へ分割して再試行する。
 - [ ] 再生位置に同期したPCM包絡を `getLevel()` から返し、発話終了・失敗後は0に戻す。
 - [ ] 連続発話、長文、英数字正規化、解析失敗、メモリ確保失敗、再生失敗からの復帰を確認する。

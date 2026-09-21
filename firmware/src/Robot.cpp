@@ -4,6 +4,7 @@
 #include "tts/OpenAITTS.h"
 #include "tts/UAquesTalkTTS.h"
 #include "tts/ModuleLLMTTS.h"
+#include "tts/SanoTTS.h"
 #include "stt/CloudSpeechClient.h"
 #include "stt/Whisper.h"
 #include "stt/ModuleLLMASR.h"
@@ -21,6 +22,17 @@ using namespace m5avatar;
 
 extern Avatar avatar;
 extern bool servo_home;
+
+namespace {
+class UnavailableTTS : public TTSBase {
+public:
+  explicit UnavailableTTS(const char* name) : name_(name) { isOfflineService = false; }
+  void stream(String) override { Serial.printf("%s is unavailable in this build.\n", name_); }
+  int getLevel() override { return 0; }
+private:
+  const char* name_;
+};
+}
 
 //#if defined(REALTIME_API_WITH_TTS)
 // TTS非同期実行用のタスク
@@ -263,6 +275,14 @@ void Robot::initTTS(StackchanExConfig& config){
 #else
     Serial.println("ModuleLLM is not enabled. Please setup in platformio.ini");
     tts = nullptr;
+#endif
+    break;
+  case TTS_TYPE_SANO:
+#if defined(USE_SANOTTS)
+    tts = new SanoTTS();
+#else
+    Serial.println("SanoTTS is not enabled. Please use a SanoTTS build environment.");
+    tts = new UnavailableTTS("SanoTTS");
 #endif
     break;
   default:
