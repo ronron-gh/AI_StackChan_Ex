@@ -26,6 +26,12 @@ constexpr size_t kMaxTextBytes = 1023;
 constexpr size_t kPcmSamples = SAAN_CHUNK * SAAN_HOP;
 constexpr size_t kPrerollSamples = 4 * kPcmSamples;
 constexpr size_t kRingBuffers = 3;
+#if defined(SANOTTS_PLAYBACK_SAMPLE_RATE)
+constexpr uint32_t kPlaybackSampleRate = SANOTTS_PLAYBACK_SAMPLE_RATE;
+#else
+constexpr uint32_t kPlaybackSampleRate = SAAN_SR;
+#endif
+static_assert(kPlaybackSampleRate > 0, "SanoTTS playback sample rate must be greater than zero");
 static_assert(kArenaBytes >= SAAN_KANJI_WORKBYTES, "SanoTTS arena is too small");
 
 saan_weights g_weights;
@@ -142,16 +148,19 @@ public:
         if (filled_ != expected || !M5.Speaker.isRunning()) return false;
         Serial.printf("SanoTTS: buffered PCM=%u bytes\n",
                       static_cast<unsigned>(expected * sizeof(int16_t)));
-        if (!M5.Speaker.playRaw(storage_, expected, SAAN_SR, false, 1, 0, false)) return false;
+        if (!M5.Speaker.playRaw(storage_, expected, kPlaybackSampleRate, false, 1, 0, false)) return false;
         started_ = true;
         const int64_t timeout = esp_timer_get_time() +
-                                static_cast<int64_t>(expected) * 1000000 / SAAN_SR + 5000000;
+                                static_cast<int64_t>(expected) * 1000000 / kPlaybackSampleRate + 5000000;
         while (M5.Speaker.isPlaying(0)) {
             if (esp_timer_get_time() > timeout) return false;
             vTaskDelay(pdMS_TO_TICKS(10));
         }
         const auto cfg = M5.Speaker.config();
-        const uint32_t drain = (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + SAAN_SR - 1) / SAAN_SR + 20;
+        const uint32_t drain =
+            (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + kPlaybackSampleRate - 1) /
+                kPlaybackSampleRate +
+            20;
         vTaskDelay(pdMS_TO_TICKS(drain));
         finished_ = true;
         return true;
@@ -208,7 +217,10 @@ public:
             vTaskDelay(pdMS_TO_TICKS(10));
         }
         const auto cfg = M5.Speaker.config();
-        const uint32_t drain = (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + SAAN_SR - 1) / SAAN_SR + 20;
+        const uint32_t drain =
+            (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + kPlaybackSampleRate - 1) /
+                kPlaybackSampleRate +
+            20;
         vTaskDelay(pdMS_TO_TICKS(drain));
         finished_ = true;
         return true;
@@ -225,7 +237,7 @@ private:
         }
         if (!M5.Speaker.isRunning()) return false;
         if (sent_ && !M5.Speaker.isPlaying(0)) ++queueEmptyEvents_;
-        if (!M5.Speaker.playRaw(data, count, SAAN_SR, false, 1, 0, false)) return false;
+        if (!M5.Speaker.playRaw(data, count, kPlaybackSampleRate, false, 1, 0, false)) return false;
         sent_ += count;
         return true;
     }
