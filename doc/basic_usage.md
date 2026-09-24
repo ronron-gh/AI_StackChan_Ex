@@ -45,6 +45,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |ElevenLabs|×|〇|〇|別途APIキーを取得していただく必要があります|
 |OpenAI TTS|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](tts_aquestalk.md)|
+|SanoTTS-jp|〇|〇|×|CoreS3のみ対応。別途ライブラリ、モデル、辞書データの準備が必要[(詳細ページ)](tts_sanotts.md)|
 |ModuleLLM TTS|〇|〇|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください（日本語化する場合は同ページの付録Cもご確認ください） |
 
 ### 1.4. Wake Word
@@ -67,6 +68,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |   |ElevenLabs      |〇   |〇    |〇     |
 |   |OpenAI TTS      |〇   |〇    |〇     |
 |   |AquesTalk       |〇   |〇    |×     |
+|   |SanoTTS-jp      |×   |〇    |×     |
 |   |ModuleLLM       |〇   |〇    |×     |
 |Wake Word|SimpleVox |〇   |〇    |×     |
 |   |ModuleLLM       |〇   |〇    |×     |
@@ -178,9 +180,9 @@ llm:
   type: 0                            # 0:ChatGPT  1:ModuleLLM
 
 tts:
-  type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
+  type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk  4:ModuleLLM  5:SanoTTS-jp
 
-  model: ""                          # VOICEVOX, AquesTalk (modelは未対応)
+  model: ""                          # VOICEVOX, AquesTalk, SanoTTS-jp (modelは未対応)
   #model: "eleven_multilingual_v2"    # ElevenLabs
   #model: "tts-1"                     # OpenAI TTS
   #model: "melotts-ja-jp"             # ModuleLLM (日本語)  ※モデル指定なしの場合は英語
@@ -189,6 +191,7 @@ tts:
   #voice: "AZnzlk1XvdvUeBnXmlld"      # ElevenLabs
   #voice: "alloy"                     # OpenAI TTS
   #voice: ""                          # AquesTalk (voiceは未対応)
+  #voice: ""                          # SanoTTS-jp (voiceは未対応)
 
 stt:
   type: 0                            # 0:Google STT  1:OpenAI Whisper  2:ModuleLLM(ASR)
