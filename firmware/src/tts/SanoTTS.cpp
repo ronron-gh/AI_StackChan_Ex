@@ -2,8 +2,10 @@
 
 #include "SanoTTS.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <deque>
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 
@@ -26,12 +28,15 @@ constexpr size_t kMaxTextBytes = 1023;
 constexpr size_t kPcmSamples = SAAN_CHUNK * SAAN_HOP;
 constexpr size_t kPrerollSamples = 4 * kPcmSamples;
 constexpr size_t kRingBuffers = 3;
+constexpr size_t kLevelWindowSamples = 256;
 #if defined(SANOTTS_PLAYBACK_SAMPLE_RATE)
 constexpr uint32_t kPlaybackSampleRate = SANOTTS_PLAYBACK_SAMPLE_RATE;
 #else
 constexpr uint32_t kPlaybackSampleRate = SAAN_SR;
 #endif
 static_assert(kPlaybackSampleRate > 0, "SanoTTS playback sample rate must be greater than zero");
+constexpr int64_t kMaxSegmentPlaybackUs =
+    static_cast<int64_t>(SAAN_SR) * 30 * 1000000 / kPlaybackSampleRate;
 static_assert(kArenaBytes >= SAAN_KANJI_WORKBYTES, "SanoTTS arena is too small");
 
 saan_weights g_weights;
@@ -122,57 +127,135 @@ bool openDictionary() {
 }
 
 #if defined(SANOTTS_BUFFERED_PLAYBACK)
-class BufferedOutput {
-public:
-    ~BufferedOutput() {
-        if (started_ && !finished_ && M5.Speaker.isRunning()) M5.Speaker.end();
-        if (storage_) heap_caps_free(storage_);
+struct BufferedSegment {
+    ~BufferedSegment() { reset(); }
+
+    void reset() {
+        if (pcm) heap_caps_free(pcm);
+        if (envelope) heap_caps_free(envelope);
+        pcm = nullptr;
+        envelope = nullptr;
+        samples = 0;
+        envelopeCount = 0;
+        maxPullUs = 0;
     }
 
     bool allocate(size_t expected) {
-        storage_ = static_cast<int16_t *>(heap_caps_malloc(
+        reset();
+        pcm = static_cast<int16_t *>(heap_caps_malloc(
             expected * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
-        if (!storage_) Serial.printf("SanoTTS: cannot allocate %u-byte PCM buffer in PSRAM\n",
-                                     static_cast<unsigned>(expected * sizeof(int16_t)));
-        return storage_ != nullptr;
+        envelopeCount = (expected + kLevelWindowSamples - 1) / kLevelWindowSamples;
+        envelope = static_cast<uint16_t *>(heap_caps_calloc(
+            envelopeCount, sizeof(uint16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT));
+        if (pcm && envelope) return true;
+        Serial.printf("SanoTTS: cannot allocate buffered segment PCM=%u envelope=%u bytes\n",
+                      static_cast<unsigned>(expected * sizeof(int16_t)),
+                      static_cast<unsigned>(envelopeCount * sizeof(uint16_t)));
+        reset();
+        return false;
     }
 
-    int16_t *destination(size_t count) { return storage_ + filled_; }
-
-    bool submit(size_t count) {
-        filled_ += count;
-        return true;
-    }
-
-    bool finish(size_t expected) {
-        if (filled_ != expected || !M5.Speaker.isRunning()) return false;
-        Serial.printf("SanoTTS: buffered PCM=%u bytes\n",
-                      static_cast<unsigned>(expected * sizeof(int16_t)));
-        if (!M5.Speaker.playRaw(storage_, expected, kPlaybackSampleRate, false, 1, 0, false)) return false;
-        started_ = true;
-        const int64_t timeout = esp_timer_get_time() +
-                                static_cast<int64_t>(expected) * 1000000 / kPlaybackSampleRate + 5000000;
-        while (M5.Speaker.isPlaying(0)) {
-            if (esp_timer_get_time() > timeout) return false;
-            vTaskDelay(pdMS_TO_TICKS(10));
-        }
-        const auto cfg = M5.Speaker.config();
-        const uint32_t drain =
-            (cfg.dma_buf_len * cfg.dma_buf_count * 1000 + kPlaybackSampleRate - 1) /
-                kPlaybackSampleRate +
-            20;
-        vTaskDelay(pdMS_TO_TICKS(drain));
-        finished_ = true;
-        return true;
-    }
-
-    uint32_t queueEmptyEvents() const { return 0; }
-
-private:
-    int16_t *storage_ = nullptr;
-    size_t filled_ = 0;
-    bool started_ = false, finished_ = false;
+    int16_t *pcm = nullptr;
+    uint16_t *envelope = nullptr;
+    size_t samples = 0;
+    size_t envelopeCount = 0;
+    int64_t maxPullUs = 0;
 };
+
+enum class PrepareStatus { Ready, Split, NoMemory, Error };
+
+PrepareStatus prepareBufferedSegment(const String& text, BufferedSegment& output,
+                                     String& first, String& second) {
+    int32_t ids[kMaxIds];
+    int32_t count = 0;
+    int tokens = 0;
+    const saan_kanji_status parsed = saan_kanji_to_ids(
+        &g_dictionary, text.c_str(), text.length(), g_arenaMemory, kArenaBytes,
+        ids, kMaxIds, &count, &tokens);
+    if (parsed != SAAN_KANJI_OK || count <= 0) {
+        if (parsed == SAAN_KANJI_ERR_TOO_LONG || parsed == SAAN_KANJI_ERR_IDS) {
+            const size_t split = retrySplitPoint(text);
+            if (split > 0 && split < text.length()) {
+                first = text.substring(0, split);
+                second = text.substring(split);
+                first.trim();
+                second.trim();
+                Serial.printf("SanoTTS: retry split at %u bytes (%s)\n",
+                              static_cast<unsigned>(split), saan_kanji_strerror(parsed));
+                return PrepareStatus::Split;
+            }
+        }
+        Serial.printf("SanoTTS: parse failed: %s\n", saan_kanji_strerror(parsed));
+        return PrepareStatus::Error;
+    }
+
+    saan_arena arena;
+    saan_stream stream = {};
+    saan_arena_init(&arena, g_arenaMemory, kArenaBytes);
+    saan_status status = saan_stream_init(&stream, &g_weights, &arena, ids, count, SAAN_S_V);
+    if (status != SAAN_OK || arena.failed ||
+        arena.used != saan_stream_arena_used(count) || stream.n_frames <= 0) {
+        return PrepareStatus::Error;
+    }
+    const uint64_t expectedWide = static_cast<uint64_t>(stream.n_frames) * SAAN_HOP;
+    if (expectedWide > static_cast<uint64_t>(SAAN_SR) * 30 ||
+        expectedWide > SIZE_MAX / sizeof(int16_t)) {
+        return PrepareStatus::Error;
+    }
+    const size_t expected = static_cast<size_t>(expectedWide);
+    if (!output.allocate(expected)) return PrepareStatus::NoMemory;
+
+    size_t samples = 0;
+    bool ended = false;
+    for (size_t i = 0; i <= (expected + kPcmSamples - 1) / kPcmSamples; ++i) {
+        int32_t frames = 0;
+        const int64_t pullStarted = esp_timer_get_time();
+        status = saan_stream_pull(&stream, g_pcm, &frames);
+        const int64_t pullUs = esp_timer_get_time() - pullStarted;
+        if (pullUs > output.maxPullUs) output.maxPullUs = pullUs;
+        if (status != SAAN_OK || arena.failed || frames < 0 || frames > SAAN_CHUNK) {
+            output.reset();
+            return PrepareStatus::Error;
+        }
+        if (frames == 0) {
+            ended = true;
+            break;
+        }
+        const size_t n = static_cast<size_t>(frames) * SAAN_HOP;
+        if (samples + n > expected) {
+            output.reset();
+            return PrepareStatus::Error;
+        }
+        for (size_t j = 0; j < n; ++j) {
+            if (!std::isfinite(g_pcm[j])) {
+                output.reset();
+                return PrepareStatus::Error;
+            }
+            const float scaled = g_pcm[j] * 32767.0f;
+            long v;
+            if (scaled > 32767.0f) v = 32767;
+            else if (scaled < -32768.0f) v = -32768;
+            else v = lrintf(scaled);
+            output.pcm[samples + j] = static_cast<int16_t>(v);
+            const uint16_t magnitude = static_cast<uint16_t>(
+                std::min(abs(static_cast<int>(output.pcm[samples + j])), 32767));
+            uint16_t& peak = output.envelope[(samples + j) / kLevelWindowSamples];
+            if (magnitude > peak) peak = magnitude;
+        }
+        samples += n;
+        vTaskDelay(1);
+    }
+    if (!ended || samples != expected) {
+        output.reset();
+        return PrepareStatus::Error;
+    }
+    output.samples = samples;
+    Serial.printf("SanoTTS: segment bytes=%u ids=%d PCM=%u bytes max_pull=%.2f ms\n",
+                  static_cast<unsigned>(text.length()), static_cast<int>(count),
+                  static_cast<unsigned>(samples * sizeof(int16_t)),
+                  output.maxPullUs / 1000.0);
+    return PrepareStatus::Ready;
+}
 #else
 class StreamingOutput {
 public:
@@ -263,7 +346,46 @@ SanoTTS::SanoTTS() {
 }
 
 bool SanoTTS::isReady() const { return ready_; }
-int SanoTTS::getLevel() { return level_; }
+int SanoTTS::getLevel() {
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+    const int64_t now = esp_timer_get_time();
+    int level = 0;
+    portENTER_CRITICAL(&levelMux_);
+    for (const auto& state : levelStates_) {
+        if (!state.envelope || now < state.startUs || now >= state.endUs) continue;
+        const uint64_t sample = static_cast<uint64_t>(now - state.startUs) *
+                                kPlaybackSampleRate / 1000000;
+        const size_t index = static_cast<size_t>(sample / kLevelWindowSamples);
+        if (index < state.count) level = state.envelope[index];
+        break;
+    }
+    portEXIT_CRITICAL(&levelMux_);
+    return level;
+#else
+    return level_;
+#endif
+}
+
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+void SanoTTS::setLevelState(size_t slot, const uint16_t *envelope, size_t count,
+                            int64_t startUs, int64_t endUs) {
+    portENTER_CRITICAL(&levelMux_);
+    levelStates_[slot].envelope = envelope;
+    levelStates_[slot].count = count;
+    levelStates_[slot].startUs = startUs;
+    levelStates_[slot].endUs = endUs;
+    portEXIT_CRITICAL(&levelMux_);
+}
+
+void SanoTTS::clearLevelState(size_t slot) {
+    portENTER_CRITICAL(&levelMux_);
+    levelStates_[slot].envelope = nullptr;
+    levelStates_[slot].count = 0;
+    levelStates_[slot].startUs = 0;
+    levelStates_[slot].endUs = 0;
+    portEXIT_CRITICAL(&levelMux_);
+}
+#endif
 
 void SanoTTS::stream(String text) {
     if (!worker_ || text.length() == 0) return;
@@ -321,6 +443,109 @@ bool SanoTTS::speak(const String& text) {
     //cfg.dma_buf_count = 8;
     M5.Speaker.config(cfg);
     bool ok = M5.Speaker.begin() && M5.Speaker.isEnabled();
+#if defined(SANOTTS_BUFFERED_PLAYBACK)
+    std::deque<String> pending;
+    size_t start = 0;
+    while (ok && start < text.length()) {
+        const size_t end = nextSegmentEnd(text, start, kMaxTextBytes);
+        if (end <= start) {
+            Serial.println("SanoTTS: invalid UTF-8 input");
+            ok = false;
+            break;
+        }
+        String segment = text.substring(start, end);
+        segment.trim();
+        if (segment.length()) pending.push_back(segment);
+        start = end;
+    }
+
+    BufferedSegment slots[2];
+    bool queued[2] = {false, false};
+    size_t slot = 0;
+    int64_t nextPlaybackStartUs = 0;
+    const auto waitForQueueBelow = [&](size_t limit, int64_t timeoutUs) {
+        while (M5.Speaker.isPlaying(0) >= limit) {
+            if (esp_timer_get_time() > timeoutUs) return false;
+            vTaskDelay(pdMS_TO_TICKS(2));
+        }
+        return true;
+    };
+    const auto releaseSlot = [&](size_t index) {
+        clearLevelState(index);
+        slots[index].reset();
+        queued[index] = false;
+    };
+
+    while (ok && !pending.empty()) {
+        if (queued[slot]) {
+            ok = waitForQueueBelow(2, esp_timer_get_time() + kMaxSegmentPlaybackUs + 5000000);
+            if (!ok) break;
+            releaseSlot(slot);
+        }
+
+        String first, second;
+        PrepareStatus prepared = prepareBufferedSegment(pending.front(), slots[slot], first, second);
+        if (prepared == PrepareStatus::Split) {
+            pending.pop_front();
+            if (second.length()) pending.push_front(second);
+            if (first.length()) pending.push_front(first);
+            continue;
+        }
+        if (prepared == PrepareStatus::NoMemory && M5.Speaker.isPlaying(0)) {
+            Serial.println("SanoTTS: waiting for playback to release PSRAM before retry");
+            ok = waitForQueueBelow(1, esp_timer_get_time() +
+                                   2 * kMaxSegmentPlaybackUs + 5000000);
+            if (!ok) break;
+            for (size_t i = 0; i < 2; ++i) {
+                if (queued[i]) releaseSlot(i);
+            }
+            nextPlaybackStartUs = 0;
+            prepared = prepareBufferedSegment(pending.front(), slots[slot], first, second);
+        }
+        if (prepared != PrepareStatus::Ready) {
+            ok = false;
+            break;
+        }
+        pending.pop_front();
+
+        ok = waitForQueueBelow(2, esp_timer_get_time() + kMaxSegmentPlaybackUs + 5000000);
+        if (!ok || !M5.Speaker.isRunning() ||
+            !M5.Speaker.playRaw(slots[slot].pcm, slots[slot].samples,
+                                kPlaybackSampleRate, false, 1, 0, false)) {
+            ok = false;
+            break;
+        }
+        const int64_t now = esp_timer_get_time();
+        const int64_t previousEndUs = nextPlaybackStartUs;
+        const int64_t playbackStartUs = std::max(now, nextPlaybackStartUs);
+        const int64_t playbackEndUs = playbackStartUs +
+            static_cast<int64_t>(slots[slot].samples) * 1000000 / kPlaybackSampleRate;
+        setLevelState(slot, slots[slot].envelope, slots[slot].envelopeCount,
+                      playbackStartUs, playbackEndUs);
+        queued[slot] = true;
+        nextPlaybackStartUs = playbackEndUs;
+        const int64_t queuedAheadUs = std::max<int64_t>(0, previousEndUs - now);
+        const int64_t lateUs = previousEndUs ? std::max<int64_t>(0, now - previousEndUs) : 0;
+        Serial.printf("SanoTTS: queued slot=%u samples=%u ahead=%.2f ms late=%.2f ms\n",
+                      static_cast<unsigned>(slot), static_cast<unsigned>(slots[slot].samples),
+                      queuedAheadUs / 1000.0, lateUs / 1000.0);
+        slot ^= 1;
+    }
+
+    if (ok) {
+        const int64_t timeout = std::max(esp_timer_get_time(), nextPlaybackStartUs) + 5000000;
+        ok = waitForQueueBelow(1, timeout);
+        if (ok) {
+            const auto speakerCfg = M5.Speaker.config();
+            const uint32_t drain =
+                (speakerCfg.dma_buf_len * speakerCfg.dma_buf_count * 1000 +
+                 kPlaybackSampleRate - 1) / kPlaybackSampleRate + 20;
+            vTaskDelay(pdMS_TO_TICKS(drain));
+        }
+    }
+    if (!ok && M5.Speaker.isRunning()) M5.Speaker.end();
+    for (size_t i = 0; i < 2; ++i) releaseSlot(i);
+#else
     size_t start = 0;
     while (ok && start < text.length()) {
         const size_t end = nextSegmentEnd(text, start, kMaxTextBytes);
@@ -334,6 +559,7 @@ bool SanoTTS::speak(const String& text) {
         if (segment.length()) ok = speakSegment(segment);
         start = end;
     }
+#endif
     if (M5.Speaker.isRunning()) M5.Speaker.end();
     M5.Speaker.config(previousSpeakerConfig);
     if (speakerWasRunning && !M5.Speaker.begin()) {
@@ -344,6 +570,7 @@ bool SanoTTS::speak(const String& text) {
     return ok;
 }
 
+#if !defined(SANOTTS_BUFFERED_PLAYBACK)
 bool SanoTTS::speakSegment(const String& text) {
     int32_t ids[kMaxIds];
     int32_t count = 0;
@@ -384,11 +611,7 @@ bool SanoTTS::inferAndPlay(const int32_t *ids, int32_t count) {
     if (expectedWide > static_cast<uint64_t>(SAAN_SR) * 30 ||
         expectedWide > SIZE_MAX / sizeof(int16_t)) return false;
     const size_t expected = static_cast<size_t>(expectedWide);
-#if defined(SANOTTS_BUFFERED_PLAYBACK)
-    BufferedOutput output;
-#else
     StreamingOutput output;
-#endif
     if (!output.allocate(expected)) return false;
     size_t samples = 0;
     int64_t maxPullUs = 0;
@@ -423,14 +646,10 @@ bool SanoTTS::inferAndPlay(const int32_t *ids, int32_t count) {
         vTaskDelay(1);
     }
     const bool complete = ended && samples == expected && output.finish(expected);
-#if defined(SANOTTS_BUFFERED_PLAYBACK)
-    Serial.printf("SanoTTS: max_pull=%.2f ms buffered=%u samples\n",
-                  maxPullUs / 1000.0, static_cast<unsigned>(samples));
-#else
     Serial.printf("SanoTTS: max_pull=%.2f ms queue_empty_events=%u\n",
                   maxPullUs / 1000.0, output.queueEmptyEvents());
-#endif
     return complete;
 }
+#endif
 
 #endif
