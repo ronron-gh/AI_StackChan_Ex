@@ -24,9 +24,6 @@ def require_file(path, expected_hash):
         )
 
 
-if env.subst("$BOARD") != "esp32s3box":
-    raise RuntimeError("SanoTTS is currently supported only on M5Stack CoreS3 (esp32s3box)")
-
 core = ROOT / "lib" / "saanotts_core"
 required_core_files = [
     core / "library.json",
