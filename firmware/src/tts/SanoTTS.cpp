@@ -127,6 +127,9 @@ bool openDictionary() {
 }
 
 #if defined(SANOTTS_BUFFERED_PLAYBACK)
+// One slot owns the complete PCM for one text segment. M5Unified plays the
+// PCM asynchronously, so the slot must stay alive until that queued playback
+// has finished. The envelope follows the same lifetime for lip sync.
 struct BufferedSegment {
     ~BufferedSegment() { reset(); }
 
@@ -164,6 +167,9 @@ struct BufferedSegment {
 
 enum class PrepareStatus { Ready, Split, NoMemory, Error };
 
+// Parse and synthesize one complete segment into output. This function does
+// not play audio; after it returns, the worker can hand the resulting PCM to
+// M5Unified and use the other slot to prepare the following segment.
 PrepareStatus prepareBufferedSegment(const String& text, BufferedSegment& output,
                                      String& first, String& second) {
     int32_t ids[kMaxIds];
@@ -459,7 +465,12 @@ bool SanoTTS::speak(const String& text) {
         start = end;
     }
 
+    // M5Unified consumes one slot in its speaker task while this SanoTTS
+    // worker fills the other slot with the next segment. Synthesis itself is
+    // still serial and continues to use the single shared inference arena.
     BufferedSegment slots[2];
+    // queued[i] means that the speaker queue may still reference slots[i].
+    // Such a slot must not be freed or overwritten yet.
     bool queued[2] = {false, false};
     size_t slot = 0;
     int64_t nextPlaybackStartUs = 0;
@@ -478,12 +489,17 @@ bool SanoTTS::speak(const String& text) {
 
     while (ok && !pending.empty()) {
         if (queued[slot]) {
+            // Both slots have been used. Wait until the older queued segment
+            // is no longer needed, then recycle its storage for new PCM.
             ok = waitForQueueBelow(2, esp_timer_get_time() + kMaxSegmentPlaybackUs + 5000000);
             if (!ok) break;
             releaseSlot(slot);
         }
 
         String first, second;
+        // After the first playRaw() call, this runs while the speaker task is
+        // playing the preceding slot. This is the look-ahead generation that
+        // hides most of the synthesis delay between text segments.
         PrepareStatus prepared = prepareBufferedSegment(pending.front(), slots[slot], first, second);
         if (prepared == PrepareStatus::Split) {
             pending.pop_front();
@@ -492,6 +508,9 @@ bool SanoTTS::speak(const String& text) {
             continue;
         }
         if (prepared == PrepareStatus::NoMemory && M5.Speaker.isPlaying(0)) {
+            // Two buffered segments did not fit in PSRAM. Finish playback and
+            // release its PCM before retrying, which falls back to serial
+            // generate-then-play operation instead of aborting the utterance.
             Serial.println("SanoTTS: waiting for playback to release PSRAM before retry");
             ok = waitForQueueBelow(1, esp_timer_get_time() +
                                    2 * kMaxSegmentPlaybackUs + 5000000);
@@ -508,6 +527,10 @@ bool SanoTTS::speak(const String& text) {
         }
         pending.pop_front();
 
+        // stop_current=false queues this PCM for asynchronous playback. Once
+        // queued, control returns to this worker immediately; switching slot
+        // below lets the next loop synthesize the following segment in
+        // parallel with audio playback by M5Unified's speaker task.
         ok = waitForQueueBelow(2, esp_timer_get_time() + kMaxSegmentPlaybackUs + 5000000);
         if (!ok || !M5.Speaker.isRunning() ||
             !M5.Speaker.playRaw(slots[slot].pcm, slots[slot].samples,
@@ -533,6 +556,9 @@ bool SanoTTS::speak(const String& text) {
     }
 
     if (ok) {
+        // Generation is complete, but playRaw() is asynchronous. Keep the
+        // buffers and speaker alive until the final queued segment and the DMA
+        // tail have both finished.
         const int64_t timeout = std::max(esp_timer_get_time(), nextPlaybackStartUs) + 5000000;
         ok = waitForQueueBelow(1, timeout);
         if (ok) {
