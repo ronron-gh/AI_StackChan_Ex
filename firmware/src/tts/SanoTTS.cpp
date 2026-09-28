@@ -442,11 +442,6 @@ bool SanoTTS::speak(const String& text) {
     auto cfg = M5.Speaker.config();
     cfg.sample_rate = SAAN_SR;
     cfg.stereo = false;
-    // Keep about 186 ms of audio in DMA while retaining the application's
-    // original task priority and core assignment.
-    //cfg.task_priority = 4;
-    //cfg.dma_buf_len = 256;
-    //cfg.dma_buf_count = 8;
     M5.Speaker.config(cfg);
     bool ok = M5.Speaker.begin() && M5.Speaker.isEnabled();
 #if defined(SANOTTS_BUFFERED_PLAYBACK)

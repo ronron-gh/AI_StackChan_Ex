@@ -78,8 +78,9 @@ pio run -e m5stack-cores3-sanotts -t upload
 pio device monitor -e m5stack-cores3-sanotts -b 115200
 ```
 
-ビルド時にモデルと辞書が検査され、ファームウェアへ埋め込まれます。モデルや辞書をSDカードへコピーする必要はありません。
-
+> Note:  
+> - ビルド時にモデルと辞書が検査され、ファームウェアへ埋め込まれます。モデルや辞書をSDカードへコピーする必要はありません。  
+> - Realtime APIとSanoTTS-jpを組み合わせることも可能です。その場合は環境`m5stack-cores3-realtime-sanotts`を選択してください。Realtime APIについては[こちら](realtime_api.md)を参照ください。
 ## 再生方式と話速の変更
 
 標準の`m5stack-cores3-sanotts`環境では、句読点、改行、入力上限で分けた区間ごとに音声を生成し、PCMをPSRAMへ蓄積してから再生します。再生中に次の区間を生成するため、区間間の待ち時間を抑えながら音切れを防ぎます。
