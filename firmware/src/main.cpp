@@ -510,7 +510,13 @@ void init_mic_spk()
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
     /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
+#if defined(USE_SANOTTS)
+    // Keep the speaker at SanoTTS-jp's native rate so speak() does not need
+    // to reconfigure the audio device immediately before playback.
+    spk_cfg.sample_rate = 22050;
+#else
     spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+#endif
     spk_cfg.task_pinned_core = APP_CPU_NUM;
 
 #if defined(USE_AUDIO_MODULE)

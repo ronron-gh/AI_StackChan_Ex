@@ -436,13 +436,8 @@ bool SanoTTS::initialize() {
 bool SanoTTS::speak(const String& text) {
     const bool micWasRunning = M5.Mic.isRunning();
     const bool speakerWasRunning = M5.Speaker.isRunning();
-    const auto previousSpeakerConfig = M5.Speaker.config();
     if (micWasRunning) M5.Mic.end();
     if (speakerWasRunning) M5.Speaker.end();
-    auto cfg = M5.Speaker.config();
-    cfg.sample_rate = SAAN_SR;
-    cfg.stereo = false;
-    M5.Speaker.config(cfg);
     bool ok = M5.Speaker.begin() && M5.Speaker.isEnabled();
 #if defined(SANOTTS_BUFFERED_PLAYBACK)
     std::deque<String> pending;
@@ -582,7 +577,6 @@ bool SanoTTS::speak(const String& text) {
     }
 #endif
     if (M5.Speaker.isRunning()) M5.Speaker.end();
-    M5.Speaker.config(previousSpeakerConfig);
     if (speakerWasRunning && !M5.Speaker.begin()) {
         Serial.println("SanoTTS: failed to restore speaker");
     }
