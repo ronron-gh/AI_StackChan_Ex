@@ -510,7 +510,13 @@ void init_mic_spk()
   { /// custom setting
     auto spk_cfg = M5.Speaker.config();
     /// Increasing the sample_rate will improve the sound quality instead of increasing the CPU load.
+#if defined(USE_SANOTTS)
+    // Keep the speaker at SanoTTS-jp's native rate so speak() does not need
+    // to reconfigure the audio device immediately before playback.
+    spk_cfg.sample_rate = 22050;
+#else
     spk_cfg.sample_rate = 64000; // default:64000 (64kHz)  e.g. 48000 , 50000 , 80000 , 96000 , 100000 , 128000 , 144000 , 192000 , 200000
+#endif
     spk_cfg.task_pinned_core = APP_CPU_NUM;
 
 #if defined(USE_AUDIO_MODULE)
@@ -540,6 +546,9 @@ void setup()
   M5.begin(cfg);
 
   ///// Debug /////
+  //ヒープメモリ残量確認(デバッグ用)
+  check_heap_free_size();
+  check_heap_largest_free_block();
 #if 0
   check_board();
   Wire.begin(); 
@@ -571,6 +580,10 @@ void setup()
   //Serial.printf("Brightness: %d\n", brightness);
 
   init_mic_spk();
+
+  //ヒープメモリ残量確認(デバッグ用)
+  //Serial.println("Heap check: After mic and speaker initialization");
+  //check_heap_largest_free_block();
 
   /// settings
   if(!SPIFFS.begin(true)){
@@ -629,6 +642,10 @@ void setup()
     }
   }
 
+  //ヒープメモリ残量確認(デバッグ用)
+  //Serial.println("Heap check: After Wi-Fi initialization");
+  //check_heap_largest_free_block();
+
   if(!isOffline){
     Serial.println(WiFi.localIP());
     M5.Lcd.println(WiFi.localIP());
@@ -637,10 +654,19 @@ void setup()
     //Webサーバ設定
     init_web_server();
     isWebServerEnabled = true;
+
+    //ヒープメモリ残量確認(デバッグ用)
+    //Serial.println("Heap check: After Web server initialization");
+    //check_heap_largest_free_block();
+
     //FTPサーバ設定（SPIFFS用）
     ftpSrv.begin("stackchan","stackchan");    //username, password for ftp.  set ports in ESP8266FtpServer.h  (default 21, 50009 for PASV)
     Serial.println("FTP server started");
     M5.Lcd.println("FTP server started");
+
+    //ヒープメモリ残量確認(デバッグ用)
+    //Serial.println("Heap check: After FTP server initialization");
+    //check_heap_largest_free_block();
 
     //時刻同期
     time_sync(NTPSRV, GMT_OFFSET, DAYLIGHT_OFFSET);

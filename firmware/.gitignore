@@ -1,4 +1,7 @@
 .pio
 .vscode
 lib/aquestalk/
+lib/saanotts_core/
+model/
+scripts/
 data/
