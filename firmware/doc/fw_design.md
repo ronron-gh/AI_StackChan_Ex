@@ -27,6 +27,9 @@ Notes on FW design, etc.
 | battery_check | Battery level check | 2048 | 1 |
 | asyncTtsStreamTask | TTS streaming play | 5 * 1024 | 2 |
 | webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 3 |
+| SanoTTS | SanoTTS parsing, inference, and playback | 16 * 1024 | 2 |
+
+SanoTTS は同期 `stream()` の要求を専用ワーカーで直列処理する。CoreS3 の SanoTTS 環境では `SANOTTS_BUFFERED_PLAYBACK` により、句読点などで分割した各区間の PCM を PSRAM に全量確保・合成してから再生する。M5Unified が現在区間を再生している間に同じワーカーが次区間を合成し、2個のPCMバッファを交互に再利用する。1区間は最大30秒で約1.26 MiB、先行生成時は最大約2.52 MiBのPCMに加え、176 KiBの解析・推論 arenaを使う。次区間用バッファを確保できない場合は現在区間の再生後に直列生成で再試行する。リップシンク用レベルはPCMから作った音量エンベロープを再生時刻で参照する。フラグを外すと先読みと循環バッファによる逐次再生になる。いずれも再生終了後にマイクとスピーカーの元の状態を復元する。切り替え方法は[doc/sanotts.md](sanotts.md) を参照。
 
 ## Mod
 ### ESP-NOW Remote Control Mod

@@ -122,12 +122,13 @@ Function Callingと、Function Callingを応用して実装したMCPも使用可
 ## TTSとの組み合わせ (OpenAI Realtimeのみ)
 VOICEVOX等（※）のTTSを組み合わせることで、お好みの声に変更することができます（ただし、応答の遅延は若干増えます）。
 
-> ※動作確認はVOICEVOXとAquesTalkで行っています。デバイス毎の対応状況は次の通りです（SRAM容量などによる制約）
-> |デバイス|VOICEVOX|AquesTalk|
-> |---|---|---|
-> |Core2|×|〇|
-> |CoreS3|〇|〇|
-> |AtomS3R|×|×| 
+動作確認はVOICEVOX/AquesTalk/SanoTTS-jpで行っています。デバイス毎の対応状況は次の表の通りです（SRAM容量などによる制約）。
+
+|デバイス|VOICEVOX|AquesTalk|SanoTTS-jp|
+|---|---|---|---|
+|Core2|×|〇|×|
+|CoreS3|〇|〇|〇|
+|AtomS3R|×|×|対応検討中| 
 
 > Note:  
 > 技術的には、Realtime APIの出力をストリーミングのテキストのみに設定し、「。」、「？」、「！」の区切り文字を受信したタイミングでTTSに渡しています。TTSで発話しながら次の区切り文字までのテキストを受信することで、次のテキストの発話までの遅延を抑えています。
@@ -142,21 +143,23 @@ build_flags =
 	-DREALTIME_API_WITH_TTS
 ```
 
-SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で使用したいTTSを設定。
-> 動作確認はVOICEVOXとAquesTalkで行っています。AquelTalkを使用する場合は別途[こちら](./tts_aquestalk.md)に記載しているセットアップも必要です。
+SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で使用したいTTSを設定。(現状、Web UIでのTTS設定は対応していません。)
+
+> - AquelTalkを使用する場合は別途[こちら](./tts_aquestalk.md)に記載している設定も必要です。
+> - SanoTTS-jpを使用する場合は別途[こちら](./tts_sanotts.md)に記載している設定も必要です。
 
 ```yaml
 tts:
-  type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM
+  type: 0                            # 0:VOICEVOX  1:ElevenLabs  2:OpenAI TTS  3:AquesTalk 4:ModuleLLM 5:SanoTTS-jp
 
-  model: ""                          # VOICEVOX, AquesTalk (modelは未対応)
-  #model: "eleven_multilingual_v2"    # ElevenLabs
-  #model: "tts-1"                     # OpenAI TTS
-  #model: "melotts-ja-jp"             # ModuleLLM (日本語)  ※モデル指定なしの場合は英語
+  model: ""                          # VOICEVOX/AquesTalk/SanoTTS-jp (modelは未対応)
+  #model: "eleven_multilingual_v2"   # ElevenLabs
+  #model: "tts-1"                    # OpenAI TTS
+  #model: "melotts-ja-jp"            # ModuleLLM (日本語)  ※モデル指定なしの場合は英語
 
   voice: "3"                         # VOICEVOX (ずんだもん)
-  #voice: "AZnzlk1XvdvUeBnXmlld"      # ElevenLabs
-  #voice: "alloy"                     # OpenAI TTS
-  #voice: ""                          # AquesTalk (voiceは未対応)
+  #voice: "AZnzlk1XvdvUeBnXmlld"     # ElevenLabs
+  #voice: "alloy"                    # OpenAI TTS
+  #voice: ""                         # AquesTalk/SanoTTS-jp (voiceは未対応)
 
 ```
