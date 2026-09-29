@@ -81,22 +81,21 @@ pio device monitor -e m5stack-cores3-sanotts -b 115200
 > Note:  
 > - ビルド時にモデルと辞書が検査され、ファームウェアへ埋め込まれます。モデルや辞書をSDカードへコピーする必要はありません。  
 > - Realtime APIとSanoTTS-jpを組み合わせることも可能です。その場合は環境`m5stack-cores3-realtime-sanotts`を選択してください。Realtime APIについては[こちら](realtime_api.md)を参照ください。
-## 再生方式と話速の変更
 
-標準の`m5stack-cores3-sanotts`環境では、句読点、改行、入力上限で分けた区間ごとに音声を生成し、PCMをPSRAMへ蓄積してから再生します。再生中に次の区間を生成するため、区間間の待ち時間を抑えながら音切れを防ぎます。
+## 再生方式について
 
-再生方式と話速は、`firmware/platformio.ini`の`[sanotts-cores3]`で設定します。
+標準の`m5stack-cores3-sanotts`環境では、句読点、改行、入力上限で分けた区間ごとに音声を生成し、PCMをPSRAMへ蓄積してから再生します。再生中に次の区間を生成するため、区間間の待ち時間を抑えられます。
+
+再生方式は、`firmware/platformio.ini`の`[sanotts-cores3]`で設定します。
 
 ```ini
 [sanotts-cores3]
 build_flags =
     -DUSE_SANOTTS
     -DSANOTTS_BUFFERED_PLAYBACK
-    -DSANOTTS_PLAYBACK_SAMPLE_RATE=20000
 ```
 
-- `SANOTTS_BUFFERED_PLAYBACK`を外すと、循環バッファを使うストリーミング再生に切り替わります。CoreS3では推論用メモリがPSRAMに置かれるため、処理が再生に間に合わず音切れする場合があります。
-- `SANOTTS_PLAYBACK_SAMPLE_RATE`は再生速度を指定します。標準値の20,000 Hzでは、生成時の22,050 Hzより話速と声の高さが約9%下がります。指定を外すと22,050 Hzで再生します。
+`SANOTTS_BUFFERED_PLAYBACK`を外すと、循環バッファを使うストリーミング再生に切り替わります。CoreS3では推論用メモリがPSRAMに置かれるため、処理が再生に間に合わず音切れする場合があります。
 
 設定を変更した場合は、ファームウェアを再ビルドして書き込んでください。
 

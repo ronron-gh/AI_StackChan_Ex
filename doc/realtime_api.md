@@ -143,7 +143,7 @@ build_flags =
 	-DREALTIME_API_WITH_TTS
 ```
 
-SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で使用したいTTSを設定。(現状、Web UIでのTTS設定は対応していません。)
+SDカードの/app/AiStackChanEx/SC_ExConfig.yaml で使用したいTTSを設定(現状、Web UIでのTTS設定は対応していません)。
 
 > - AquelTalkを使用する場合は別途[こちら](./tts_aquestalk.md)に記載している設定も必要です。
 > - SanoTTS-jpを使用する場合は別途[こちら](./tts_sanotts.md)に記載している設定も必要です。

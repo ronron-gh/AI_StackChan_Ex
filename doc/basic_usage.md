@@ -26,7 +26,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |OpenAI ChatGPT|×|〇|〇|・別途APIキーを取得していただく必要があります<br>・Function Callingに対応[(詳細ページ)](function_calling.md)<br>・MCPに対応[(詳細ページ)](mcp.md)<br>・CoreS3のカメラ画像を入力可能[(詳細ページ)](gpt4o_cores3camera.md)|
 |ModuleLLM|〇|〇|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください |
 |ModuleLLM (Function Calling対応)|〇|×|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)及び、同ページの付録Bをご確認ください |
-|🆕OpenAI互換API|-|-|-| [OpenAI互換エンドポイントの利用方法](custom_endpoint.md)をご確認ください |
+|OpenAI互換API|-|-|-| [OpenAI互換エンドポイントの利用方法](custom_endpoint.md)をご確認ください |
 
 ### 1.2. Speech to Text (STT)
 
@@ -45,7 +45,7 @@ robo8080さんの[AIｽﾀｯｸﾁｬﾝ](https://github.com/robo8080/AI_StackC
 |ElevenLabs|×|〇|〇|別途APIキーを取得していただく必要があります|
 |OpenAI TTS|×|〇|〇|別途APIキーを取得していただく必要があります(OpenAI ChatGPTと共通のAPIキーを使用できます)|
 |AquesTalk|〇|〇|×|別途ライブラリと辞書データのダウンロードが必要[(詳細ページ)](tts_aquestalk.md)|
-|SanoTTS-jp|〇|〇|×|CoreS3のみ対応。別途ライブラリ、モデル、辞書データの準備が必要[(詳細ページ)](tts_sanotts.md)|
+|🆕SanoTTS-jp|〇|〇|×|CoreS3のみ対応。別途ライブラリ、モデル、辞書データの準備が必要[(詳細ページ)](tts_sanotts.md)|
 |ModuleLLM TTS|〇|〇|〇| [ModuleLLMを使用する際の設定方法](module_llm.md)をご確認ください（日本語化する場合は同ページの付録Cもご確認ください） |
 
 ### 1.4. Wake Word
