@@ -13,6 +13,7 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/RealtimeChatGPT.h"
+#include "llm/ChatGPT/GPTLive.h"
 #include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
@@ -181,7 +182,8 @@ void Robot::initRtLLM(StackchanExConfig& config){
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
-    llm = new RealtimeChatGPT(llm_param);
+    //llm = new RealtimeChatGPT(llm_param);
+    llm = new GPTLive(llm_param);
     break;
   case LLM_TYPE_GEMINI:
     llm = new GeminiLive(llm_param);
