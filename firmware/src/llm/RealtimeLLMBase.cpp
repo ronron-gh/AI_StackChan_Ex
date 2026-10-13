@@ -39,7 +39,7 @@ void webSocketLoopTask(void *arg) {
 }
 
 
-RealtimeLLMBase::RealtimeLLMBase(llm_param_t param) : 
+RealtimeLLMBase::RealtimeLLMBase(llm_param_t param, bool allocateAudioBuffers) :
     LLMBase(param, 0),
     msgDoc(0),
     rtRecSamplerate(RT_REC_SAMPLE_RATE),
@@ -47,6 +47,7 @@ RealtimeLLMBase::RealtimeLLMBase(llm_param_t param) :
     realtime_recording(false),
     response_done(false),
     startTime(0),
+    audioBuf{nullptr, nullptr},
     nextBufIdx(0),
     outputText(String(""))
 {
@@ -60,8 +61,10 @@ RealtimeLLMBase::RealtimeLLMBase(llm_param_t param) :
 #ifndef REALTIME_API_WITH_TTS
   // ストリーミング音声再生用のダブルバッファを初期化
   for(int i=0; i<2; i++){
-    audioBuf[i] = (uint8_t*)malloc(100 * 1024);
-    memset(audioBuf[i], 0, 100 * 1024);
+    if(allocateAudioBuffers){
+      audioBuf[i] = (uint8_t*)malloc(100 * 1024);
+      if(audioBuf[i]) memset(audioBuf[i], 0, 100 * 1024);
+    }
   }
 #endif
 
@@ -70,7 +73,11 @@ RealtimeLLMBase::RealtimeLLMBase(llm_param_t param) :
 void RealtimeLLMBase::webSocketProcess()
 {
     webSocket.loop();
+    processRealtimeInput();
+}
 
+void RealtimeLLMBase::processRealtimeInput()
+{
 #ifdef REALTIME_API_WITH_TTS
     if(response_done && !speaking){
         startRealtimeRecord();
@@ -127,7 +134,7 @@ void RealtimeLLMBase::webSocketProcess()
 
 int RealtimeLLMBase::getAudioLevel()
 {
-    return abs(*audioBuf[nextBufIdx ^ 1]) * 50;
+    return audioBuf[nextBufIdx ^ 1] ? abs(*audioBuf[nextBufIdx ^ 1]) * 50 : 0;
 }
 
 void RealtimeLLMBase::startRealtimeRecord()

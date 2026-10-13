@@ -4,6 +4,7 @@ Notes on FW design, etc.
 - [Task](#task)
 - [Mod](#mod)
   - [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
+  - [GPTLive Audio Playback](#gptlive-audio-playback)
 - [Function Calling](#function-calling)
   - [Avatar Expression](#avatar-expression)
 - [Wi-Fi config portal](#wi-fi-config-portal)
@@ -31,6 +32,8 @@ Notes on FW design, etc.
 
 SanoTTS は同期 `stream()` の要求を専用ワーカーで直列処理する。CoreS3 の SanoTTS 環境では `SANOTTS_BUFFERED_PLAYBACK` により、句読点などで分割した各区間の PCM を PSRAM に全量確保・合成してから再生する。M5Unified が現在区間を再生している間に同じワーカーが次区間を合成し、2個のPCMバッファを交互に再利用する。1区間は最大30秒で約1.26 MiB、先行生成時は最大約2.52 MiBのPCMに加え、176 KiBの解析・推論 arenaを使う。次区間用バッファを確保できない場合は現在区間の再生後に直列生成で再試行する。リップシンク用レベルはPCMから作った音量エンベロープを再生時刻で参照する。フラグを外すと先読みと循環バッファによる逐次再生になる。いずれも再生終了後にマイクとスピーカーの元の状態を復元する。切り替え方法は[doc/sanotts.md](sanotts.md) を参照。
 
+GPTLive の音声出力は追加タスクを作らず、既存の webSocketLoopTask で受信・蓄積・再生要求を処理する。音声 mutex は同じタスクが取得・解放し、再生中は保持する。モード停止要求は atomic フラグで通知し、同タスクが音声の後始末を完了したことを通知してから suspend する。
+
 ## Mod
 ### ESP-NOW Remote Control Mod
 
@@ -45,6 +48,20 @@ SanoTTS は同期 `stream()` の要求を専用ワーカーで直列処理する
 - laser にはまだ反映しない。
 - ESP-NOW Mod 実行中は Wi-Fi channel 変更により Web/FTP/Realtime API と干渉する可能性がある。
 - ESP-NOW Mod 離脱時は ESP-NOW を停止し、offline mode でなければ Wi-Fi STA の再接続を最大 5 秒待つ。
+
+### GPTLive Audio Playback
+
+対象は GPTLive を使う REALTIME_API ビルドのうち、REALTIME_API_WITH_TTS が未定義の構成。CoreS3 + M5Unified の I2S 制約に合わせて、マイクとスピーカーを半二重で切り替える。既存の RealtimeChatGPT、GeminiLive、TTS 経由の再生処理は維持する。
+
+- session.output_audio.delta の Base64 を PCM16 / モノラル / 24 kHz にデコードし、PSRAM に確保した 512 KiB のリングに追加する。容量は約 10.9 秒分であり、応答全体の長さの上限ではなく未再生分の上限。別途 100 KiB の PSRAM デコード領域を使う。GPTLive では基底クラスの 100 KiB × 2 のダブルバッファを確保しない。
+- 受信コールバックはデータの検証と追加のみを行う。ループ側は mutex を待たずに取得を試み、取得後に録音停止 → Mic.end → Speaker.begin とする。再生中は入力音声を送信しない。
+- リングの連続領域から最大 8192 byte（約 171 ms）を Speaker.playRaw に渡す。再生完了までその領域を使用量に含め、受信による上書きを防ぐ。リングが空でもスピーカーの再生中はマイクを戻さない。再生終了後は新たな受信がない状態を 150 ms 待ち、Speaker.end の後に元のマイク状態を復元して mutex を解放する。
+- 録音操作の意図と実際の録音状態を分離する。GPTLive の isRealtimeRecording は操作上の録音有効状態を返し、再生による一時停止中も有効のままとする。再生中のタッチは録音を無効にし、終了後の自動再開を抑止する。再生中の音声による割り込みは受け付けない。
+- リングの読み書きとセッション状態は webSocketLoopTask だけが更新する。操作要求・停止要求と再生レベルの共有には atomic を使う。リップシンクには再生チャンクの PCM ピーク値を渡す。
+- PSRAM 確保失敗、不正な Base64／PCM、容量超過、スピーカー初期化・再生失敗はログを出して音声状態をリセットし、WebSocket を切断する。再接続後も録音は自動開始せず、session.started 後のタッチで再開する。途中の PCM の一部だけを追加したり、不正チャンクの後続だけを再生したりしない。通常の切断も録音を停止し、蓄積 PCM を破棄する。
+- モード停止時は未再生 PCM を破棄し、Speaker.end により PCM 参照の終了を待ってからマイクを復元する。WebSocket も切断して停止前の応答が復帰時に流れ込むのを防ぐ。復帰時は再接続し、session.started 後のタッチで録音を開始する。マイク初期化失敗時も録音要求を無効にする。
+
+150 ms は初期設定値で、実機での音切れ・切替頻度は未確認。ネットワークのチャンク間隔がこれを超えると再切替が発生し得る。CoreS3 実機で短い／長い応答、遅延、切断、録音停止、モード切替を確認する。ビルド結果は [ステアリング](codex/steering/20261012-gptlive-audio-ring-buffer.md) に記録する。
 
 ## Function Calling
 

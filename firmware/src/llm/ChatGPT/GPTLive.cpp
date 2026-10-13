@@ -17,6 +17,7 @@
 #include <base64.h>
 #include "libb64/cdecode.h"
 #include <WebSocketsClient.h>
+#include <esp_heap_caps.h>
 
 using namespace m5avatar;
 extern Avatar avatar;
@@ -123,6 +124,9 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 	switch(type) {
 		case WStype_DISCONNECTED:
 			Serial.printf("[WSc] Disconnected!\n");
+#ifndef REALTIME_API_WITH_TTS
+            p_this->onAudioDisconnected();
+#endif
 			break;
 		case WStype_CONNECTED:
 			Serial.printf("[WSc] Connected to url: %s\n", payload);
@@ -189,9 +193,13 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 			//Serial.printf("[WSc] get text: %s\n", payload);
 			Serial.printf("[WSc] text size: %d\n", strlen((char*)payload));
 
-            error = deserializeJson(p_this->msgDoc, payload);
+            error = deserializeJson(p_this->msgDoc, payload, length);
             if (error) {
                 Serial.printf("WebSocket Event: JSON deserialization error %d\n", error.code());
+#ifndef REALTIME_API_WITH_TTS
+                p_this->onAudioDisconnected();
+#endif
+                break;
             }
 
             msgType = p_this->msgDoc["type"].as<String>();
@@ -201,6 +209,9 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             if(msgType.equals("session.started")){
                 Serial.printf("[WSc] payload: %s\n", payload);
                 avatar.setSpeechText("Please touch");
+#ifndef REALTIME_API_WITH_TTS
+                p_this->onAudioSessionStarted();
+#endif
             }
 #if 0   //GPT Liveでは来ない
             else if(msgType.equals("input_audio_buffer.speech_started")){
@@ -228,7 +239,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             //else if(msgType.equals("response.output_audio.delta")){
             else if(msgType.equals("session.output_audio.delta")){
                 delta = p_this->msgDoc["delta"].as<String>();
-                p_this->streamAudioDelta(delta);
+                p_this->enqueueAudioDelta(delta);
             }
 #else
             else if(msgType.equals("response.output_text.delta")){
@@ -321,13 +332,24 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 
 
 GPTLive::GPTLive(llm_param_t param)
-  : RealtimeLLMBase(param),
+  : RealtimeLLMBase(param, false),
     role(""),
     userInfo("User Info: "),
     systemRole("")
 {
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
   msgDoc = SpiRamJsonDocument(1024*150);
+#ifndef REALTIME_API_WITH_TTS
+  audioRing = (uint8_t*)heap_caps_malloc(AUDIO_RING_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  audioDecode = (uint8_t*)heap_caps_malloc(AUDIO_DECODE_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if(!audioRing || !audioDecode){
+    heap_caps_free(audioRing);
+    heap_caps_free(audioDecode);
+    audioRing = nullptr;
+    audioDecode = nullptr;
+    Serial.println("[GPTLive] PSRAM audio allocation failed; audio playback disabled");
+  }
+#endif
   
   initMcpClientList(mcpClient, param.llm_conf.mcpServer, param.llm_conf.nMcpServers);
   fnCall = new FunctionCall(param, this, mcpClient);
@@ -397,5 +419,217 @@ String& GPTLive::buildInputAudioJson(String& jsonBuf, String& base64)
     return jsonBuf;
 }
 
+
+
+#ifndef REALTIME_API_WITH_TTS
+void GPTLive::startRealtimeRecord()
+{
+    recordingRequested.store(true);
+}
+
+void GPTLive::stopRealtimeRecord()
+{
+    recordingRequested.store(false);
+}
+
+void GPTLive::onAudioSessionStarted()
+{
+    sessionReady = true;
+}
+
+void GPTLive::onAudioDisconnected()
+{
+    sessionReady = false;
+    recordingRequested.store(false);
+    audioFailed = true;
+}
+
+void GPTLive::enqueueAudioDelta(const String& delta)
+{
+    if(audioFailed || !sessionReady) return;
+    const size_t encoded = delta.length();
+    if(!encoded) return;
+    if(!audioRing || !audioDecode || encoded % 4 || encoded / 4 * 3 > AUDIO_DECODE_BYTES){
+        Serial.println("[GPTLive] Invalid audio size or unavailable PSRAM");
+        audioFailed = true;
+        return;
+    }
+    size_t padding = 0;
+    if(delta[encoded - 1] == '=') ++padding;
+    if(delta[encoded - 2] == '=') ++padding;
+    for(size_t i = 0; i < encoded - padding; ++i){
+        const char c = delta[i];
+        if(!((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+             (c >= '0' && c <= '9') || c == '+' || c == '/')){
+            Serial.println("[GPTLive] Invalid audio Base64");
+            audioFailed = true;
+            return;
+        }
+    }
+    const size_t expected = encoded / 4 * 3 - padding;
+    if(!expected || expected % sizeof(int16_t) || expected > AUDIO_RING_BYTES - audioUsed){
+        Serial.printf("[GPTLive] Invalid PCM length or audio ring overflow: bytes=%u used=%u\n",
+                      (unsigned)expected, (unsigned)audioUsed);
+        audioFailed = true;
+        return;
+    }
+    base64_decodestate state;
+    base64_init_decodestate(&state);
+    const int decoded = base64_decode_block(delta.c_str(), encoded, (char*)audioDecode, &state);
+    if(decoded != expected){
+        Serial.println("[GPTLive] PCM decode length mismatch");
+        audioFailed = true;
+        return;
+    }
+    const size_t tail = AUDIO_RING_BYTES - audioWrite;
+    const size_t first = expected < tail ? expected : tail;
+    memcpy(audioRing + audioWrite, audioDecode, first);
+    memcpy(audioRing, audioDecode + first, expected - first);
+    audioWrite = (audioWrite + expected) % AUDIO_RING_BYTES;
+    audioUsed += expected;
+    audioIdle = false;
+}
+
+void GPTLive::resetAudioPlayback()
+{
+    // M5Unified は PCM を参照するので、タスク停止を待つ end() の後で領域を再利用する。
+    if(audioOwned){
+        M5.Speaker.end();
+        if(restoreMic && !M5.Mic.begin()){
+            Serial.println("[GPTLive] Mic.begin failed");
+            recordingRequested.store(false);
+        }
+        exitMutexAudio();
+        audioOwned = false;
+    }
+    audioRead = audioWrite = audioUsed = audioInFlight = 0;
+    audioIdle = false;
+    playbackLevel.store(0);
+    speaking = false;
+}
+
+void GPTLive::processAudioPlayback()
+{
+    if(audioUsed && !audioOwned){
+        // ほかの音声処理が使用中でも WebSocket の受信を止めない。
+        if(xSemaphoreTake(mutexAudio, 0) != pdTRUE) return;
+        audioOwned = true;
+        restoreMic = M5.Mic.isRunning();
+        RealtimeLLMBase::stopRealtimeRecord();
+        M5.Mic.end();
+        if(!M5.Speaker.begin() || !M5.Speaker.isRunning()){
+            Serial.println("[GPTLive] Speaker.begin failed");
+            audioFailed = true;
+            return;
+        }
+        speaking = true;
+        Serial.println("[GPTLive] Mic OFF / Speaker ON");
+    }
+    if(!audioOwned) return;
+    if(!M5.Speaker.isRunning()){
+        audioFailed = true;
+        return;
+    }
+    if(M5.Speaker.isPlaying()) return;
+    if(audioInFlight){
+        // 再生完了まで使用量に含め、受信側による上書きを防ぐ。
+        audioRead = (audioRead + audioInFlight) % AUDIO_RING_BYTES;
+        audioUsed -= audioInFlight;
+        audioInFlight = 0;
+        playbackLevel.store(0);
+    }
+    if(audioUsed){
+        size_t bytes = AUDIO_RING_BYTES - audioRead;
+        if(bytes > audioUsed) bytes = audioUsed;
+        if(bytes > AUDIO_PLAY_BYTES) bytes = AUDIO_PLAY_BYTES;
+        auto* pcm = (int16_t*)(audioRing + audioRead);
+        int peak = 0;
+        for(size_t i = 0; i < bytes / sizeof(int16_t); ++i){
+            const int level = abs((int)pcm[i]);
+            if(level > peak) peak = level;
+        }
+        if(!M5.Speaker.playRaw(pcm, bytes / sizeof(int16_t), 24000, false, 1, 0, false)){
+            Serial.println("[GPTLive] Speaker.playRaw failed");
+            audioFailed = true;
+            return;
+        }
+        audioInFlight = bytes;
+        playbackLevel.store(peak);
+        audioIdle = false;
+    }else if(!audioIdle){
+        audioIdle = true;
+        audioIdleSince = millis();
+    }else if((uint32_t)(millis() - audioIdleSince) >= AUDIO_IDLE_MS){
+        resetAudioPlayback();
+        Serial.println("[GPTLive] Speaker OFF / Mic restored");
+    }
+}
+
+void GPTLive::webSocketProcess()
+{
+    if(pauseRequested.load()){
+        if(!pauseAcknowledged.load()){
+            recordingRequested.store(false);
+            RealtimeLLMBase::stopRealtimeRecord();
+            resetAudioPlayback();
+            // 復帰時に停止前の応答が socket から流れ込むのを防ぐ。
+            sessionReady = false;
+            if(webSocket.isConnected()) webSocket.disconnect();
+            audioFailed = false;
+            pauseAcknowledged.store(true);
+        }
+        delay(1);
+        return;
+    }
+    webSocket.loop();
+    if(audioFailed){
+        // 不正なチャンクの後続を再生しないよう、新しいセッションに切り替える。
+        recordingRequested.store(false);
+        RealtimeLLMBase::stopRealtimeRecord();
+        resetAudioPlayback();
+        if(webSocket.isConnected()) webSocket.disconnect();
+        audioFailed = false;
+    }
+    processAudioPlayback();
+    if(audioOwned || audioUsed || audioFailed){
+        RealtimeLLMBase::stopRealtimeRecord();
+        avatar.setSpeechText("");
+        delay(1);
+        return;
+    }
+    if(recordingRequested.load() && sessionReady){
+        if(!realtime_recording){
+            enterMutexAudio();
+            if(M5.Speaker.isRunning()) M5.Speaker.end();
+            const bool micReady = M5.Mic.begin();
+            exitMutexAudio();
+            if(!micReady){
+                Serial.println("[GPTLive] Mic.begin failed; recording stopped");
+                recordingRequested.store(false);
+            }else{
+                RealtimeLLMBase::startRealtimeRecord();
+            }
+        }
+    }else{
+        RealtimeLLMBase::stopRealtimeRecord();
+    }
+    processRealtimeInput();
+}
+
+void GPTLive::suspendWebSocketLoopTask()
+{
+    // mutex を取得した WebSocket タスク自身に解放させてから suspend する。
+    pauseRequested.store(true);
+    while(!pauseAcknowledged.load()) delay(1);
+    RealtimeLLMBase::suspendWebSocketLoopTask();
+}
+
+void GPTLive::resumeWebSocketLoopTask()
+{
+    pauseAcknowledged.store(false);
+    pauseRequested.store(false);
+    RealtimeLLMBase::resumeWebSocketLoopTask();
+}
+#endif  // !REALTIME_API_WITH_TTS
 
 #endif  //REALTIME_API
