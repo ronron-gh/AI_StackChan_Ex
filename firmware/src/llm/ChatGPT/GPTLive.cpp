@@ -18,6 +18,7 @@
 #include "libb64/cdecode.h"
 #include <WebSocketsClient.h>
 #include <esp_heap_caps.h>
+#include <math.h>
 
 using namespace m5avatar;
 extern Avatar avatar;
@@ -342,11 +343,14 @@ GPTLive::GPTLive(llm_param_t param)
 #ifndef REALTIME_API_WITH_TTS
   audioRing = (uint8_t*)heap_caps_malloc(AUDIO_RING_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
   audioDecode = (uint8_t*)heap_caps_malloc(AUDIO_DECODE_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if(!audioRing || !audioDecode){
+  audioGateBuffer = (uint8_t*)heap_caps_malloc(AUDIO_FRAME_BYTES + AUDIO_PREROLL_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+  if(!audioRing || !audioDecode || !audioGateBuffer){
     heap_caps_free(audioRing);
     heap_caps_free(audioDecode);
+    heap_caps_free(audioGateBuffer);
     audioRing = nullptr;
     audioDecode = nullptr;
+    audioGateBuffer = nullptr;
     Serial.println("[GPTLive] PSRAM audio allocation failed; audio playback disabled");
   }
 #endif
@@ -449,7 +453,7 @@ void GPTLive::enqueueAudioDelta(const String& delta)
     if(audioFailed || !sessionReady) return;
     const size_t encoded = delta.length();
     if(!encoded) return;
-    if(!audioRing || !audioDecode || encoded % 4 || encoded / 4 * 3 > AUDIO_DECODE_BYTES){
+    if(!audioRing || !audioDecode || !audioGateBuffer || encoded % 4 || encoded / 4 * 3 > AUDIO_DECODE_BYTES){
         Serial.println("[GPTLive] Invalid audio size or unavailable PSRAM");
         audioFailed = true;
         return;
@@ -467,8 +471,8 @@ void GPTLive::enqueueAudioDelta(const String& delta)
         }
     }
     const size_t expected = encoded / 4 * 3 - padding;
-    if(!expected || expected % sizeof(int16_t) || expected > AUDIO_RING_BYTES - audioUsed){
-        Serial.printf("[GPTLive] Invalid PCM length or audio ring overflow: bytes=%u used=%u\n",
+    if(!expected || expected % sizeof(int16_t)){
+        Serial.printf("[GPTLive] Invalid PCM length: bytes=%u used=%u\n",
                       (unsigned)expected, (unsigned)audioUsed);
         audioFailed = true;
         return;
@@ -481,16 +485,113 @@ void GPTLive::enqueueAudioDelta(const String& delta)
         audioFailed = true;
         return;
     }
-    const size_t tail = AUDIO_RING_BYTES - audioWrite;
-    const size_t first = expected < tail ? expected : tail;
-    memcpy(audioRing + audioWrite, audioDecode, first);
-    memcpy(audioRing, audioDecode + first, expected - first);
-    audioWrite = (audioWrite + expected) % AUDIO_RING_BYTES;
-    audioUsed += expected;
-    audioIdle = false;
+    audioLastPcmAt = millis();
+    size_t offset = 0;
+    while(offset < expected && !audioFailed){
+        size_t bytes = AUDIO_FRAME_BYTES - audioFrameUsed;
+        if(bytes > expected - offset) bytes = expected - offset;
+        memcpy(audioGateBuffer + audioFrameUsed, audioDecode + offset, bytes);
+        audioFrameUsed += bytes;
+        offset += bytes;
+        if(audioFrameUsed == AUDIO_FRAME_BYTES){
+            processAudioFrame(audioFrameUsed);
+            audioFrameUsed = 0;
+        }
+    }
 }
 
-void GPTLive::resetAudioPlayback()
+bool GPTLive::appendAudioPcm(const uint8_t* pcm, size_t bytes)
+{
+    if(bytes > AUDIO_RING_BYTES - audioUsed){
+        Serial.printf("[GPTLive] Audio ring overflow: bytes=%u used=%u\n",
+                      (unsigned)bytes, (unsigned)audioUsed);
+        audioFailed = true;
+        return false;
+    }
+    const size_t tail = AUDIO_RING_BYTES - audioWrite;
+    const size_t first = bytes < tail ? bytes : tail;
+    memcpy(audioRing + audioWrite, pcm, first);
+    memcpy(audioRing, pcm + first, bytes - first);
+    audioWrite = (audioWrite + bytes) % AUDIO_RING_BYTES;
+    audioUsed += bytes;
+    audioIdle = false;
+    return true;
+}
+
+void GPTLive::processAudioFrame(size_t bytes)
+{
+    const size_t samples = bytes / sizeof(int16_t);
+    if(!samples) return;
+    const auto* pcm = (const int16_t*)audioGateBuffer;
+    uint64_t energy = 0;
+    for(size_t i = 0; i < samples; ++i){
+        const int32_t sample = pcm[i];
+        energy += (uint64_t)((int64_t)sample * sample);
+    }
+    const uint32_t rms = (uint32_t)sqrt((double)energy / samples);
+    if(rms < audioRmsMin) audioRmsMin = rms;
+    if(rms > audioRmsMax) audioRmsMax = rms;
+    if((uint32_t)(millis() - audioRmsLogAt) >= AUDIO_RMS_LOG_MS){
+        Serial.printf("[GPTLive] Output RMS min=%u max=%u active=%d start=%u continue=%u\n",
+                      (unsigned)audioRmsMin, (unsigned)audioRmsMax, audioSpeechActive,
+                      (unsigned)AUDIO_START_RMS, (unsigned)AUDIO_CONTINUE_RMS);
+        audioRmsLogAt = millis();
+        audioRmsMin = UINT32_MAX;
+        audioRmsMax = 0;
+    }
+    auto* preroll = audioGateBuffer + AUDIO_FRAME_BYTES;
+    if(!audioSpeechActive){
+        if(energy >= (uint64_t)AUDIO_START_RMS * AUDIO_START_RMS * samples){
+            // 先行保持分と発話開始窓を一括で収容できることを確認する。
+            if(audioPrerollUsed + bytes > AUDIO_RING_BYTES - audioUsed){
+                Serial.println("[GPTLive] Audio ring overflow at speech start");
+                audioFailed = true;
+                return;
+            }
+            const size_t start = (audioPrerollWrite + AUDIO_PREROLL_BYTES - audioPrerollUsed) % AUDIO_PREROLL_BYTES;
+            size_t first = AUDIO_PREROLL_BYTES - start;
+            if(first > audioPrerollUsed) first = audioPrerollUsed;
+            appendAudioPcm(preroll + start, first);
+            appendAudioPcm(preroll, audioPrerollUsed - first);
+            appendAudioPcm(audioGateBuffer, bytes);
+            audioPrerollUsed = audioPrerollWrite = 0;
+            audioSilentSamples = 0;
+            audioSpeechActive = true;
+            Serial.printf("[GPTLive] Output speech started: RMS=%u\n", (unsigned)rms);
+        }else{
+            size_t first = AUDIO_PREROLL_BYTES - audioPrerollWrite;
+            if(first > bytes) first = bytes;
+            memcpy(preroll + audioPrerollWrite, audioGateBuffer, first);
+            memcpy(preroll, audioGateBuffer + first, bytes - first);
+            audioPrerollWrite = (audioPrerollWrite + bytes) % AUDIO_PREROLL_BYTES;
+            audioPrerollUsed += bytes;
+            if(audioPrerollUsed > AUDIO_PREROLL_BYTES) audioPrerollUsed = AUDIO_PREROLL_BYTES;
+        }
+        return;
+    }
+    if(!appendAudioPcm(audioGateBuffer, bytes)) return;
+    if(energy < (uint64_t)AUDIO_CONTINUE_RMS * AUDIO_CONTINUE_RMS * samples){
+        audioSilentSamples += samples;
+        if(audioSilentSamples >= AUDIO_SILENCE_SAMPLES){
+            audioSpeechActive = false;
+            audioSilentSamples = 0;
+            Serial.println("[GPTLive] Output speech ended: 400 ms silence");
+        }
+    }else{
+        audioSilentSamples = 0;
+    }
+}
+
+void GPTLive::resetAudioGate()
+{
+    audioFrameUsed = audioPrerollWrite = audioPrerollUsed = audioSilentSamples = 0;
+    audioSpeechActive = false;
+    audioLastPcmAt = audioRmsLogAt = millis();
+    audioRmsMin = UINT32_MAX;
+    audioRmsMax = 0;
+}
+
+void GPTLive::resetAudioPlayback(bool resetGate)
 {
     // M5Unified は PCM を参照するので、タスク停止を待つ end() の後で領域を再利用する。
     if(audioOwned){
@@ -506,10 +607,19 @@ void GPTLive::resetAudioPlayback()
     audioIdle = false;
     playbackLevel.store(0);
     speaking = false;
+    audioSpeechActive = false;
+    audioSilentSamples = 0;
+    if(resetGate) resetAudioGate();
 }
 
 void GPTLive::processAudioPlayback()
 {
+    // 受信が途絶えた場合も最後の 20 ms 未満の窓を取りこぼさない。
+    if(audioFrameUsed && (uint32_t)(millis() - audioLastPcmAt) >= AUDIO_IDLE_MS){
+        processAudioFrame(audioFrameUsed);
+        audioFrameUsed = 0;
+        if(audioFailed) return;
+    }
     if(audioUsed && !audioOwned){
         // ほかの音声処理が使用中でも WebSocket の受信を止めない。
         if(xSemaphoreTake(mutexAudio, 0) != pdTRUE) return;
@@ -560,7 +670,7 @@ void GPTLive::processAudioPlayback()
         audioIdle = true;
         audioIdleSince = millis();
     }else if((uint32_t)(millis() - audioIdleSince) >= AUDIO_IDLE_MS){
-        resetAudioPlayback();
+        resetAudioPlayback(false);
         Serial.println("[GPTLive] Speaker OFF / Mic restored");
     }
 }
