@@ -575,7 +575,8 @@ void GPTLive::processAudioFrame(size_t bytes)
         if(audioSilentSamples >= AUDIO_SILENCE_SAMPLES){
             audioSpeechActive = false;
             audioSilentSamples = 0;
-            Serial.println("[GPTLive] Output speech ended: 400 ms silence");
+            Serial.printf("[GPTLive] Output speech ended: %u ms PCM silence\n",
+                          (unsigned)AUDIO_SPEECH_END_MS);
         }
     }else{
         audioSilentSamples = 0;
@@ -619,6 +620,12 @@ void GPTLive::processAudioPlayback()
         processAudioFrame(audioFrameUsed);
         audioFrameUsed = 0;
         if(audioFailed) return;
+    }
+    if(audioSpeechActive && (uint32_t)(millis() - audioLastPcmAt) >= AUDIO_RECEIVE_TIMEOUT_MS){
+        audioSpeechActive = false;
+        audioSilentSamples = 0;
+        Serial.printf("[GPTLive] Output speech ended: %u ms receive timeout\n",
+                      (unsigned)AUDIO_RECEIVE_TIMEOUT_MS);
     }
     if(audioUsed && !audioOwned){
         // ほかの音声処理が使用中でも WebSocket の受信を止めない。
@@ -665,6 +672,9 @@ void GPTLive::processAudioPlayback()
         }
         audioInFlight = bytes;
         playbackLevel.store(peak);
+        audioIdle = false;
+    }else if(audioSpeechActive){
+        // リングの枯渇だけでは句読点の間と発話終了を区別できない。
         audioIdle = false;
     }else if(!audioIdle){
         audioIdle = true;

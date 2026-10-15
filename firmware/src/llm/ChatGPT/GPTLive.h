@@ -49,10 +49,12 @@ private:
     static constexpr size_t AUDIO_DECODE_BYTES = 100 * 1024;
     static constexpr size_t AUDIO_PLAY_BYTES = 8192;
     static constexpr uint32_t AUDIO_IDLE_MS = 150;
+    static constexpr uint32_t AUDIO_SPEECH_END_MS = 1200;
+    static constexpr uint32_t AUDIO_RECEIVE_TIMEOUT_MS = 1200;
     static constexpr size_t AUDIO_FRAME_SAMPLES = 480;
     static constexpr size_t AUDIO_FRAME_BYTES = AUDIO_FRAME_SAMPLES * sizeof(int16_t);
     static constexpr size_t AUDIO_PREROLL_BYTES = 5 * AUDIO_FRAME_BYTES;
-    static constexpr size_t AUDIO_SILENCE_SAMPLES = 9600;
+    static constexpr size_t AUDIO_SILENCE_SAMPLES = 24000 * AUDIO_SPEECH_END_MS / 1000;
     static constexpr uint32_t AUDIO_START_RMS = 300;
     static constexpr uint32_t AUDIO_CONTINUE_RMS = 150;
     static constexpr uint32_t AUDIO_RMS_LOG_MS = 2000;
