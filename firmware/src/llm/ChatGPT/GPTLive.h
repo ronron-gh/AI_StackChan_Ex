@@ -26,7 +26,7 @@ public:   //本当はprivateにしたいところだがコールバック関数�
     String systemRole;
 
 public:
-    GPTLive(llm_param_t param);
+    GPTLive(llm_param_t param, bool manageAudio = true);
 
     virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
     virtual String& buildInputAudioJson(String& jsonBuf, String& base64);
@@ -40,9 +40,9 @@ public:
     int getAudioLevel() override { return playbackLevel.load(); }
     void suspendWebSocketLoopTask() override;
     void resumeWebSocketLoopTask() override;
-    void enqueueAudioDelta(const String& delta);
-    void onAudioDisconnected();
-    void onAudioSessionStarted();
+    virtual void enqueueAudioDelta(const String& delta);
+    virtual void onAudioDisconnected();
+    virtual void onAudioSessionStarted();
 
 private:
     static constexpr size_t AUDIO_RING_BYTES = 512 * 1024;

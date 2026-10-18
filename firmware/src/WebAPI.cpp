@@ -298,6 +298,10 @@ void handleNotFound(){
 }
 
 void handle_speech() {
+#ifdef GPTLIVE_FULL_DUPLEX
+  server.send(503, "text/plain", "Speech API is disabled in the full-duplex experiment");
+  return;
+#endif
   if(robot == nullptr){
     server.send(503, "text/plain", String("Robot is not ready"));
     return;

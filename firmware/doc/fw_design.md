@@ -5,6 +5,7 @@ Notes on FW design, etc.
 - [Mod](#mod)
   - [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
   - [GPTLive Audio Playback](#gptlive-audio-playback)
+  - [GPTLive Full Duplex](#gptlive-full-duplex)
 - [Function Calling](#function-calling)
   - [Avatar Expression](#avatar-expression)
 - [Wi-Fi config portal](#wi-fi-config-portal)
@@ -28,6 +29,8 @@ Notes on FW design, etc.
 | battery_check | Battery level check | 2048 | 1 |
 | asyncTtsStreamTask | TTS streaming play | 5 * 1024 | 2 |
 | webSocketLoopTask | WebSocket processing for LLM Realtime API | 6 * 1024 | 3 |
+| fullDuplexRx | CoreS3 experimental direct I2S RX | 4096 | 3 |
+| fullDuplexTx | CoreS3 experimental direct I2S TX | 4096 | 3 |
 | SanoTTS | SanoTTS parsing, inference, and playback | 16 * 1024 | 2 |
 
 SanoTTS は同期 `stream()` の要求を専用ワーカーで直列処理する。CoreS3 の SanoTTS 環境では `SANOTTS_BUFFERED_PLAYBACK` により、句読点などで分割した各区間の PCM を PSRAM に全量確保・合成してから再生する。M5Unified が現在区間を再生している間に同じワーカーが次区間を合成し、2個のPCMバッファを交互に再利用する。1区間は最大30秒で約1.26 MiB、先行生成時は最大約2.52 MiBのPCMに加え、176 KiBの解析・推論 arenaを使う。次区間用バッファを確保できない場合は現在区間の再生後に直列生成で再試行する。リップシンク用レベルはPCMから作った音量エンベロープを再生時刻で参照する。フラグを外すと先読みと循環バッファによる逐次再生になる。いずれも再生終了後にマイクとスピーカーの元の状態を復元する。切り替え方法は[doc/sanotts.md](sanotts.md) を参照。
@@ -66,6 +69,23 @@ GPTLive の音声出力は追加タスクを作らず、既存の webSocketLoopT
 - モード停止時は未再生 PCM を破棄し、Speaker.end により PCM 参照の終了を待ってからマイクを復元する。WebSocket も切断して停止前の応答が復帰時に流れ込むのを防ぐ。復帰時は再接続し、session.started 後のタッチで録音を開始する。マイク初期化失敗時も録音要求を無効にする。
 
 RMS の最小／最大値を約 2 秒ごとに、発話開始／終了を遷移時にログへ出す。閾値 300／150、無音終了・受信途絶 1200 ms、再生終了猶予 150 ms は初期設定値で、弱い発話の見逃し・ノイズ誤検出・実機での音切れ・切替頻度は未確認。発話内の無音または受信途絶が 1200 ms 以上になると再切替が発生し得る。CoreS3 実機で短い／長い応答、遅延、切断、録音停止、モード切替を確認する。リング再生の導入記録は [ステアリング](codex/steering/20261012-gptlive-audio-ring-buffer.md)、無音判定の導入記録は [ステアリング](codex/steering/20261013-gptlive-silence-gate.md)、終了猶予・復帰条件の確認結果は [ステアリング](codex/steering/20261014-gptlive-speech-end-grace.md) に記録する。
+
+### GPTLive Full Duplex
+
+m5stack-cores3-realtime-full-duplex の GPTLIVE_FULL_DUPLEX フラグでのみ、OpenAI選択時に GPTLiveFullDuplex を生成する。既存の GPTLive は通常環境で維持する。接続・セッション設定はGPTLiveを継承して共用し、音声イベントをvirtualフックで差し替える。半二重用のPSRAMはこのクラスでは確保しない。
+
+- CoreS3FullDuplexAudioがI2S0のTX／RXを一括所有する。MCLK GPIO0、BCLK GPIO34、WS GPIO33、DIN GPIO14、DOUT GPIO13、24 kHz／16 bit／左モノラルスロット、MCLK 256fsを使う。ES7210／AW88298の初期化はM5Unifiedのレジスタ設定を基に直接行い、AW88298のレートコードは24 kHzへ合わせる。画面・電源・I2Cは引き続きM5Unifiedを使う。
+- WebSocketタスクが音声mutexを待たずに取得し、既存M5音声を終了して直接I2Sを開始する。同じタスクが終了・復元・mutex解放まで担当する。実験ビルドの効果音／アラーム音はmutexを取得できなければスキップし、UIタスクを所有権待ちで止めない。WakeWordはビルドフラグで無効、非TTS構成なので非同期TTSは起動しない。別TTSのRobot::speechも実験フラグ内で無効化し、/speechは503を返す。
+- fullDuplexRxは20 ms（480 sample）ずつ継続収集し、世代番号付き8窓のFreeRTOSキューへ渡す。WebSocketタスクだけがloop／sendを行い、1回最大2窓を送信する。入力キュー満杯時は新着窓を破棄し、RXdropへ計上する。I2Sの部分readは同じ窓へ蓄積する。停止中・古い世代の窓は送信しない。
+- 受信PCMは100 KiBのPSRAM作業領域でデコードし、512 KiBのPSRAMリングへ全チャンクの空きを確認して追加する。fullDuplexTxは20 msずつ専用タスクの作業領域へコピーしてからリングを解放し、部分writeを完了まで進める。データがなければゼロを送ってクロックとRXを維持する。DMA領域はI2Sドライバの内部DMAメモリを使う（6 descriptor、480 sample）。
+- リングだけを専用mutexで短時間保護し、WebSocket待ち・I2S待ち中には保持しない。動作／失敗／録音許可／世代／音量／レベル／カウンタはatomic。RX/TXそれぞれ4096 byteのタスクスタックを使う。音量はPCMへ0〜255の二乗比で適用し、DMAへ送る窓の出力レベルをリップシンクへ返す（実再生とはDMAの待ち時間分ずれる）。
+- PCM出力の無音判定でマイクを止めず、出力中も実マイクを送信する。30秒の自動録音タイムアウトは適用せず、手動停止まで継続する。AECと送信マスクは未実装で、回り込みによる自己応答は未解決の評価項目。
+- 手動停止／モード停止／切断／不正PCM／リング満杯／I2S障害では協調停止する。50 ms上限のI/O待ちからRX/TXが戻るのを待ち、I2S・音声ICを停止し、キュー／PSRAMを解放してから従来M5音声を復元し、mutexを解放する。I/Oが500 ms進行しなければ失敗にする。再開時はI2Sを新規に作り、旧PCMを持ち越さない。タスク生成途中の失敗も同じ後始末で扱う。
+- RX／TX／Sent、キュー破棄数、TX無音窓数、入力／出力ピークを約2秒ごとに記録する。TXカウンタはゼロ送信も含むため、応答出力の確認にはoutLevelも使う。
+
+任意の GPTLIVE_FULL_DUPLEX_TEST_TONE フラグでは、タッチで100 msのテスト音と連続RXを動かす単独診断モードとなり、WebSocket処理・API送信は行わない。通常ビルドでも診断コードの型・構文をコンパイルし、無効時は実行しない。
+
+実機の同時動作、24 kHzの安定性、停止／復帰、音量、自己発話の回り込みは未確認。検証・切戻しの手順は [GPTLive Full Duplex](gptlive_full_duplex.md)、ビルド・静的確認の結果は [ステアリング](codex/steering/20261015-gptlive-full-duplex.md) に記録する。
 
 ## Function Calling
 

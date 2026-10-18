@@ -332,7 +332,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 }
 
 
-GPTLive::GPTLive(llm_param_t param)
+GPTLive::GPTLive(llm_param_t param, bool manageAudio)
   : RealtimeLLMBase(param, false),
     role(""),
     userInfo("User Info: "),
@@ -341,17 +341,19 @@ GPTLive::GPTLive(llm_param_t param)
   p_this = this;    //コールバック関数に静的変数経由でthisポインタを渡す
   msgDoc = SpiRamJsonDocument(1024*150);
 #ifndef REALTIME_API_WITH_TTS
-  audioRing = (uint8_t*)heap_caps_malloc(AUDIO_RING_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  audioDecode = (uint8_t*)heap_caps_malloc(AUDIO_DECODE_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  audioGateBuffer = (uint8_t*)heap_caps_malloc(AUDIO_FRAME_BYTES + AUDIO_PREROLL_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if(!audioRing || !audioDecode || !audioGateBuffer){
-    heap_caps_free(audioRing);
-    heap_caps_free(audioDecode);
-    heap_caps_free(audioGateBuffer);
-    audioRing = nullptr;
-    audioDecode = nullptr;
-    audioGateBuffer = nullptr;
-    Serial.println("[GPTLive] PSRAM audio allocation failed; audio playback disabled");
+  if(manageAudio){
+    audioRing = (uint8_t*)heap_caps_malloc(AUDIO_RING_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    audioDecode = (uint8_t*)heap_caps_malloc(AUDIO_DECODE_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    audioGateBuffer = (uint8_t*)heap_caps_malloc(AUDIO_FRAME_BYTES + AUDIO_PREROLL_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if(!audioRing || !audioDecode || !audioGateBuffer){
+      heap_caps_free(audioRing);
+      heap_caps_free(audioDecode);
+      heap_caps_free(audioGateBuffer);
+      audioRing = nullptr;
+      audioDecode = nullptr;
+      audioGateBuffer = nullptr;
+      Serial.println("[GPTLive] PSRAM audio allocation failed; audio playback disabled");
+    }
   }
 #endif
   
