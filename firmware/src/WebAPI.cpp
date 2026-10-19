@@ -419,6 +419,11 @@ void handle_config_get() {
   bool has_ex = SPIFFS.exists(SPIFFS_EX_CONFIG_PATH);
   response["source"] = (has_sec || has_basic || has_ex) ? "spiffs" : "none";
   response["complete"] = has_sec && has_basic && has_ex;
+#ifdef GPTLIVE_FULL_DUPLEX
+  response["ui"]["openaiServiceLabel"] = "OpenAI GPT-Live";
+#else
+  response["ui"]["openaiServiceLabel"] = "OpenAI Realtime";
+#endif
 
   JsonObject sec = response["sec"].to<JsonObject>();
   JsonObject wifi = sec["wifi"].to<JsonObject>();

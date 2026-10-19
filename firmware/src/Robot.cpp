@@ -185,11 +185,10 @@ void Robot::initRtLLM(StackchanExConfig& config){
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
-    //llm = new RealtimeChatGPT(llm_param);
 #ifdef GPTLIVE_FULL_DUPLEX
     llm = new GPTLiveFullDuplex(llm_param);
 #else
-    llm = new GPTLive(llm_param);
+    llm = new RealtimeChatGPT(llm_param);
 #endif
     break;
   case LLM_TYPE_GEMINI:

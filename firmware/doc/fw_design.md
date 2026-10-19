@@ -250,6 +250,7 @@ Web アプリの入口 `/` として `home.html` を返す。`home.html` には�
 
 #### API
 - `GET /config`: JSONで現在の設定値を返す。SPIFFS の設定ファイルが無い場合はデフォルト値またはRAM上の設定値を返す。
+  - 表示専用の `ui.openaiServiceLabel` は、`GPTLIVE_FULL_DUPLEX` 定義時に `OpenAI GPT-Live`、それ以外に `OpenAI Realtime` を返す。設定画面は読み込み時にサービス番号0の表示名へ反映し、未指定時は従来名を使う。この情報は保存せず、`llm.type` の値は変更しない。
   - `source`: `spiffs` または `none`
   - `complete`: SPIFFS に `SC_SecConfig.yaml`、`SC_BasicConfig.yaml`、`SC_ExConfig.yaml` が揃っているか
   - `sec`: Wi-Fi と API key

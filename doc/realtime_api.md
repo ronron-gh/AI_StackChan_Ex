@@ -15,7 +15,17 @@
   - [設定方法](#設定方法)
 
 ## 概要
-Realtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。OpenAI Realtime API 及び Gemini Live APIに対応しています。  
+Realtime APIを利用することで、従来よりもリアルタイムに近い応答速度で会話を楽しむことができます。各デバイス毎の対応APIは下表の通りです。  
+
+|デバイス|OpenAI Realtime|OpenAI GPT-Live|Google Gemini Live|
+|---|---|---|---|
+|Core2|〇|×|〇|
+|CoreS3|〇|〇|〇|
+|AtomS3R|〇|×|〇| 
+
+> Note:  
+> v0.25.0以降、CoreS3向けビルドではGPT-Liveに対応し、以降に示す手順でOpenAI(ChatGPT)を選択した場合はGPT-Liveが適用されます。  
+> CoreS3で従来のOpenAI Realtime APIを利用したい場合はplatformio.iniのenv:m5stack-cores3-realtimeの-DGPTLIVE_FULL_DUPLEXを無効化してください。
 
 ## ビルド方法
 下図のように、VSCode(PlatformIO)のGUIで"env:m5stack-xxx-realtime"を選択してビルド＆書き込みを実行します。  

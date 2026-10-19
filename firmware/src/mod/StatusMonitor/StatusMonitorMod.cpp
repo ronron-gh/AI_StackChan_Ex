@@ -112,7 +112,11 @@ const char* StatusMonitorMod::getAiServiceName(int llm_type)
 {
   switch(llm_type){
     case LLM_TYPE_CHATGPT:
+#ifdef GPTLIVE_FULL_DUPLEX
+      return "OpenAI GPT-Live";
+#else
       return "OpenAI Realtime";
+#endif
     case LLM_TYPE_GEMINI:
       return "Gemini Live";
     case LLM_TYPE_CUSTOM_OPENAI:
