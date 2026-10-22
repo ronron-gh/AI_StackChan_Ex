@@ -126,69 +126,17 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 		case WStype_DISCONNECTED:
 			Serial.printf("[WSc] Disconnected!\n");
 #ifndef REALTIME_API_WITH_TTS
-            p_this->onAudioDisconnected();
+            p_this->onTransportDisconnected();
 #endif
 			break;
 		case WStype_CONNECTED:
 			Serial.printf("[WSc] Connected to url: %s\n", payload);
 
-            /*
-             * session.updateでAPIの振る舞いをカスタマイズする
-             */
-            {
-                SpiRamJsonDocument sessionUpdateDoc(1024*10);
-                DeserializationError error = deserializeJson(sessionUpdateDoc, session_start);
-                if (error) {
-                    Serial.println("webSocketEvent: JSON deserialization error (session_update)");
-                }
-
-                // instructionsにロール、前回会話の要約を設定
-                //
-                Serial.printf("role: %s\n", p_this->role.c_str());
-                Serial.printf("sysRole: %s\n", p_this->systemRole.c_str());
-                Serial.printf("userInfo: %s\n", p_this->userInfo.c_str());
-                sessionUpdateDoc["session"]["instructions"] = p_this->role + " "
-                                                              + p_this->systemRole + " "
-                                                              + p_this->userInfo;
-#if 0
-                // MCP tools listをfunctionとして挿入
-                //
-                for(int s=0; s < p_this->param.llm_conf.nMcpServers; s++){
-                    if(true == p_this->param.llm_conf.mcpServer[s].disabled){
-                        continue;
-                    }
-                    if(!p_this->mcpClient[s]->isConnected()){
-                        continue;
-                    }
-
-                    for(int t=0; t < p_this->mcpClient[s]->nTools; t++){
-                        sessionUpdateDoc["session"]["tools"].add(p_this->mcpClient[s]->toolsListDoc["result"]["tools"][t]);
-                        sessionUpdateDoc["session"]["tools"][t]["type"] = "function";
-                    }
-                }
-
-                // FunctionCall.cppで定義したfunctionをsession.updateに挿入
-                //
-                SpiRamJsonDocument functionsDoc(1024*10);
-                error = deserializeJson(functionsDoc, json_Functions.c_str());
-                if (error) {
-                    Serial.println("FunctionCall: JSON deserialization error");
-                }
-
-                int nFuncs = functionsDoc.size();
-                int nMcpFuncs = sessionUpdateDoc["session"]["tools"].size();
-                for(int i=0; i<nFuncs; i++){
-                    sessionUpdateDoc["session"]["tools"].add(functionsDoc[i]);
-                    sessionUpdateDoc["session"]["tools"][nMcpFuncs + i]["type"] = "function";
-                }
+#ifndef REALTIME_API_WITH_TTS
+            p_this->onTransportConnected();
+#else
+            p_this->sendSessionStart();
 #endif
-                String sessionUpdateStr;
-                serializeJson(sessionUpdateDoc, sessionUpdateStr);
-                String jsonPretty;
-                serializeJsonPretty(sessionUpdateDoc, jsonPretty);
-                Serial.printf("[WSc] session update json: %s\n", jsonPretty.c_str());
-                p_this->webSocket.sendTXT(sessionUpdateStr.c_str());
-            }
 			break;
 		case WStype_TEXT:
 			//Serial.printf("[WSc] get text: %s\n", payload);
@@ -198,7 +146,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             if (error) {
                 Serial.printf("WebSocket Event: JSON deserialization error %d\n", error.code());
 #ifndef REALTIME_API_WITH_TTS
-                p_this->onAudioDisconnected();
+                p_this->onSessionError();
 #endif
                 break;
             }
@@ -206,14 +154,13 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             msgType = p_this->msgDoc["type"].as<String>();
             Serial.printf("[WSc] text type: %s\n", msgType.c_str());
 
-            //if(msgType.equals("session.updated")){
-            if(msgType.equals("session.started")){
-                Serial.printf("[WSc] payload: %s\n", payload);
-                avatar.setSpeechText("Please touch");
 #ifndef REALTIME_API_WITH_TTS
-                p_this->onAudioSessionStarted();
-#endif
+            if(p_this->handleSessionEvent(msgType)) break;
+#else
+            if(msgType.equals("session.started")){
+                avatar.setSpeechText("Please touch");
             }
+#endif
 #if 0   //GPT Liveでは来ない
             else if(msgType.equals("input_audio_buffer.speech_started")){
                 p_this->resetRealtimeRecordStartTime();
@@ -233,7 +180,7 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
 #endif  //GPT Liveでは来ない
 #ifndef REALTIME_API_WITH_TTS
             //else if(msgType.equals("response.output_audio_transcript.delta")){
-            else if(msgType.equals("session.output_transcript.delta")){
+            if(msgType.equals("session.output_transcript.delta")){
                 delta = p_this->msgDoc["delta"].as<String>();
                 Serial.printf("[WSc] delta: %s\n", delta.c_str());
             }
@@ -386,6 +333,17 @@ GPTLive::GPTLive(llm_param_t param, bool manageAudio)
 }
 
 
+bool GPTLive::sendSessionStart()
+{
+    SpiRamJsonDocument doc(1024 * 10);
+    if(deserializeJson(doc, session_start)) return false;
+    doc["session"]["store"] = false;
+    doc["session"]["instructions"] = role + " " + systemRole + " " + userInfo;
+    String json;
+    serializeJson(doc, json);
+    return webSocket.sendTXT(json);
+}
+
 void GPTLive::load_role(){
   Serial.println("Load role from SPIFFS.");
   if(enableMemory()){
@@ -428,14 +386,142 @@ String& GPTLive::buildInputAudioJson(String& jsonBuf, String& base64)
 
 
 #ifndef REALTIME_API_WITH_TTS
+void GPTLive::onTransportConnected()
+{
+    recordingRequested.store(false);
+    sessionFailed = false;
+    sessionState.store(SessionState::Idle);
+    avatar.setSpeechText("Please touch");
+}
+
+void GPTLive::onTransportDisconnected()
+{
+    const SessionState state = sessionState.load();
+    if(state == SessionState::Starting || state == SessionState::Active || state == SessionState::Closing){
+        Serial.printf("[GPTLive] Final usage unconfirmed: id=%s latest=%.3f seconds\n",
+                      sessionId.c_str(), usageSeconds);
+    }
+    sessionState.store(SessionState::Disconnected);
+    recordingRequested.store(false);
+    stopSessionAudio();
+    onAudioDisconnected();
+    sessionFailed = false;
+}
+
+bool GPTLive::handleSessionEvent(const String& type)
+{
+    const SessionState state = sessionState.load();
+    if(type == "session.started"){
+        if(state != SessionState::Starting) return true;
+        sessionId = msgDoc["session"]["id"].as<String>();
+        sessionState.store(SessionState::Active);
+        onAudioSessionStarted();
+        Serial.printf("[GPTLive] Session started: %s\n", sessionId.c_str());
+        return true;
+    }
+    if(type == "session.usage.updated"){
+        if(state == SessionState::Starting || state == SessionState::Active || state == SessionState::Closing){
+            if(msgDoc["usage"]["seconds"].is<double>()) usageSeconds = msgDoc["usage"]["seconds"].as<double>();
+        }
+        return true;
+    }
+    if(type == "session.closed"){
+        if(state != SessionState::Starting && state != SessionState::Active && state != SessionState::Closing) return true;
+        const bool hasUsage = msgDoc["usage"]["seconds"].is<double>();
+        if(hasUsage) usageSeconds = msgDoc["usage"]["seconds"].as<double>();
+        sessionId = msgDoc["session"]["id"].as<String>();
+        Serial.printf("[GPTLive] Session closed: id=%s reason=%s seconds=%.3f final=%s\n",
+                      sessionId.c_str(), msgDoc["reason"].as<const char*>() ?: "unknown",
+                      usageSeconds, hasUsage ? "confirmed" : "missing");
+        recordingRequested.store(false);
+        stopSessionAudio();
+        // Mark completion before disconnect(), whose callback runs synchronously.
+        sessionState.store(SessionState::Disconnected);
+        webSocket.disconnect();
+        return true;
+    }
+    if(type == "error"){
+        Serial.println("[GPTLive] Session command error");
+        sessionFailed = true;
+        return true;
+    }
+    return false;
+}
+
+void GPTLive::stopSessionAudio()
+{
+    RealtimeLLMBase::stopRealtimeRecord();
+    restoreMic = false;
+    resetAudioPlayback();
+    enterMutexAudio();
+    M5.Mic.end();
+    exitMutexAudio();
+    sessionReady = false;
+    audioFailed = false;
+}
+
+void GPTLive::closeSession()
+{
+    recordingRequested.store(false);
+    sessionState.store(SessionState::Closing);
+    sessionStateAt = millis();
+    stopSessionAudio();
+    sessionFailed = false;
+    if(!webSocket.sendTXT("{\"type\":\"session.close\"}")){
+        Serial.println("[GPTLive] Close send failed; final usage unconfirmed");
+        webSocket.disconnect();
+        onTransportDisconnected();
+    }
+}
+
+bool GPTLive::processSessionLifecycle(bool stopping, bool failed)
+{
+    // Keep draining events even while closing or preparing to suspend the task.
+    webSocket.loop();
+    SessionState state = sessionState.load();
+    if(stopping || failed || sessionFailed) recordingRequested.store(false);
+    if(state == SessionState::Idle && recordingRequested.load()){
+        sessionId = "";
+        usageSeconds = 0;
+        sessionStateAt = millis();
+        sessionState.store(SessionState::Starting);
+        if(!sendSessionStart()) sessionFailed = true;
+        state = sessionState.load();
+    }
+    if((state == SessionState::Active && !recordingRequested.load()) ||
+       (state == SessionState::Starting && (stopping || failed || sessionFailed ||
+        (uint32_t)(millis() - sessionStateAt) >= SESSION_START_TIMEOUT_MS))){
+        if(state == SessionState::Starting) Serial.println("[GPTLive] Startup aborted; closing session");
+        closeSession();
+    }else if(state == SessionState::Closing &&
+             (uint32_t)(millis() - sessionStateAt) >= SESSION_CLOSE_TIMEOUT_MS){
+        Serial.println("[GPTLive] Close timed out; final usage unconfirmed");
+        webSocket.disconnect();
+        onTransportDisconnected();
+    }else if((stopping || failed || sessionFailed) && state == SessionState::Idle){
+        webSocket.disconnect();
+        onTransportDisconnected();
+    }else if(state == SessionState::Disconnected){
+        recordingRequested.store(false);
+    }
+    switch(sessionState.load()){
+    case SessionState::Idle: avatar.setSpeechText("Please touch"); break;
+    case SessionState::Starting: avatar.setSpeechText("Starting..."); break;
+    case SessionState::Closing: avatar.setSpeechText("Stopping..."); break;
+    case SessionState::Disconnected: avatar.setSpeechText("Connecting..."); break;
+    case SessionState::Active: return recordingRequested.load();
+    }
+    return false;
+}
+
 void GPTLive::startRealtimeRecord()
 {
-    recordingRequested.store(true);
+    if(sessionState.load() == SessionState::Idle) recordingRequested.store(true);
 }
 
 void GPTLive::stopRealtimeRecord()
 {
-    recordingRequested.store(false);
+    if(sessionState.load() == SessionState::Active) recordingRequested.store(false);
 }
 
 void GPTLive::onAudioSessionStarted()
@@ -447,12 +533,12 @@ void GPTLive::onAudioDisconnected()
 {
     sessionReady = false;
     recordingRequested.store(false);
-    audioFailed = true;
+    audioFailed = false;
 }
 
 void GPTLive::enqueueAudioDelta(const String& delta)
 {
-    if(audioFailed || !sessionReady) return;
+    if(audioFailed || !sessionReady || !recordingRequested.load() || sessionState.load() != SessionState::Active) return;
     const size_t encoded = delta.length();
     if(!encoded) return;
     if(!audioRing || !audioDecode || !audioGateBuffer || encoded % 4 || encoded / 4 * 3 > AUDIO_DECODE_BYTES){
@@ -689,29 +775,15 @@ void GPTLive::processAudioPlayback()
 
 void GPTLive::webSocketProcess()
 {
-    if(pauseRequested.load()){
-        if(!pauseAcknowledged.load()){
-            recordingRequested.store(false);
-            RealtimeLLMBase::stopRealtimeRecord();
-            resetAudioPlayback();
-            // 復帰時に停止前の応答が socket から流れ込むのを防ぐ。
-            sessionReady = false;
-            if(webSocket.isConnected()) webSocket.disconnect();
-            audioFailed = false;
-            pauseAcknowledged.store(true);
-        }
+    if(pauseRequested.load() && pauseAcknowledged.load()){
         delay(1);
         return;
     }
-    webSocket.loop();
-    if(audioFailed){
-        // 不正なチャンクの後続を再生しないよう、新しいセッションに切り替える。
-        recordingRequested.store(false);
-        RealtimeLLMBase::stopRealtimeRecord();
-        resetAudioPlayback();
-        if(webSocket.isConnected()) webSocket.disconnect();
-        audioFailed = false;
+    const bool active = processSessionLifecycle(pauseRequested.load(), audioFailed);
+    if(pauseRequested.load() && sessionState.load() == SessionState::Disconnected){
+        pauseAcknowledged.store(true);
     }
+    if(!active){ delay(1); return; }
     processAudioPlayback();
     if(audioOwned || audioUsed || audioFailed){
         RealtimeLLMBase::stopRealtimeRecord();
@@ -728,6 +800,7 @@ void GPTLive::webSocketProcess()
             if(!micReady){
                 Serial.println("[GPTLive] Mic.begin failed; recording stopped");
                 recordingRequested.store(false);
+                return;
             }else{
                 RealtimeLLMBase::startRealtimeRecord();
             }

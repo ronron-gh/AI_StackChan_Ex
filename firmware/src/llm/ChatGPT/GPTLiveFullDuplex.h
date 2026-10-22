@@ -7,15 +7,17 @@ class GPTLiveFullDuplex : public GPTLive {
 public:
     explicit GPTLiveFullDuplex(llm_param_t param);
     void webSocketProcess() override;
-    void startRealtimeRecord() override { requested.store(true); }
-    void stopRealtimeRecord() override { requested.store(false); }
-    bool isRealtimeRecording() override { return requested.load(); }
+    void startRealtimeRecord() override;
+    void stopRealtimeRecord() override;
+    bool isRealtimeRecording() override;
     int getAudioLevel() override { return audio.getLevel(); }
     void suspendWebSocketLoopTask() override;
     void resumeWebSocketLoopTask() override;
     void enqueueAudioDelta(const String& delta) override;
     void onAudioDisconnected() override;
     void onAudioSessionStarted() override { ready = true; }
+protected:
+    void stopSessionAudio() override;
 private:
     static constexpr size_t DECODE_BYTES = 100 * 1024;
     CoreS3FullDuplexAudio audio;

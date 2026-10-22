@@ -31,6 +31,7 @@ public:
     virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
     virtual String& buildInputAudioJson(String& jsonBuf, String& base64);
     virtual void load_role();
+    bool sendSessionStart();
 
 #ifndef REALTIME_API_WITH_TTS
     void webSocketProcess() override;
@@ -43,8 +44,26 @@ public:
     virtual void enqueueAudioDelta(const String& delta);
     virtual void onAudioDisconnected();
     virtual void onAudioSessionStarted();
+    void onTransportConnected();
+    void onTransportDisconnected();
+    void onSessionError() { sessionFailed = true; }
+    bool handleSessionEvent(const String& type);
+
+protected:
+    enum class SessionState { Disconnected, Idle, Starting, Active, Closing };
+    std::atomic<SessionState> sessionState{SessionState::Disconnected};
+    std::atomic<bool> recordingRequested{false};
+    bool processSessionLifecycle(bool stopping, bool failed);
+    virtual void stopSessionAudio();
 
 private:
+    static constexpr uint32_t SESSION_START_TIMEOUT_MS = 15000;
+    static constexpr uint32_t SESSION_CLOSE_TIMEOUT_MS = 15000;
+    uint32_t sessionStateAt = 0;
+    String sessionId;
+    double usageSeconds = 0;
+    bool sessionFailed = false;
+    void closeSession();
     static constexpr size_t AUDIO_RING_BYTES = 512 * 1024;
     static constexpr size_t AUDIO_DECODE_BYTES = 100 * 1024;
     static constexpr size_t AUDIO_PLAY_BYTES = 8192;
@@ -80,7 +99,6 @@ private:
     bool restoreMic = false;
     bool sessionReady = false;
     bool audioFailed = false;
-    std::atomic<bool> recordingRequested{false};
     std::atomic<bool> pauseRequested{false};
     std::atomic<bool> pauseAcknowledged{false};
     std::atomic<int> playbackLevel{0};

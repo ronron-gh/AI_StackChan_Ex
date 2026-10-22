@@ -27,12 +27,12 @@ void GPTLiveFullDuplex::onAudioDisconnected()
 {
     ready = false;
     requested.store(false);
-    fault = true;
+    fault = false;
 }
 
 void GPTLiveFullDuplex::enqueueAudioDelta(const String& delta)
 {
-    if(!ready || fault || !audio.isRunning()) return;
+    if(!ready || fault || !recordingRequested.load() || sessionState.load() != SessionState::Active || !audio.isRunning()) return;
     const size_t encoded = delta.length();
     if(!encoded) return;
     if(!decoded || encoded % 4 || encoded / 4 * 3 > DECODE_BYTES){ fault = true; return; }
@@ -57,17 +57,40 @@ void GPTLiveFullDuplex::stopAudio()
     speaking = false;
 }
 
+void GPTLiveFullDuplex::startRealtimeRecord()
+{
+    if(diagnosticMode) requested.store(true);
+    else GPTLive::startRealtimeRecord();
+}
+
+void GPTLiveFullDuplex::stopRealtimeRecord()
+{
+    if(diagnosticMode) requested.store(false);
+    else GPTLive::stopRealtimeRecord();
+}
+
+bool GPTLiveFullDuplex::isRealtimeRecording()
+{
+    return diagnosticMode ? requested.load() : GPTLive::isRealtimeRecording();
+}
+
+void GPTLiveFullDuplex::stopSessionAudio()
+{
+    stopAudio();
+    ready = false;
+    fault = false;
+}
+
 void GPTLiveFullDuplex::webSocketProcess()
 {
-    if(paused.load()){
-        if(!pauseAck.load()){
-            requested.store(false);
-            stopAudio();
-            ready = false;
-            if(webSocket.isConnected()) webSocket.disconnect();
-            fault = false;
-            pauseAck.store(true);
-        }
+    if(paused.load() && pauseAck.load()){
+        delay(1);
+        return;
+    }
+    if(diagnosticMode && paused.load()){
+        requested.store(false);
+        stopAudio();
+        pauseAck.store(true);
         delay(1);
         return;
     }
@@ -88,32 +111,15 @@ void GPTLiveFullDuplex::webSocketProcess()
         delay(1);
         return;
     }
-    webSocket.loop();
-    if(fault || audio.hasFailed()){
-        Serial.println("[FD] Session/audio error; resetting");
-        requested.store(false);
-        stopAudio();
-        ready = false;
-        if(webSocket.isConnected()) webSocket.disconnect();
-        fault = false;
+    const bool active = processSessionLifecycle(paused.load(), fault || audio.hasFailed());
+    if(paused.load() && sessionState.load() == SessionState::Disconnected){
+        pauseAck.store(true);
     }
-    if(!ready || !requested.load()){
-        if(audio.isRunning()){
-            // 新しい録音開始時に以前の応答を再生しないようセッションも切断する。
-            stopAudio();
-            ready = false;
-            if(webSocket.isConnected()) webSocket.disconnect();
-            fault = false;
-        }
-        avatar.setSpeechText(ready ? "Please touch" : "Connecting...");
-        delay(10);
-        return;
-    }
+    if(!active){ delay(1); return; }
     if(!audio.isRunning()){
         if(!decoded || !audio.begin()){
-            Serial.println("[FD] Audio start failed; touch to retry");
-            requested.store(false);
-            delay(10);
+            Serial.println("[FD] Audio start failed; closing session");
+            fault = true;
             return;
         }
         sentSamples = 0;
@@ -123,7 +129,7 @@ void GPTLiveFullDuplex::webSocketProcess()
     }
     audio.setVolume(robot->spk_volume);
     // RX/TX workers never access WebSocketsClient. Bound the send batch so loop() keeps running.
-    for(int count = 0; count < 2 && requested.load() && audio.read(input); ++count){
+    for(int count = 0; count < 2 && recordingRequested.load() && audio.read(input); ++count){
         String encoded = base64::encode((uint8_t*)input.pcm, sizeof(input.pcm));
         String json;
         if(!webSocket.sendTXT(buildInputAudioJson(json, encoded))){ fault = true; break; }
@@ -135,7 +141,6 @@ void GPTLiveFullDuplex::webSocketProcess()
         Serial.printf("[FD] Sent=%u samples (continues during output)\n", (unsigned)sentSamples);
         sentLogAt = millis();
     }
-    // Keep the full-duplex session open until explicit stop; no output-silence mic switching.
     avatar.setSpeechText(speaking ? "" : "Listening...");
     delay(1);
 }

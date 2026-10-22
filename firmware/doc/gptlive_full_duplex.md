@@ -4,25 +4,27 @@ CoreS3内蔵のES7210／AW88298と共有I2Sクロックを直接扱う実験実�
 
 ## ビルドと切替
 
-    pio run -e m5stack-cores3-realtime-full-duplex
-    pio run -e m5stack-cores3-realtime-full-duplex -t upload
+    pio run -e m5stack-cores3-realtime
+    pio run -e m5stack-cores3-realtime -t upload
 
-AI Serviceは既存のOpenAI選択を使う。この環境でのみGPTLiveFullDuplexを生成する。CoreS3内蔵音声向けで、Core2／AtomS3R／外部Audio Module／REALTIME_API_WITH_TTSは対象外。WakeWordはこの環境では無効。
+AI ServiceはOpenAI GPT-Liveを選択する。GPTLIVE_FULL_DUPLEXが有効なこの環境でGPTLiveFullDuplexを生成する。CoreS3内蔵音声向けで、Core2／AtomS3R／外部Audio Module／REALTIME_API_WITH_TTSは対象外。WakeWordはこの環境では無効。
 
-通常の半二重方式へ戻す場合は次をビルド・書込みする。
+従来のOpenAI Realtime APIへ戻す場合は、platformio.iniの同環境の-DGPTLIVE_FULL_DUPLEXを無効にして次をビルド・書込みする。
 
     pio run -e m5stack-cores3-realtime -t upload
 
 ## 基本の確認
 
 1. 音量は最初は64程度以下にして開始する。直接I2SではPCMに設定音量の二乗比を適用する。スピーカー音量0でもRXは継続する。
-2. 接続が完了しPlease touchが表示されたら、従来の録音開始操作をする。ログに CoreS3 TX+RX started: 24000 Hz PCM16 mono, no AEC が出ることを確認する。
+2. 接続が完了しPlease touchが表示されたら、従来の録音開始操作をする。タッチでセッションを開始してStarting...となり、session.started受信後に音声入出力とListening...表示を開始する。待機中はセッションを開始しない。ログに CoreS3 TX+RX started: 24000 Hz PCM16 mono, no AEC が出ることを確認する。
 3. 約2秒ごとのログで RX / TX / Sent が増えることと、発話時に inLevel が変化することを確認する。
 4. 応答を再生しているときに outLevel が変化し、その間も RX / Sent が増え続けることを確認する。TXには無音の継続送信も含まれるため、TXカウンタだけで応答の再生成功とは判断しない。
-5. 録音停止操作で入出力を止める。停止時にはWebSocketも切断し、停止前の応答を次回に持ち越さない。再接続後は再度操作して開始する。
+5. 録音停止操作で入出力を止める。Stopping...表示でsession.closeを送り、session.closedの最終利用量を記録してからWebSocketを切断する。停止前の応答を次回に持ち越さず、再接続後は再度操作して新しいセッションを開始する。
 6. モード停止／復帰、切断再接続、音量変更、長い応答でも停止・再開できることを確認する。
 
 全二重版には30秒の自動録音停止と、出力無音でのマイク切替を適用しない。手動停止までセッションの入出力を継続する。直接I2S所有中の効果音・アラーム音はスキップする。非TTSビルドなので既存の非同期TTSタスクは起動しない。別TTSのRobot::speechは無効で、Webの /speech APIは503を返す。
+
+無音・ミュート中もセッション時間に応じて課金される。storeはfalseで、forkによる会話の引き継ぎは行わない。開始・終了待ちはそれぞれ15秒で打ち切り、終了イベント前の切断やタイムアウトでは最終利用量を未確定としてログに残す。開始・終了待ちの重複操作は無視する。
 
 ## ログの見方
 
