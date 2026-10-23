@@ -13,9 +13,8 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/RealtimeChatGPT.h"
-#include "llm/ChatGPT/GPTLive.h"
 #ifdef GPTLIVE_FULL_DUPLEX
-#include "llm/ChatGPT/GPTLiveFullDuplex.h"
+#include "llm/ChatGPT/GPTLive.h"
 #endif
 #include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
@@ -186,7 +185,7 @@ void Robot::initRtLLM(StackchanExConfig& config){
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
 #ifdef GPTLIVE_FULL_DUPLEX
-    llm = new GPTLiveFullDuplex(llm_param);
+    llm = new GPTLive(llm_param);
 #else
     llm = new RealtimeChatGPT(llm_param);
 #endif

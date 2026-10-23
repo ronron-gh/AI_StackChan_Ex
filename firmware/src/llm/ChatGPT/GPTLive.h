@@ -1,116 +1,49 @@
-#if defined(REALTIME_API)
-
-#ifndef _GPT_LIVE_H
-#define _GPT_LIVE_H
-
-#include <Arduino.h>
-#include <M5Unified.h>
-#include "StackchanExConfig.h"
-#include "SpiRamJsonDocument.h"
-#include "../ChatHistory.h"
+#pragma once
+#ifdef GPTLIVE_FULL_DUPLEX
 #include "../RealtimeLLMBase.h"
-#include "ChatGPT.h"
-#include <WebSocketsClient.h>
-#ifndef REALTIME_API_WITH_TTS
+#include "driver/CoreS3FullDuplexAudio.h"
 #include <atomic>
-#endif
 
-
-class GPTLive: public RealtimeLLMBase{
-public:   //本当はprivateにしたいところだがコールバック関数にthisポインタを渡して使うためにpublicとした
-    MCPClient* mcpClient[LLM_N_MCP_SERVERS_MAX];
-    FunctionCall* fnCall;
-    
-    String role;
-    String userInfo;
-    String systemRole;
-
+class GPTLive : public RealtimeLLMBase {
 public:
-    GPTLive(llm_param_t param, bool manageAudio = true);
-
-    virtual void chat(String text, const char *base64_buf = NULL) {};   //dummy
-    virtual String& buildInputAudioJson(String& jsonBuf, String& base64);
-    virtual void load_role();
-    bool sendSessionStart();
-
-#ifndef REALTIME_API_WITH_TTS
+    explicit GPTLive(llm_param_t param);
+    void chat(String text, const char* base64_buf = nullptr) override {};
+    String& buildInputAudioJson(String& jsonBuf, String& base64) override;
+    void load_role() override;
     void webSocketProcess() override;
     void startRealtimeRecord() override;
     void stopRealtimeRecord() override;
     bool isRealtimeRecording() override { return recordingRequested.load(); }
-    int getAudioLevel() override { return playbackLevel.load(); }
+    int getAudioLevel() override { return audio.getLevel(); }
     void suspendWebSocketLoopTask() override;
     void resumeWebSocketLoopTask() override;
-    virtual void enqueueAudioDelta(const String& delta);
-    virtual void onAudioDisconnected();
-    virtual void onAudioSessionStarted();
-    void onTransportConnected();
-    void onTransportDisconnected();
-    void onSessionError() { sessionFailed = true; }
-    bool handleSessionEvent(const String& type);
-
-protected:
-    enum class SessionState { Disconnected, Idle, Starting, Active, Closing };
-    std::atomic<SessionState> sessionState{SessionState::Disconnected};
-    std::atomic<bool> recordingRequested{false};
-    bool processSessionLifecycle(bool stopping, bool failed);
-    virtual void stopSessionAudio();
 
 private:
+    enum class SessionState { Disconnected, Idle, Starting, Active, Closing };
     static constexpr uint32_t SESSION_START_TIMEOUT_MS = 15000;
     static constexpr uint32_t SESSION_CLOSE_TIMEOUT_MS = 15000;
+    static constexpr size_t DECODE_BYTES = 100 * 1024;
+    std::atomic<SessionState> sessionState{SessionState::Disconnected};
+    std::atomic<bool> recordingRequested{false}, paused{false}, pauseAck{false};
     uint32_t sessionStateAt = 0;
+    String role, userInfo, systemRole;
     String sessionId;
     double usageSeconds = 0;
     bool sessionFailed = false;
+    CoreS3FullDuplexAudio audio;
+    CoreS3FullDuplexAudio::InputFrame input;
+    uint8_t* decoded = nullptr;
+    uint32_t sentSamples = 0, sentLogAt = 0;
+
+    void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
+    void onTransportConnected();
+    void onTransportDisconnected();
+    bool handleSessionEvent(const String& type);
+    bool sendSessionStart();
+    bool processSessionLifecycle(bool stopping);
     void closeSession();
-    static constexpr size_t AUDIO_RING_BYTES = 512 * 1024;
-    static constexpr size_t AUDIO_DECODE_BYTES = 100 * 1024;
-    static constexpr size_t AUDIO_PLAY_BYTES = 8192;
-    static constexpr uint32_t AUDIO_IDLE_MS = 150;
-    static constexpr uint32_t AUDIO_SPEECH_END_MS = 1200;
-    static constexpr uint32_t AUDIO_RECEIVE_TIMEOUT_MS = 1200;
-    static constexpr size_t AUDIO_FRAME_SAMPLES = 480;
-    static constexpr size_t AUDIO_FRAME_BYTES = AUDIO_FRAME_SAMPLES * sizeof(int16_t);
-    static constexpr size_t AUDIO_PREROLL_BYTES = 5 * AUDIO_FRAME_BYTES;
-    static constexpr size_t AUDIO_SILENCE_SAMPLES = 24000 * AUDIO_SPEECH_END_MS / 1000;
-    static constexpr uint32_t AUDIO_START_RMS = 300;
-    static constexpr uint32_t AUDIO_CONTINUE_RMS = 150;
-    static constexpr uint32_t AUDIO_RMS_LOG_MS = 2000;
-    uint8_t* audioRing = nullptr;
-    uint8_t* audioDecode = nullptr;
-    uint8_t* audioGateBuffer = nullptr;
-    size_t audioFrameUsed = 0;
-    size_t audioPrerollWrite = 0;
-    size_t audioPrerollUsed = 0;
-    size_t audioSilentSamples = 0;
-    bool audioSpeechActive = false;
-    uint32_t audioLastPcmAt = 0;
-    uint32_t audioRmsLogAt = 0;
-    uint32_t audioRmsMin = UINT32_MAX;
-    uint32_t audioRmsMax = 0;
-    size_t audioRead = 0;
-    size_t audioWrite = 0;
-    size_t audioUsed = 0;
-    size_t audioInFlight = 0;
-    uint32_t audioIdleSince = 0;
-    bool audioIdle = false;
-    bool audioOwned = false;
-    bool restoreMic = false;
-    bool sessionReady = false;
-    bool audioFailed = false;
-    std::atomic<bool> pauseRequested{false};
-    std::atomic<bool> pauseAcknowledged{false};
-    std::atomic<int> playbackLevel{0};
-    bool appendAudioPcm(const uint8_t* pcm, size_t bytes);
-    void processAudioFrame(size_t bytes);
-    void resetAudioGate();
-    void resetAudioPlayback(bool resetGate = true);
-    void processAudioPlayback();
-#endif
+    void enqueueAudioDelta(const String& delta);
+    void stopAudio();
+    void stopSessionAudio();
 };
-
-
-#endif  //_GPT_LIVE_H
-
-#endif  //REALTIME_API
+#endif  // GPTLIVE_FULL_DUPLEX

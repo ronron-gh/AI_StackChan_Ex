@@ -4,7 +4,6 @@ Notes on FW design, etc.
 - [Task](#task)
 - [Mod](#mod)
   - [ESP-NOW Remote Control Mod](#esp-now-remote-control-mod)
-  - [GPTLive Audio Playback](#gptlive-audio-playback)
   - [GPTLive Full Duplex](#gptlive-full-duplex)
 - [Function Calling](#function-calling)
   - [Avatar Expression](#avatar-expression)
@@ -52,31 +51,14 @@ GPTLive の音声出力は追加タスクを作らず、既存の webSocketLoopT
 - ESP-NOW Mod 実行中は Wi-Fi channel 変更により Web/FTP/Realtime API と干渉する可能性がある。
 - ESP-NOW Mod 離脱時は ESP-NOW を停止し、offline mode でなければ Wi-Fi STA の再接続を最大 5 秒待つ。
 
-### GPTLive Audio Playback
-
-対象は GPTLive を使う REALTIME_API ビルドのうち、REALTIME_API_WITH_TTS が未定義の構成。CoreS3 + M5Unified の I2S 制約に合わせて、マイクとスピーカーを半二重で切り替える。既存の RealtimeChatGPT、GeminiLive、TTS 経由の再生処理は維持する。
-
-- session.output_audio.delta の Base64 を PCM16 / モノラル / 24 kHz にデコードし、PSRAM に確保した 512 KiB のリングに追加する。容量は約 10.9 秒分であり、応答全体の長さの上限ではなく未再生分の上限。別途 100 KiB の PSRAM デコード領域と 5760 byte の判定・先行保持領域を使う。GPTLive では基底クラスの 100 KiB × 2 のダブルバッファを確保しない。
-- デコードした PCM は 20 ms（480 sample）の窓で RMS を判定する。開始は RMS 300 以上、発話継続は RMS 150 以上を初期閾値とし、比較用の平方和は 64 bit で計算する。delta をまたぐ窓は次の受信へ持ち越し、受信が 150 ms 途絶えた場合は途中の窓も判定する。
-- 発話待機中は無音を再生リングに追加せず、直前 100 ms（4800 byte）のみを PSRAM に循環保持する。開始閾値を超えた窓で先行保持分とその窓を順にリングへ追加する。発話中は短い無音も再生し、継続閾値未満が 1200 ms（28800 sample）続いたら待機へ戻って以後の無音を破棄する。猶予は PCM のサンプル数で数える。
-- 受信コールバックはデータの検証、音量判定、保持・追加のみを行う。ループ側は mutex を待たずに取得を試み、取得後に録音停止 → Mic.end → Speaker.begin とする。再生中は入力音声を送信しない。
-- リングの連続領域から最大 8192 byte（約 171 ms）を Speaker.playRaw に渡す。再生完了までその領域を使用量に含め、受信による上書きを防ぐ。リングが空でも、スピーカーの再生中または発話継続中はマイクを戻さない。発話終了を確認し、リングとスピーカーの再生が完了してから、再生対象 PCM の追加がない状態を 150 ms 待ち、Speaker.end の後に元のマイク状態を復元して mutex を解放する。
-- 録音操作の意図と実際の録音状態を分離する。GPTLive の isRealtimeRecording は操作上の録音有効状態を返し、再生による一時停止中も有効のままとする。再生中のタッチは録音を無効にし、終了後の自動再開を抑止する。再生中の音声による割り込みは受け付けない。
-- PCM 受信自体が 1200 ms 途絶えた場合も壁時計で発話終了とする。途中の窓を確定する 150 ms と、発話終了の受信途絶 1200 ms は別の条件とし、窓の確定やリング枯渇だけでは発話を終了しない。終了理由はログの PCM silence / receive timeout で識別できる。
-- 破棄した無音は再生終了の猶予をリセットしないため、無音 delta の連続受信中もマイクを維持・復帰できる。通常の再生終了では途中の判定窓と先行保持分を残し、切断・異常・モード停止ではそれらもクリアする。
-- リング・判定窓・先行保持の読み書きとセッション状態は webSocketLoopTask だけが更新する。操作要求・停止要求と再生レベルの共有には atomic を使う。リップシンクには再生チャンクの PCM ピーク値を渡す。
-- PSRAM 確保失敗、不正な Base64／PCM、容量超過、スピーカー初期化・再生失敗はログを出して音声状態をリセットし、セッションを終了してWebSocketを切断する。再接続後もセッション・録音は自動開始せず、タッチで開始要求を出してsession.started後に録音を再開する。容量超過時には今回の受信で追加済みの未再生 PCM も破棄し、不正チャンクの後続だけを再生しない。通常の切断も録音を停止し、蓄積 PCM を破棄する。
-- モード停止時は未再生 PCM を破棄し、Speaker.endによりPCM参照の終了を待ってマイクも停止する。セッション終了確認後にWebSocketを切断して停止前の応答が復帰時に流れ込むのを防ぐ。復帰時は再接続し、タッチでセッションを開始してsession.started後に録音を開始する。マイク初期化失敗時も録音要求を無効にし、セッションを終了する。
-
-RMS の最小／最大値を約 2 秒ごとに、発話開始／終了を遷移時にログへ出す。閾値 300／150、無音終了・受信途絶 1200 ms、再生終了猶予 150 ms は初期設定値で、弱い発話の見逃し・ノイズ誤検出・実機での音切れ・切替頻度は未確認。発話内の無音または受信途絶が 1200 ms 以上になると再切替が発生し得る。CoreS3 実機で短い／長い応答、遅延、切断、録音停止、モード切替を確認する。リング再生の導入記録は [ステアリング](codex/steering/20261012-gptlive-audio-ring-buffer.md)、無音判定の導入記録は [ステアリング](codex/steering/20261013-gptlive-silence-gate.md)、終了猶予・復帰条件の確認結果は [ステアリング](codex/steering/20261014-gptlive-speech-end-grace.md) に記録する。
 
 ### GPTLive Full Duplex
 
-m5stack-cores3-realtime の GPTLIVE_FULL_DUPLEX フラグが有効な場合、OpenAI選択時に GPTLiveFullDuplex を生成する。その他の通常Realtime環境はRealtimeChatGPTを使う。接続・セッション設定はGPTLiveを継承して共用し、音声イベントをvirtualフックで差し替える。半二重用のPSRAMはこのクラスでは確保しない。
+m5stack-cores3-realtime の GPTLIVE_FULL_DUPLEX フラグが有効な場合、OpenAI選択時に GPTLive を生成する。その他の通常Realtime環境はRealtimeChatGPTを使う。接続・セッション管理・音声送受信をGPTLiveに集約し、RealtimeLLMBaseを直接継承する。GPTLiveの宣言・実装はGPTLIVE_FULL_DUPLEX有効時に限定し、既存のCoreS3・非TTS制約を維持する。
 
 GPT-Liveの音声経路では接続状態とセッション状態を分ける。CONNECTEDでは接続済み待機（Please touch）となり、タッチによる要求をWebSocketタスクが受けてsession.startを一度送る（Starting...）。storeはfalseを明示し、session.started後にだけ音声を送信する（Listening...）。開始待ち・終了待ちの重複タッチは無視し、通信断やモード復帰で課金セッションを自動開始しない。
 
-停止要求では入力と再生を停止・破棄し、session.closeを送ってイベント受信を続ける（Stopping...）。session.closedの最終usage.seconds、終了理由、セッションIDをログに残して切断する。利用量の更新は累積値の上書きとし加算しない。開始待ちと終了待ちは各15秒で打ち切り、終了イベント前の切断・タイムアウトは最終利用量未確定として扱う。モード停止でもWebSocketタスクが終了待ちを処理してから休止する。明示停止は委譲中処理の完了を待たず、session.closeにより待機中のバックエンド処理が中断される場合がある。次回は新しい接続・セッションを作り、forkや新たな履歴引き継ぎは行わない。半二重のGPTLive経路にも同じセッション管理を適用する。実装・確認記録は[ステアリング](codex/steering/20261021-gptlive-session-lifecycle.md)を参照する。
+停止要求では入力と再生を停止・破棄し、session.closeを送ってイベント受信を続ける（Stopping...）。session.closedの最終usage.seconds、終了理由、セッションIDをログに残して切断する。利用量の更新は累積値の上書きとし加算しない。開始待ちと終了待ちは各15秒で打ち切り、終了イベント前の切断・タイムアウトは最終利用量未確定として扱う。モード停止でもWebSocketタスクが終了待ちを処理してから休止する。明示停止は委譲中処理の完了を待たず、session.closeにより待機中のバックエンド処理が中断される場合がある。次回は新しい接続・セッションを作り、forkや新たな履歴引き継ぎは行わない。実装・確認記録は[ステアリング](codex/steering/20261021-gptlive-session-lifecycle.md)を参照する。
 
 - CoreS3FullDuplexAudioがI2S0のTX／RXを一括所有する。MCLK GPIO0、BCLK GPIO34、WS GPIO33、DIN GPIO14、DOUT GPIO13、24 kHz／16 bit／左モノラルスロット、MCLK 256fsを使う。ES7210／AW88298の初期化はM5Unifiedのレジスタ設定を基に直接行い、AW88298のレートコードは24 kHzへ合わせる。画面・電源・I2Cは引き続きM5Unifiedを使う。
 - WebSocketタスクが音声mutexを待たずに取得し、既存M5音声を終了して直接I2Sを開始する。同じタスクが終了・復元・mutex解放まで担当する。実験ビルドの効果音／アラーム音はmutexを取得できなければスキップし、UIタスクを所有権待ちで止めない。WakeWordはビルドフラグで無効、非TTS構成なので非同期TTSは起動しない。別TTSのRobot::speechも実験フラグ内で無効化し、/speechは503を返す。
@@ -89,7 +71,6 @@ GPT-Liveの音声経路では接続状態とセッション状態を分ける。
 
 任意の GPTLIVE_FULL_DUPLEX_TEST_TONE フラグでは、タッチで100 msのテスト音と連続RXを動かす単独診断モードとなり、WebSocket処理・API送信は行わない。通常ビルドでも診断コードの型・構文をコンパイルし、無効時は実行しない。
 
-実機の同時動作、24 kHzの安定性、停止／復帰、音量、自己発話の回り込みは未確認。検証・切戻しの手順は [GPTLive Full Duplex](gptlive_full_duplex.md)、ビルド・静的確認の結果は [ステアリング](codex/steering/20261015-gptlive-full-duplex.md) に記録する。
 
 ## Function Calling
 

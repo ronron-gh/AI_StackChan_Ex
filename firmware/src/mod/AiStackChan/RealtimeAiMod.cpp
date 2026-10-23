@@ -101,7 +101,7 @@ void RealtimeAiMod::display_touched(int16_t x, int16_t y)
 {
   if (box_stt.contain(x, y))
   {
-    //sw_tone();
+    sw_tone();
     toggleRealtimeRecord();
   }
 #ifdef USE_SERVO

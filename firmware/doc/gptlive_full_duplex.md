@@ -1,13 +1,13 @@
 # GPTLive CoreS3 Full Duplex 検証
 
-CoreS3内蔵のES7210／AW88298と共有I2Sクロックを直接扱う実験実装。実機での同時入出力・24 kHz・エコーの評価は未完了。
+CoreS3内蔵のES7210／AW88298と共有I2Sクロックを直接扱う全二重実装。音声送受信とセッション管理はGPTLiveに統合し、半二重経路は削除した。統合前の全二重通信は実機確認済みだが、今回の統合後の実機確認は未実施。
 
 ## ビルドと切替
 
     pio run -e m5stack-cores3-realtime
     pio run -e m5stack-cores3-realtime -t upload
 
-AI ServiceはOpenAI GPT-Liveを選択する。GPTLIVE_FULL_DUPLEXが有効なこの環境でGPTLiveFullDuplexを生成する。CoreS3内蔵音声向けで、Core2／AtomS3R／外部Audio Module／REALTIME_API_WITH_TTSは対象外。WakeWordはこの環境では無効。
+AI ServiceはOpenAI GPT-Liveを選択する。GPTLIVE_FULL_DUPLEXが有効なこの環境でGPTLiveを生成する。CoreS3内蔵音声向けで、Core2／AtomS3R／外部Audio Module／REALTIME_API_WITH_TTSは対象外。WakeWordはこの環境では無効。
 
 従来のOpenAI Realtime APIへ戻す場合は、platformio.iniの同環境の-DGPTLIVE_FULL_DUPLEXを無効にして次をビルド・書込みする。
 
