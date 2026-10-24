@@ -242,7 +242,7 @@ void CoreS3FullDuplexAudio::receiveLoop()
 
 void CoreS3FullDuplexAudio::transmitLoop()
 {
-    int16_t pcm[FRAME_SAMPLES];
+    int16_t pcm[FRAME_SAMPLES];     // 20ms分の再生バッファ
     uint32_t lastProgress = millis();
     while(running.load()){
         size_t bytes = sizeof(pcm);
@@ -250,12 +250,14 @@ void CoreS3FullDuplexAudio::transmitLoop()
         if(bytes > used) bytes = used;
         size_t first = RING_BYTES - readPos;
         if(first > bytes) first = bytes;
+        // 出力リングから取り出せた分を20msバッファにコピー
         memcpy(pcm, ring + readPos, first);
         memcpy(((uint8_t*)pcm) + first, ring, bytes - first);
         readPos = (readPos + bytes) % RING_BYTES;
         used -= bytes;
         xSemaphoreGive(ringMutex);
         if(!bytes) txUnderruns.fetch_add(1);
+        // 20msに足りない分をゼロ埋め（出力リングにデータがなければ全データゼロとなる）
         memset(((uint8_t*)pcm) + bytes, 0, sizeof(pcm) - bytes);
         const int volume = volume_.load();
         int peak = 0;
@@ -266,6 +268,8 @@ void CoreS3FullDuplexAudio::transmitLoop()
         }
         outputLevel.store(peak);
         size_t offset = 0;
+        // 20msバッファをi2sのDMAバッファに書き込み
+        // i2sが送信と同じクロックで受信も動く設定なので、送信データが無い場合でもゼロ埋めデータを書き込むことで受信を止めない
         while(offset < sizeof(pcm) && running.load()){
             size_t written = 0;
             esp_err_t err = i2s_write(PORT, ((uint8_t*)pcm) + offset,
