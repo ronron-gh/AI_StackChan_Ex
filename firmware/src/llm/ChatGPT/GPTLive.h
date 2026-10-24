@@ -3,6 +3,8 @@
 #include "../RealtimeLLMBase.h"
 #include "driver/CoreS3FullDuplexAudio.h"
 #include <atomic>
+#include <vector>
+#include "FunctionCall.h"
 
 class GPTLive : public RealtimeLLMBase {
 public:
@@ -34,6 +36,36 @@ private:
     CoreS3FullDuplexAudio::InputFrame input;
     uint8_t* decoded = nullptr;
     uint32_t sentSamples = 0, sentLogAt = 0;
+
+    static constexpr size_t MAX_TOOL_CALLS = 128;
+    struct ToolJob {
+        uint32_t generation;
+        char callId[128], name[128], arguments[4096], output[8192];
+    };
+    struct ToolCallState {
+        String callId, responseId, delegationId;
+        bool returned = false;
+    };
+    struct BackendState {
+        String responseId, delegationId;
+        bool completed = false, continued = false, failed = false;
+    };
+    MCPClient* mcpClient[LLM_N_MCP_SERVERS_MAX]{};
+    FunctionCall* fnCall = nullptr;
+    SpiRamJsonDocument toolDefinitions{32 * 1024};
+    QueueHandle_t toolRequests = nullptr, toolResults = nullptr;
+    TaskHandle_t toolTask = nullptr;
+    std::atomic<uint32_t> toolGeneration{0};
+    std::atomic<unsigned> pendingToolJobs{0};
+    std::vector<ToolCallState> toolCalls;
+    std::vector<BackendState> backendResponses;
+    bool initTools();
+    static void toolWorker(void* context);
+    String executeTool(ToolJob& job);
+    void handleBackendEvent();
+    void processToolResults();
+    bool sendToolResult(const char* callId, const char* output);
+    void resetToolCalls();
 
     void onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length);
     void onTransportConnected();

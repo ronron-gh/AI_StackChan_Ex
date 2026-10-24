@@ -119,6 +119,18 @@ GPIOのDIN／DOUTと入出力方向はESP32-S3基準。図のBCLK／WSは同じ�
 
 ## Function Calling
 
+### GPT-Live
+
+GPTLIVE_FULL_DUPLEX構成では、組み込み関数と有効・接続済みMCPクライアントのツールを`session.delegation.responses.tools`へResponses形式で登録する。web_searchは維持し、関数の実行には既存のFunctionCallを使う。音声モデルには委譲条件を、バックエンドにはロール・メモリ情報・関数利用方針を渡す。`parallel_tool_calls=false`でローカル実行を直列化する。音声入力を再取得するask／WakeWord関連関数は登録しない。名前の衝突・定義の不整合・初期化失敗時はセッションを開始しない。
+
+WebSocketタスクが`response.event`内の`response.output_item.done`を処理し、function_callのcall_id・name・argumentsをコピーする。専用のgptLiveToolsタスク（優先度1、スタック8192 bytes）が実行し、WebSocketタスクが`response.item.create`で結果を返す。バックエンドresponseの完了と全関数結果の返却を待って`response.create`を一度送る。WebSocketへのアクセスは既存タスクだけが担当し、音声ドライバーの資源所有は変えない。
+
+要求キューは2件、結果キューは4件で、キューはPSRAM上の要求・結果領域へのポインターを受け渡す。関数名・call_idは各127 bytes、引数JSONは4095 bytes、結果は8191 bytesまで。登録済みスキーマの必須引数・型・enumとタイマーの範囲を検証する。未知の関数、不正引数、要求キュー満杯、結果の上限超過にはエラー結果を返す。関数定義全体は24 KiB、session.startは60 KiBの送信サイズを上限とする。
+
+セッション内で最大128件のcall_idと128件のバックエンドresponseを保持し、重複call_idを再実行しない。追跡上限に達した場合は履歴を捨てて再実行を許すことなくセッションを終了する。停止・切断時は世代を更新して未着手要求を破棄し、実行中の結果を新セッションへ返さない。実行開始済みの操作の副作用は取り消さず、自動再試行もしない。新セッション開始とモード休止完了は実行中要求の終了を待つため、外部通信の所要時間に依存する。ワーカーとMCPクライアントはLLMインスタンス・既存WebSocketタスクと同じ存続期間を持つ。
+
+GPT-Live用MCPクライアントには30秒の応答待ちタイムアウトを設定する。接続・HTTP処理のブロック時間は別途加わる。タイムアウトは実行結果未確定として返し、自動再実行しない。他サービスのクライアントは省略引数0で従来の待機動作を維持する。
+
 ### Avatar Expression
 
 Realtime API ビルドでは、Function Calling により AI が会話中の感情に合わせて Avatar の表情を変更できる。
