@@ -13,8 +13,19 @@
 - [Function Calling and MCP](#function-calling-and-mcp)
 
 ## Overview
-By using Realtime API, you can enjoy conversations with response speeds closer to real time than ever before.
-Compatible with OpenAI Realtime API and Gemini Live API.
+By using Realtime API, you can enjoy conversations with response speeds closer to real time than ever before. The APIs supported by each device are listed below.
+
+| Device | OpenAI Realtime | OpenAI GPT-Live | Google Gemini Live |
+|---|---|---|---|
+| Core2 | Supported | Not supported | Supported |
+| CoreS3 | Supported | Supported | Supported |
+| AtomS3R | Supported | Not supported | Supported |
+
+> Note:
+>
+> From v0.25.0 onward, CoreS3 builds support GPT-Live. Selecting OpenAI (ChatGPT) in the setup instructions below uses GPT-Live.
+>
+> To use the original OpenAI Realtime API on CoreS3, disable `-DGPTLIVE_FULL_DUPLEX` in the `[env:m5stack-cores3-realtime]` section of `platformio.ini`.
 
 ## How to build
 As shown below, select "env:m5stack-xxx-realtime" in the VSCode (PlatformIO) GUI, then build and upload the firmware.  

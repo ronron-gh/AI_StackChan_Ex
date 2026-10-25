@@ -24,12 +24,13 @@ extern Avatar avatar;
 static const char session_update[] =
         "{"
           "\"setup\": {"
-            "\"model\": \"models/gemini-2.5-flash-native-audio-preview-12-2025\","
+            //"\"model\": \"models/gemini-2.5-flash-native-audio-preview-12-2025\","
+            "\"model\": \"models/gemini-3.8-live\","
             "\"generationConfig\": {"
 #ifndef REALTIME_API_WITH_TTS
               "\"responseModalities\": [\"AUDIO\"]"
 #else
-              "\"responseModalities\": [\"TEXT\"]"
+              //"\"responseModalities\": [\"TEXT\"]"
               // 2026.2.5現在、出力形式をテキストに設定すると Code: 1007 (Cannot extract voices from a non-audio request.)
               // というエラーが返ってくる。Googleに対してissueは投げられている模様 (https://github.com/livekit/agents/issues/4423)
 #endif
@@ -58,6 +59,8 @@ static const char input_audio_append[] =
 // for function calling
 //
 static const char function_response[] =
+#if 0   
+        // gemini-2.5-flash
         "{"
             "\"tool_response\": {"
               "\"function_responses\": [{"
@@ -67,6 +70,18 @@ static const char function_response[] =
               "}]"
             "}"
         "}";
+#endif
+        // gemini-3.8-live
+        "{"
+            "\"toolResponse\": {"
+              "\"functionResponses\": [{"
+                "\"name\": \"REPLACE_TO_TOOL_NAME\","
+                "\"response\": {\"result\":\"REPLACE_TO_OUTPUT\"},"
+                "\"id\": \"REPLACE_TO_CALL_ID\""
+              "}]"
+            "}"
+        "}";
+
 
 // for debug (音声の代わりにテキストのプロンプトを入力する)
 //
@@ -203,20 +218,18 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
             }
             else if(!p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["text"].isNull()){
                 Serial.printf("[WSc] modelTurn text\n");
+                delta = p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["text"].as<String>();
+                Serial.printf("[WSc] data: %s\n", delta.c_str());
             }
 #ifndef REALTIME_API_WITH_TTS
             else if(!p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["inlineData"]["data"].isNull()){
                 if(p_this->speaking == false){
                     Serial.printf("[WSc] input audio committed\n");
                     p_this->stopRealtimeRecord();
-#ifndef REALTIME_API_WITH_TTS
                     enterMutexAudio();
                     M5.Mic.end();
                     M5.Speaker.begin();
                     p_this->speaking = true;
-#else
-                    p_this->speaking = true;
-#endif
                 }
 
                 delta = p_this->msgDoc["serverContent"]["modelTurn"]["parts"][0]["inlineData"]["data"].as<String>();
@@ -261,16 +274,18 @@ static void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
                 Serial.printf("[WSc] turnComplete: %s\n", payload);
 
 #ifndef REALTIME_API_WITH_TTS
-                while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
-                M5.Speaker.end();
-                M5.Mic.begin();
-                exitMutexAudio();
-                p_this->startRealtimeRecord();
+                if(p_this->speaking == true){
+                  while (M5.Speaker.isPlaying()) { vTaskDelay(1); }
+                  M5.Speaker.end();
+                  M5.Mic.begin();
+                  exitMutexAudio();
+                  p_this->startRealtimeRecord();
 
-                for(int i=0; i<2; i++){
-                    memset(p_this->audioBuf[i], 0, 100 * 1024);
+                  for(int i=0; i<2; i++){
+                      memset(p_this->audioBuf[i], 0, 100 * 1024);
+                  }
+                  p_this->speaking = false;
                 }
-                p_this->speaking = false;
 #else
                 p_this->response_done = true;
 #endif

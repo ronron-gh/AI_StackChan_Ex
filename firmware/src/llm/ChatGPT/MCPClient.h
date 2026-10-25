@@ -21,6 +21,7 @@ class MCPClient {
 private:
     String mcpAddr;
     uint16_t mcpPort;
+    uint32_t requestTimeoutMs;
     bool _isConnected;
 
     bool init_finished;
@@ -41,7 +42,7 @@ public:
     SpiRamJsonDocument toolsListDoc;
     int nTools;
 
-    MCPClient(String _mcpAddr, uint16_t _mcpPort);
+    MCPClient(String _mcpAddr, uint16_t _mcpPort, uint32_t timeoutMs = 0);
     ~MCPClient();
 
     bool isConnected(){ return _isConnected; };
@@ -52,6 +53,6 @@ public:
 
 };
 
-void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp);
+void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp, uint32_t timeoutMs = 0);
 
 #endif

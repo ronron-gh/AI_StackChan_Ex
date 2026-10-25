@@ -13,6 +13,9 @@
 #include "llm/LLMBase.h"
 #include "llm/ChatGPT/ChatGPT.h"
 #include "llm/ChatGPT/RealtimeChatGPT.h"
+#ifdef GPTLIVE_FULL_DUPLEX
+#include "llm/ChatGPT/GPTLive.h"
+#endif
 #include "llm/Gemini/GeminiLive.h"
 #include "llm/ModuleLLM/ChatModuleLLM.h"
 #include "llm/ModuleLLMFncl/ChatModuleLLMFncl.h"
@@ -181,7 +184,11 @@ void Robot::initRtLLM(StackchanExConfig& config){
 
   switch(llm_type){
   case LLM_TYPE_CHATGPT:
+#ifdef GPTLIVE_FULL_DUPLEX
+    llm = new GPTLive(llm_param);
+#else
     llm = new RealtimeChatGPT(llm_param);
+#endif
     break;
   case LLM_TYPE_GEMINI:
     llm = new GeminiLive(llm_param);
@@ -294,6 +301,10 @@ void Robot::initTTS(StackchanExConfig& config){
 
 void Robot::speech(String text)
 {
+#ifdef GPTLIVE_FULL_DUPLEX
+  Serial.println("[FD] Separate TTS is disabled in the full-duplex experiment");
+  return;
+#endif
   if(text != ""){
     servo_home = false;
     avatar.setExpression(Expression::Happy);

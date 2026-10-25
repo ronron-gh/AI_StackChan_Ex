@@ -455,7 +455,12 @@ ModBase* init_mod(void)
 
 void sw_tone()
 {
+#ifdef GPTLIVE_FULL_DUPLEX
+  // 直接 I2S が所有中は UI タスクを待たせず効果音を省略する。
+  if(xSemaphoreTake(mutexAudio, 0) != pdTRUE) return;
+#else
   enterMutexAudio();
+#endif
   M5.Mic.end();
   M5.Speaker.begin();
   delay(300);     // AtomS3Rはこのdelayがないと鳴らないときがある
@@ -469,7 +474,12 @@ void sw_tone()
   
 void alarm_tone()
 {
+#ifdef GPTLIVE_FULL_DUPLEX
+  // 直接 I2S が所有中は UI タスクを待たせず効果音を省略する。
+  if(xSemaphoreTake(mutexAudio, 0) != pdTRUE) return;
+#else
   enterMutexAudio();
+#endif
   M5.Mic.end();
   M5.Speaker.begin();
 

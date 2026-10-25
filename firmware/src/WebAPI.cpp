@@ -298,6 +298,10 @@ void handleNotFound(){
 }
 
 void handle_speech() {
+#ifdef GPTLIVE_FULL_DUPLEX
+  server.send(503, "text/plain", "Speech API is disabled in the full-duplex experiment");
+  return;
+#endif
   if(robot == nullptr){
     server.send(503, "text/plain", String("Robot is not ready"));
     return;
@@ -415,6 +419,11 @@ void handle_config_get() {
   bool has_ex = SPIFFS.exists(SPIFFS_EX_CONFIG_PATH);
   response["source"] = (has_sec || has_basic || has_ex) ? "spiffs" : "none";
   response["complete"] = has_sec && has_basic && has_ex;
+#ifdef GPTLIVE_FULL_DUPLEX
+  response["ui"]["openaiServiceLabel"] = "OpenAI GPT-Live";
+#else
+  response["ui"]["openaiServiceLabel"] = "OpenAI Realtime";
+#endif
 
   JsonObject sec = response["sec"].to<JsonObject>();
   JsonObject wifi = sec["wifi"].to<JsonObject>();

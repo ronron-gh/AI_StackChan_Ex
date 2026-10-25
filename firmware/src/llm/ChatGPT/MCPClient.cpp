@@ -48,13 +48,13 @@ String toolCallJson =
 
 String g_mcpInitResult = "";
 
-void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp)
+void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp, uint32_t timeoutMs)
 {
   M5.Lcd.printf("Connect MCP Servers (%d)\n", nMcp);
   Serial.printf("\nConnect MCP Servers (%d)\n", nMcp);
   for(int i=0; i<nMcp; i++){
     if(false == mcpParam[i].disabled){
-      mcpClient[i] = new MCPClient(mcpParam[i].url, mcpParam[i].port);
+      mcpClient[i] = new MCPClient(mcpParam[i].url, mcpParam[i].port, timeoutMs);
       if(mcpClient[i]->isConnected()){
         M5.Lcd.printf("  %s: connected\n", mcpParam[i].name.c_str());
         Serial.printf("  %s: connected\n", mcpParam[i].name.c_str());
@@ -73,9 +73,10 @@ void initMcpClientList(MCPClient** mcpClient, mcp_server_s* mcpParam, int nMcp)
   delay(3000);
 }
 
-MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort)
+MCPClient::MCPClient(String _mcpAddr, uint16_t _mcpPort, uint32_t timeoutMs)
   : mcpAddr(_mcpAddr), 
     mcpPort(_mcpPort),
+    requestTimeoutMs(timeoutMs),
     _isConnected(true),
     nTools(0),
     toolsListDoc(SpiRamJsonDocument(1024*10))
@@ -146,7 +147,12 @@ String MCPClient::mcp_list_tools()
                   "Accept: text/event-stream\r\n" +
                   "Connection: keep-alive\r\n\r\n");
 
+    const uint32_t started = millis();
     while(!request_complete){
+      if(requestTimeoutMs && (uint32_t)(millis() - started) >= requestTimeoutMs){
+        tool_response = "";
+        break;
+      }
       pole_stream(toolsListJson);
       delay(100);
     }
@@ -191,7 +197,12 @@ String MCPClient::mcp_call_tool(DynamicJsonDocument& tool_params)
                   "Accept: text/event-stream\r\n" +
                   "Connection: keep-alive\r\n\r\n");
 
+    const uint32_t started = millis();
     while(!request_complete){
+      if(requestTimeoutMs && (uint32_t)(millis() - started) >= requestTimeoutMs){
+        tool_response = "{\"error\":\"MCP request timed out; action outcome is unconfirmed. Do not retry automatically.\"}";
+        break;
+      }
       pole_stream(json_str);
       delay(100);
     }

@@ -226,6 +226,8 @@ document.addEventListener('DOMContentLoaded', function () {
     fields.wifiSsid.value = wifi.ssid || '';
     fields.wifiPassword.value = wifi.password || '';
     fields.aiApiKey.value = apikey.aiservice || '';
+    fields.aiService.querySelector('option[value="0"]').textContent =
+      (config.ui && config.ui.openaiServiceLabel) || 'OpenAI Realtime';
     fields.aiService.value = String(llm.type === 3 ? 3 : 0);
     setBoolSelect(fields.enableMemory, !!llm.enableMemory);
     const mcpServers = Array.isArray(llm.mcpServers) ? llm.mcpServers : [];
