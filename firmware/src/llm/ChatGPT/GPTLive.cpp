@@ -109,8 +109,14 @@ void GPTLive::onWebSocketEvent(WStype_t type, uint8_t* payload, size_t length)
         if(handleSessionEvent(type)) break;
         if(type == "session.output_audio.delta"){
             enqueueAudioDelta(msgDoc["delta"].as<String>());
-        }else if(type == "session.output_transcript.delta"){
-            Serial.printf("[GPTLive] Transcript: %s\n", msgDoc["delta"].as<const char*>() ?: "");
+        }else if(type == "session.input_transcript.delta" || type == "session.output_transcript.delta"){
+            if(type == "session.output_transcript.delta")
+                Serial.printf("[GPTLive] Transcript: %s\n", msgDoc["delta"].as<const char*>() ?: "");
+            if(sessionState.load() == SessionState::Active && recordingRequested.load()){
+                String text = msgDoc["delta"] | "";
+                text.trim();
+                if(!text.isEmpty()) lastConversationAt = millis();
+            }
         }else if(type == "response.event"){
             handleBackendEvent();
         }
@@ -219,6 +225,7 @@ bool GPTLive::handleSessionEvent(const String& type)
     if(type == "session.started"){
         if(state != SessionState::Starting) return true;
         sessionId = msgDoc["session"]["id"].as<String>();
+        lastConversationAt = millis();
         sessionState.store(SessionState::Active);
         Serial.printf("[GPTLive] Session started: %s\n", sessionId.c_str());
         return true;
@@ -277,6 +284,11 @@ bool GPTLive::processSessionLifecycle(bool stopping)
     const bool failed = sessionFailed || audio.hasFailed();
     SessionState state = sessionState.load();
     if(stopping || failed || sessionFailed) recordingRequested.store(false);
+    if(state == SessionState::Active && recordingRequested.load() &&
+       (uint32_t)(millis() - lastConversationAt) >= SESSION_IDLE_TIMEOUT_MS){
+        Serial.println("[GPTLive] No conversation for 60 seconds; closing session");
+        recordingRequested.store(false);
+    }
     if(state == SessionState::Idle && recordingRequested.load() && pendingToolJobs.load() == 0){
         resetToolCalls();
         load_role();

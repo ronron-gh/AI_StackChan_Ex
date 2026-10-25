@@ -24,10 +24,12 @@ private:
     enum class SessionState { Disconnected, Idle, Starting, Active, Closing };
     static constexpr uint32_t SESSION_START_TIMEOUT_MS = 15000;
     static constexpr uint32_t SESSION_CLOSE_TIMEOUT_MS = 15000;
+    static constexpr uint32_t SESSION_IDLE_TIMEOUT_MS = 60000;
     static constexpr size_t DECODE_BYTES = 100 * 1024;
     std::atomic<SessionState> sessionState{SessionState::Disconnected};
     std::atomic<bool> recordingRequested{false}, paused{false}, pauseAck{false};
     uint32_t sessionStateAt = 0;
+    uint32_t lastConversationAt = 0;
     String role, userInfo, systemRole;
     String sessionId;
     double usageSeconds = 0;
