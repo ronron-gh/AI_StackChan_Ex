@@ -555,6 +555,11 @@ void setup()
   cfg.serial_baudrate = 115200;   //M5Unified 0.1.17からデフォルトが0になったため設定
   M5.begin(cfg);
 
+#if ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE
+  // USB シリアル未読時の送信待ちで音声処理を止めない。
+  Serial.setTxTimeoutMs(0);
+#endif
+
   ///// Debug /////
   //ヒープメモリ残量確認(デバッグ用)
   check_heap_free_size();
