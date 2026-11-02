@@ -36,6 +36,8 @@ SanoTTS は同期 `stream()` の要求を専用ワーカーで直列処理する
 
 GPTLive の音声出力は追加タスクを作らず、既存の webSocketLoopTask で受信・蓄積・再生要求を処理する。音声 mutex は同じタスクが取得・解放し、再生中は保持する。モード停止要求は atomic フラグで通知し、同タスクが音声の後始末を完了したことを通知してから suspend する。
 
+`ARDUINO_USB_CDC_ON_BOOT && ARDUINO_USB_MODE` が有効で `Serial` が HWCDC となる構成では、`setup()` の `M5.begin()` 直後に `Serial.setTxTimeoutMs(0)` を明示設定する。USB 接続のままホストがログを読まなくなった際、送信バッファや送信ロックの待ち時間によって音声処理が滞るのを防ぐ。Realtime API 以外のモードにも適用し、UART Serial や別実装の USB CDC には適用しない。送れないログは一部欠落し得るため、全ログの保存は保証しない。
+
 ## Mod
 ### ESP-NOW Remote Control Mod
 
